@@ -1,0 +1,2 @@
+# skyglass-query
+New project, based on skyglass-data, which is intended to be testable without jpa context. jpa or native query string will be generated in the test environment, without jpa context. Parameter binding and conversion will be executed in jpa context, using correspondent metamodel. So, there will be two testing environments for this framework: with and without jpa context, which will allow to speed up development of the framework and also create native sql query builder
