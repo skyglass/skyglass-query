@@ -10,13 +10,11 @@ import skyglass.data.filter.AbstractBaseDataFilter;
 import skyglass.data.filter.CustomFilterResolver;
 import skyglass.data.filter.CustomJoin;
 import skyglass.data.filter.CustomJpaFilterResolver;
-import skyglass.data.filter.IDataFilter;
 import skyglass.data.filter.FieldResolver;
 import skyglass.data.filter.FieldType;
-import skyglass.data.filter.FilterClass;
 import skyglass.data.filter.FilterType;
+import skyglass.data.filter.IDataFilter;
 import skyglass.data.filter.IJoinResolver;
-import skyglass.data.filter.DataFilterItem;
 import skyglass.data.filter.JunctionType;
 import skyglass.data.filter.OrderField;
 import skyglass.data.filter.PrivateFilterItem;
@@ -33,40 +31,17 @@ import skyglass.query.model.criteria.ITypedQuery;
 
 public class DataFilter<T> extends AbstractBaseDataFilter<T, IDataFilter<T>> implements IDataFilter<T> {
 
-    protected Class<T> clazz;
-
-    private IJoinType joinType;
-
     private IQueryBuilder<T, T> queryBuilder;
-
-    public DataFilter(Class<T> clazz, JunctionType junctionType, IQueryBuilder<T, T> queryBuilder,
+    
+    public DataFilter(Class<T> rootClazz, JunctionType junctionType, IQueryBuilder<T, T> queryBuilder,
             IFilterRequest request) {
-        super(junctionType, request);
-        this.clazz = clazz;
+        this(rootClazz, junctionType, IJoinType.INNER, queryBuilder, request);
+    }
+
+    public DataFilter(Class<T> rootClazz, JunctionType junctionType, IJoinType joinType, IQueryBuilder<T, T> queryBuilder,
+            IFilterRequest request) {
+        super(rootClazz, junctionType, joinType, request, queryBuilder, queryBuilder);
         this.queryBuilder = queryBuilder;
-        this.joinType = IJoinType.INNER;
-    }
-
-    public PrivateFilterItem createFilterItem(String fieldName, FieldType fieldType, Object filterValue) {
-        return new DataFilterItem<T>(queryBuilder, clazz, getFieldResolver(fieldName, fieldType), filterValue);
-    }
-
-    public PrivateFilterItem createFilterItem(String fieldName, FieldType fieldType, Object filterValue,
-            FilterType filterType) {
-        return new DataFilterItem<T>(queryBuilder, clazz, getFieldResolver(fieldName, fieldType), filterValue,
-                filterType);
-    }
-
-    public PrivateFilterItem createFilterItem(String fieldName, FieldType fieldType, Object filterValue,
-            FilterClass filterClass) {
-        return new DataFilterItem<T>(queryBuilder, clazz, getFieldResolver(fieldName, fieldType), filterValue,
-                filterClass);
-    }
-
-    public PrivateFilterItem createFilterItem(String fieldName, FieldType fieldType, Object filterValue,
-            FilterType filterType, FilterClass filterClass) {
-        return new DataFilterItem<T>(queryBuilder, clazz, getFieldResolver(fieldName, fieldType), filterValue, filterType,
-                filterClass);
     }
 
     @Override
@@ -83,7 +58,7 @@ public class DataFilter<T> extends AbstractBaseDataFilter<T, IDataFilter<T>> imp
     private IPredicate createAtomicFilter(String fieldName, FilterType filterType, Supplier<Object> filterValueResolver,
             boolean resolvePropertyPath) {
         if (resolvePropertyPath) {
-            fieldName = resolvePropertyPath(fieldName, joinType);
+            fieldName = queryContext.resolvePropertyPath(fieldName);
         }
         return queryBuilder.getPredicate(fieldName, filterType, filterValueResolver);
     }
@@ -134,7 +109,7 @@ public class DataFilter<T> extends AbstractBaseDataFilter<T, IDataFilter<T>> imp
     }
 
     private ITypedQuery<T> createResultQuery() {
-        return queryBuilder.createQuery(queryBuilder.createQuery(clazz));
+        return queryBuilder.createQuery(queryBuilder.createQuery(rootClazz));
     }
 
     private ITypedQuery<Long> createCountResultQuery() {
@@ -230,38 +205,8 @@ public class DataFilter<T> extends AbstractBaseDataFilter<T, IDataFilter<T>> imp
         return queryBuilder.concat((IExpression) concat1, (IExpression) concat2);
     }
 
-    @Override
-    public String resolvePropertyPath(String associationPath) {
-        return queryBuilder.resolvePropertyPath(associationPath, joinType);
-    }
-
-    @Override
-    public String resolvePropertyPath(String associationPath, IJoinType joinType) {
-        return queryBuilder.resolvePropertyPath(associationPath, joinType);
-    }
-
-    @Override
-    public String resolvePropertyPath(String associationPath, IJoinType joinType, IPredicate onClause) {
-        return queryBuilder.resolvePropertyPath(associationPath, joinType, onClause);
-    }
-
-    @Override
-    public String resolveAliasPath(String associationPath) {
-        return queryBuilder.resolveAliasPath(associationPath);
-    }
-
-    @Override
-    public String resolveAliasPath(String associationPath, IJoinType joinType) {
-        return queryBuilder.resolveAliasPath(associationPath, joinType);
-    }
-
-    @Override
-    public String resolveAliasPath(String associationPath, IJoinType joinType, IPredicate onClause) {
-        return queryBuilder.resolveAliasPath(associationPath, joinType, onClause);
-    }
-
     protected void doApplyFilter() {
-        IPredicate result = applyFilters(rootFilterItem);
+        IPredicate result = applyFilters(queryContext.getRootFilterItem());
         if (result != null) {
             queryBuilder.getQuery().where(result);
         }
@@ -315,17 +260,17 @@ public class DataFilter<T> extends AbstractBaseDataFilter<T, IDataFilter<T>> imp
 
     @Override
     public void setJoinType(IJoinType joinType) {
-        this.joinType = joinType;
+        queryContext.setJoinType(joinType);
     }
 
     @Override
     public IJoinResolver<T, IDataFilter<T>> addLeftJoin(String alias) {
-        return new CustomJoin<T, T, IDataFilter<T>>(IJoinType.LEFT, this, alias);
-    }
-
+        return new CustomJoin<T, T, IDataFilter<T>>(this, queryContext, alias, IJoinType.LEFT);
+    }    
+        
     @Override
     public IJoinResolver<T, IDataFilter<T>> addJoin(String alias) {
-        return new CustomJoin<T, T, IDataFilter<T>>(IJoinType.INNER, this, alias);
+        return new CustomJoin<T, T, IDataFilter<T>>(this, queryContext, alias, IJoinType.INNER);
     }
 
 }

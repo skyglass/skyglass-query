@@ -24,8 +24,6 @@ public interface IBaseDataFilter<T, F> {
 
     public F setPaging(Integer rowsPerPage, Integer pageNumber);
 
-    public String resolvePropertyPath(String associationPath);	
-
     public F addRequestSearch(String... fieldNames);
 
     public F addSearch(String filterValue, FieldType fieldType, String... fieldNames);
@@ -36,35 +34,17 @@ public interface IBaseDataFilter<T, F> {
 
     public F addFilter(String fieldName, Object filterValue, FilterType filterType);
 
-    public F addFilter(String fieldName, Object filterValue, FilterClass filterClass);
-
-    public F addFilter(String fieldName, Object filterValue, FilterType filterType, FilterClass filterClass);
-
     public F addFilters(String fieldName, Object[] filterValues);
 
     public F addFilters(String fieldName, Object[] filterValues, FilterType filterType);
-
-    public F addFilters(String fieldName, Object[] filterValues, FilterClass filterClass);
-
-    public F addFilters(String fieldName, Object[] filterValues, FilterType filterType, FilterClass filterClass);
 
     public F addFilter(String fieldName, FieldType fieldType, Object filterValue);
 
     public F addFilter(String fieldName, FieldType fieldType, Object filterValue, FilterType filterType);
 
-    public F addFilter(String fieldName, FieldType fieldType, Object filterValue, FilterClass filterClass);
-
-    public F addFilter(String fieldName, FieldType fieldType, Object filterValue, FilterType filterType,
-            FilterClass filterClass);
-
     public F addFilters(String fieldName, FieldType fieldType, Object[] filterValues);
 
     public F addFilters(String fieldName, FieldType fieldType, Object[] filterValues, FilterType filterType);
-
-    public F addFilters(String fieldName, FieldType fieldType, Object[] filterValues, FilterClass filterClass);
-
-    public F addFilters(String fieldName, FieldType fieldType, Object[] filterValues, FilterType filterType,
-            FilterClass filterClass);
 
     public F addFilter(FilterItem filterItem);
 
@@ -89,16 +69,6 @@ public interface IBaseDataFilter<T, F> {
     public F addCustomFieldResolver(String fieldName, CustomFieldResolver customFieldResolver);
 
     public F addCustomFilterResolver(CustomFilterResolver customFilterResolver);
-
-    public String resolvePropertyPath(String associationPath, IJoinType joinType);
-
-    public String resolvePropertyPath(String associationPath, IJoinType joinType, IPredicate onClause);
-
-    public String resolveAliasPath(String associationPath);
-
-    public String resolveAliasPath(String associationPath, IJoinType joinType);
-
-    public String resolveAliasPath(String associationPath, IJoinType joinType, IPredicate onClause);
 
     public void setJoinType(IJoinType joinType);
 

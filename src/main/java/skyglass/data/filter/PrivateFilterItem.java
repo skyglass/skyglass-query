@@ -1,6 +1,5 @@
 package skyglass.data.filter;
 
-import java.util.UUID;
 import java.util.function.Supplier;
 
 import javax.persistence.criteria.CriteriaBuilder;
@@ -16,33 +15,20 @@ public class PrivateFilterItem {
     private Object filterValue;
     private Supplier<Object> filterValueResolver;
 
-    private FilterClass filterClass;
-
     // should be overriden to define different behaviour
     protected Supplier<Object> objectConverter(String fieldName, Object value) {
         return () -> value;
     }
 
     protected PrivateFilterItem(Class<?> rootClass, FieldResolver fieldResolver, Object filterValue) {
-        this(rootClass, fieldResolver, filterValue, FilterType.EQ, FilterClass.STRING);
+        this(rootClass, fieldResolver, filterValue, FilterType.Equals);
     }
 
     protected PrivateFilterItem(Class<?> rootClass, FieldResolver fieldResolver, Object filterValue,
             FilterType filterType) {
-        this(rootClass, fieldResolver, filterValue, filterType, FilterClass.STRING);
-    }
-
-    protected PrivateFilterItem(Class<?> rootClass, FieldResolver fieldResolver, Object filterValue,
-            FilterClass filterClass) {
-        this(rootClass, fieldResolver, filterValue, FilterType.EQ, filterClass);
-    }
-
-    protected PrivateFilterItem(Class<?> rootClass, FieldResolver fieldResolver, Object filterValue,
-            FilterType filterType, FilterClass filterClass) {
         this.rootClass = rootClass;
         this.fieldResolver = fieldResolver;
         this.filterType = filterType;
-        this.filterClass = filterClass;
         this.filterValue = filterValue;
     }
 
@@ -68,34 +54,14 @@ public class PrivateFilterItem {
         return filterValueResolver;
     }
 
-    public FilterClass getFilterClass() {
-        return filterClass;
-    }
-
     private Supplier<Object> filterValueResolver() {
         if (filterValue instanceof CriteriaBuilder) {
             return () -> filterValue;
         }
-
-        if (filterType == FilterType.LIKE) {
+        if (filterType == FilterType.Like) {
             return () -> IQueryBuilder.processFilterString(filterValue);
         }
-
-        final Object result;
-        String stringValue = filterValue.toString();
-
-        if (filterClass == FilterClass.BOOLEAN) {
-            result = Boolean.valueOf(stringValue);
-        } else if (filterClass == FilterClass.LONG) {
-            result = Long.valueOf(stringValue);
-        } else if (filterClass == FilterClass.STRING) {
-            return objectConverter(fieldResolver.getResolver(), filterValue);
-        } else if (filterClass == FilterClass.UUID) {
-            result = UUID.fromString(stringValue);
-        } else {
-            throw new IllegalArgumentException("Unsupported filter classname: " + filterClass);
-        }
-
+        Object result = objectConverter(fieldResolver.getResolver(), filterValue);
         return () -> result;
     }
 

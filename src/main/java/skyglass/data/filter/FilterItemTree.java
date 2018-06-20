@@ -12,7 +12,7 @@ public class FilterItemTree extends FilterItem {
 	private JunctionType junctionType;
 	
 	public FilterItemTree(JunctionType junctionType) {
-		super(null, null, null, null, null);
+		super(null, null, null, null);
 		this.junctionType = junctionType;		
 	}
 	

@@ -32,17 +32,17 @@ public class CompositeFilter<T, F> implements IJoinResolver<T, F> {
 
     @Override
     public IJoinResolver<T, F> equals(String propertyName, Object value) {
-        return addAtomic(FilterType.EQ, propertyName, value);
+        return addAtomic(FilterType.Equals, propertyName, value);
     }
 
     @Override
     public IJoinResolver<T, F> notEquals(String propertyName, Object value) {
-        return addAtomic(FilterType.NE, propertyName, value);
+        return addAtomic(FilterType.NotEquals, propertyName, value);
     }
 
     @Override
     public IJoinResolver<T, F> eqProperty(String propertyName, String otherPropertyName) {
-        return addAtomic(FilterType.EQPR, propertyName, otherPropertyName);
+        return addAtomic(FilterType.EqualsProp, propertyName, otherPropertyName);
     }
 
     @Override

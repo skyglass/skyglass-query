@@ -1,21 +1,13 @@
 package skyglass.data.filter;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-
-import skyglass.query.api.AbstractSubQueryBuilder;
-import skyglass.query.model.criteria.IExpression;
 import skyglass.query.model.criteria.IJoinType;
-import skyglass.query.model.criteria.IPredicate;
 import skyglass.query.model.criteria.IQueryBuilder;
-import skyglass.query.model.criteria.ISubQueryBuilder;
 
-public class CustomJoin<E, S, F> implements CustomJpaFilterResolver<E, S>, IJoinResolver<E, F> {
+public class CustomJoin<E, S, F> implements IJoinResolver<E, F> {
 
     private IJoinType joinType;
 
-    private IBaseDataFilter<E, F> filter;
+    private PrivateQueryContext queryContext;
 
     private String aliasPath;
 
@@ -28,28 +20,14 @@ public class CustomJoin<E, S, F> implements CustomJpaFilterResolver<E, S>, IJoin
     private CompositeFilter<E, F> compositeFilter = new CompositeFilter<E, F>(this, this, true);
 
     private int subQueryCounter = 1;
+    
+    private F filter;
 
-    public CustomJoin(IJoinType joinType, IBaseDataFilter<E, F> filter, String aliasPath) {
-        this.joinType = joinType;
+    public CustomJoin(F filter, PrivateQueryContext queryContext, String aliasPath, IJoinType joinType) {
         this.filter = filter;
+    	this.joinType = joinType;
+        this.queryContext = queryContext;
         this.aliasPath = aliasPath;
-    }
-
-    @Override
-    public void addCustomFilter(IQueryBuilder<E, S> criteriaBuilder) {
-        IPredicate restriction = createPredicate(criteriaBuilder);
-        if (resolveAlias != null) {
-            aliasPath = resolveAlias;
-        }
-        if (restriction != null) {
-            alias = filter.resolveAliasPath(aliasPath, joinType, restriction);
-        }
-        if (invert) {
-            if (alias == null) {
-                alias = filter.resolveAliasPath(aliasPath, joinType);
-            }
-            criteriaBuilder.isNull(criteriaBuilder.getExpression(alias + ".id"));
-        }
     }
 
     @Override
@@ -83,165 +61,127 @@ public class CustomJoin<E, S, F> implements CustomJpaFilterResolver<E, S>, IJoin
         return (IJoinResolver<E, F>) resolve();
     }
 
-    private IPredicate createPredicate(IQueryBuilder<E, S> criteriaBuilder) {
-        IPredicate predicate = addCompositePredicate(criteriaBuilder, compositeFilter);
-        return predicate;
+    private PrivateQueryContext createQueryContext(boolean isAnd) {
+        return new PrivateQueryContext(queryContext, isAnd);
+    }
+    
+    private PrivateFilterItem createAtomicFilterItem(AtomicFilter atomicFilter) {
+        String propertyName = IQueryBuilder.resolvePropertyName(aliasPath + "." + atomicFilter.propertyName);
+        return queryContext.createFilterItem(propertyName, atomicFilter.filterType, atomicFilter.value);
     }
 
-    private IPredicate addAtomicPredicate(AtomicFilter atomicFilter) {
-        IPredicate predicate = filter.createAtomicFilter(
-                IQueryBuilder.resolvePropertyName(aliasPath + "." + atomicFilter.propertyName),
-                atomicFilter.filterType, () -> atomicFilter.value);
-        return predicate;
-    }
-
-    private <SUB> IPredicate addAtomicSubQueryPredicate(ISubQueryBuilder<E, SUB> criteriaBuilder,
-            SubQueryFilter<E, SUB, F> subQueryFilter, AtomicFilter atomicFilter) {
-        String propertyName = criteriaBuilder.resolvePropertyPath(atomicFilter.propertyName,
-                subQueryFilter.getJoinType());
-        IPredicate predicate = criteriaBuilder.getPredicate(propertyName, atomicFilter.filterType,
-                () -> atomicFilter.value);
-        return predicate;
+    private PrivateFilterItem createAtomicSubQueryFilterItem(PrivateQueryContext subQueryContext,
+    		AtomicFilter atomicFilter) {
+        String propertyName = subQueryContext.resolvePropertyPath(atomicFilter.propertyName);
+        return subQueryContext.createFilterItem(propertyName, atomicFilter.filterType, atomicFilter.value);
     }
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
-    private IPredicate addCompositePredicate(IQueryBuilder<E, S> criteriaBuilder,
-            CompositeFilter<E, F> compositeFilter) {
+    private PrivateFilterItemTree createCompositeFilterItem(CompositeFilter<E, F> compositeFilter) {
         if (compositeFilter instanceof SubQueryFilter) {
-            return addSubQueryPredicate((SubQueryFilter) compositeFilter, (AbstractSubQueryBuilder) criteriaBuilder);
+            return createSubQueryFilterItem(aliasPath, queryContext, (SubQueryFilter) compositeFilter);
         }
-        Collection<IPredicate> predicates = new ArrayList<>();
         for (CompositeFilter<E, F> child : compositeFilter.getCompositeChildren()) {
-            predicates.add(addCompositePredicate(criteriaBuilder, child));
+            queryContext.addRootChild(
+            		createCompositeFilterItem(compositeFilter));
         }
         for (AtomicFilter atomicFilter : compositeFilter.getAtomicChildren()) {
-            predicates.add(addAtomicPredicate(atomicFilter));
+        	queryContext.addRootChild(createAtomicFilterItem(atomicFilter));
         }
-        IPredicate result = null;
-        for (IPredicate predicate : predicates) {
-            if (result == null) {
-                result = predicate;
-            } else if (compositeFilter.isAnd()) {
-                result = criteriaBuilder.and(result, predicate);
-            } else {
-                result = criteriaBuilder.or(result, predicate);
-            }
-        }
-        return result;
+        return queryContext.getRootFilterItem();
     }
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
-    private <SUB> IPredicate addSubQueryPredicate(SubQueryFilter<E, SUB, F> subQueryFilter,
-            ISubQueryBuilder<E, SUB> criteriaBuilder) {
+    private <SUB> PrivateFilterItemTree createSubQueryFilterItem(String parentPath, 
+    		PrivateQueryContext parentContext,
+    		SubQueryFilter<E, SUB, F> subQueryFilter) {
+    	PrivateQueryContext subQueryContext = createQueryContext(subQueryFilter.isAnd());
         String subQueryAlias = getNextSubQueryAlias();
-        Collection<IPredicate> predicates = new ArrayList<>();
         for (CompositeFilter<E, F> compositeFilter : subQueryFilter.getCompositeChildren()) {
-            predicates.add(addCompositeSubQueryPredicate(criteriaBuilder, subQueryFilter, compositeFilter));
+            subQueryContext.addRootChild(
+            		createCompositeSubQueryFilterItem(subQueryAlias, subQueryContext, 
+            				compositeFilter));
         }
         for (AtomicFilter atomicFilter : subQueryFilter.getAtomicChildren()) {
-            predicates.add(addAtomicSubQueryPredicate(criteriaBuilder, subQueryFilter, atomicFilter));
-        }
-        IPredicate result = null;
-        for (IPredicate predicate : predicates) {
-            if (result == null) {
-                result = predicate;
-            } else if (subQueryFilter.isAnd()) {
-                result = criteriaBuilder.and(result, predicate);
-            } else {
-                result = criteriaBuilder.or(result, predicate);
-            }
+        	subQueryContext.addRootChild(createAtomicSubQueryFilterItem(subQueryContext, atomicFilter));
         }
         SubQueryFilter<E, SUB, F> propertiesSubQueryFilter = (SubQueryFilter<E, SUB, F>) subQueryFilter;
         String projectionName = null;
         String[] parentNames = new String[propertiesSubQueryFilter.getProperties().size()];
-        List<IPredicate> predicateList = new ArrayList<>();
         int i = 0;
         for (SubQueryProperty property : propertiesSubQueryFilter.getProperties()) {
-            String name = criteriaBuilder.resolvePropertyPath(property.getName(), property.getJoinType());
+            String path = subQueryContext.resolvePropertyPath(property.getName(), property.getJoinType());
             String parentName = IQueryBuilder.resolvePropertyName(aliasPath + "." + property.getParentName());
             parentNames[i] = parentName;
             if (property.isProjection()) {
                 if (property.getType() == PropertyType.Group) {
-                    criteriaBuilder.getSubQuery().groupBy(criteriaBuilder.getExpression(property.getName()));
+                    subQueryContext.addGroupBy(path);
                 } else if (property.getType() == PropertyType.Max) {
                     projectionName = property.getName();
-                    criteriaBuilder.getSubQuery().select(
-                            (IExpression) criteriaBuilder.max(criteriaBuilder.getRoot().get(property.getName())));
+                    subQueryContext.addSelect(property.getName(), path, ExpressionType.Max);
                 } else {
                     projectionName = property.getName();
-                    criteriaBuilder.getSubQuery()
-                            .select((IExpression) criteriaBuilder.getRoot().get(property.getName()));
+                    subQueryContext.addSelect(property.getName(), path);
                 }
                 if (property.isDistinct()) {
-                    criteriaBuilder.getSubQuery().distinct(true);
+                    subQueryContext.setDistinct(true);
                 }
             }
             if (property.isCorrelated()) {
                 String correlatedName = null;
-                if (IQueryBuilder.hasAlias(name)) {
-                    correlatedName = name;
+                if (IQueryBuilder.hasAlias(path)) {
+                    correlatedName = path;
                 } else {
-                    correlatedName = subQueryAlias + "." + name;
+                    correlatedName = subQueryAlias + "." + path;
                 }
-                predicateList.add(criteriaBuilder.equalProperty(criteriaBuilder.getExpression(property.getName()),
-                        criteriaBuilder.getExpression(correlatedName)));
+                subQueryContext.createFilterItem(property.getName(), FilterType.EqualsProp, correlatedName);
             }
             i++;
         }
-        for (IPredicate predicate : predicateList) {
-            if (result == null) {
-                result = predicate;
-            } else {
-                result = criteriaBuilder.and(result, predicate);
-            }
-        }
-        return getSubQueriesPropertyPredicate(projectionName, criteriaBuilder, subQueryFilter.getSubQueryType());
+        addSubQueriesPropertyFilterItem(parentPath, 
+        		subQueryAlias + "." + projectionName, 
+        		parentContext, subQueryContext, subQueryFilter.getSubQueryType());
+        return subQueryContext.getRootFilterItem();
     }
 
-    private <E1, SUB> IPredicate getSubQueriesPropertyPredicate(String parentName,
-            ISubQueryBuilder<E1, SUB> criteriaBuilder, SubQueryType subQueryType) {
+    private <E1, SUB> void addSubQueriesPropertyFilterItem(String path,
+    		String subQueryPath, PrivateQueryContext parentContext, 
+    		PrivateQueryContext subQueryContext, SubQueryType subQueryType) {
         if (subQueryType == SubQueryType.PropEx) {
-            return criteriaBuilder.exists(criteriaBuilder.getSubQuery());
+            parentContext.addSubQueryExpression(path, subQueryPath,FilterType.Exists, subQueryContext);
         } else if (subQueryType == SubQueryType.PropNotEx) {
-            return criteriaBuilder.not(criteriaBuilder.exists(criteriaBuilder.getSubQuery()));
+            parentContext.addSubQueryExpression(path, subQueryPath,FilterType.NotExists, subQueryContext);
         } else if (subQueryType == SubQueryType.PropEq) {
-            return criteriaBuilder.equalProperty(criteriaBuilder.getExpression(parentName),
-                    criteriaBuilder.getSubQuery());
+            parentContext.addSubQueryExpression(path, subQueryPath,FilterType.EqualsProp, subQueryContext);
         } else if (subQueryType == SubQueryType.PropNotEq) {
-            return criteriaBuilder.notEqualProperty(criteriaBuilder.getExpression(parentName),
-                    criteriaBuilder.getSubQuery());
+            parentContext.addSubQueryExpression(path, subQueryPath,FilterType.NotEqualsProp, subQueryContext);
         } else if (subQueryType == SubQueryType.PropIn) {
-            return criteriaBuilder.getExpression(parentName).in(criteriaBuilder.getSubQuery());
+            parentContext.addSubQueryExpression(path, subQueryPath,FilterType.In, subQueryContext);
         } else if (subQueryType == SubQueryType.PropNotIn) {
-            return criteriaBuilder.not(criteriaBuilder.getExpression(parentName).in(criteriaBuilder.getSubQuery()));
+            parentContext.addSubQueryExpression(path, subQueryPath,FilterType.NotIn, subQueryContext);
         }
-        return null;
     }
 
     @SuppressWarnings("unchecked")
-    private <SUB> IPredicate addCompositeSubQueryPredicate(ISubQueryBuilder<E, SUB> criteriaBuilder,
-            SubQueryFilter<E, SUB, F> subQueryFilter, CompositeFilter<E, F> compositeFilter) {
+    private <SUB> PrivateFilterItem createCompositeSubQueryFilterItem(
+    		String path, PrivateQueryContext parentContext,
+    		CompositeFilter<E, F> compositeFilter) {
         if (compositeFilter instanceof SubQueryFilter) {
-            return addSubQueryPredicate((SubQueryFilter<E, SUB, F>) compositeFilter, criteriaBuilder);
+            return createSubQueryFilterItem(path, parentContext, 
+            		(SubQueryFilter<E, SUB, F>) compositeFilter);
         }
-        Collection<IPredicate> predicates = new ArrayList<>();
+        PrivateQueryContext subQueryContext = createQueryContext(compositeFilter.isAnd());
         for (CompositeFilter<E, F> child : compositeFilter.getCompositeChildren()) {
-            predicates.add(addCompositeSubQueryPredicate(criteriaBuilder, subQueryFilter, child));
+        	subQueryContext.addRootChild(
+            		createCompositeSubQueryFilterItem(path, subQueryContext, child));
         }
         for (AtomicFilter atomicChild : compositeFilter.getAtomicChildren()) {
-            predicates.add(addAtomicSubQueryPredicate(criteriaBuilder, subQueryFilter, atomicChild));
+        	subQueryContext.addRootChild(
+        			createAtomicSubQueryFilterItem(subQueryContext, atomicChild));
         }
-        IPredicate result = null;
-        for (IPredicate predicate : predicates) {
-            if (result == null) {
-                result = predicate;
-            } else if (compositeFilter.isAnd()) {
-                result = criteriaBuilder.and(result, predicate);
-            } else {
-                result = criteriaBuilder.or(result, predicate);
-            }
-        }
-        return result;
+        PrivateFilterItemTree rootFilterItem = subQueryContext.getRootFilterItem();
+        parentContext.addSubQueryContext(path, subQueryContext);
+        return rootFilterItem;
     }
 
     @Override
@@ -252,7 +192,8 @@ public class CustomJoin<E, S, F> implements CustomJpaFilterResolver<E, S>, IJoin
     @Override
     public F resolve(String resolveAlias) {
         this.resolveAlias = resolveAlias;
-        return filter.addCustomFilterResolver((CustomFilterResolver) this);
+        createCompositeFilterItem(compositeFilter);
+        return filter;
     }
 
     @Override
@@ -264,7 +205,14 @@ public class CustomJoin<E, S, F> implements CustomJpaFilterResolver<E, S>, IJoin
     public F invert(String resolveAlias) {
         this.invert = true;
         this.resolveAlias = resolveAlias;
-        return filter.addCustomFilterResolver((CustomFilterResolver) this);
+        if (resolveAlias != null) {
+            aliasPath = resolveAlias;
+        }
+        if (alias == null) {
+            alias = queryContext.resolveAliasPath(aliasPath, joinType);
+        }
+        queryContext.createFilterItem(alias + ".id", FilterType.IsNull, null);
+        return filter;
     }
 
     private String getNextSubQueryAlias() {

@@ -14,6 +14,9 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 
 import skyglass.data.filter.request.IFilterRequest;
 import skyglass.data.query.QueryResult;
+import skyglass.query.model.criteria.IJoinBuilder;
+import skyglass.query.model.criteria.IJoinType;
+import skyglass.query.model.criteria.IValueResolver;
 
 public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T, F> {
 
@@ -30,25 +33,25 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
     protected abstract void applyOrder(List<OrderField> orderFields);
 
     protected abstract void resolveCustomFilter(CustomFilterResolver filterResolver);
-
-    protected abstract PrivateFilterItem createFilterItem(String fieldName, FieldType fieldType, Object filterValue,
-            FilterType filterType, FilterClass filterClass);
     
     private int rowsPerPage = 10;
     private int pageNumber = 1;
     private List<OrderField> orderFields = new ArrayList<OrderField>();
-    private Map<String, FieldResolver> fieldResolverMap = new HashMap<String, FieldResolver>();
-
     private List<CustomFilterResolver> customFilterResolvers = new ArrayList<CustomFilterResolver>();
 
-    protected PrivateFilterItemTree rootFilterItem;
+    protected PrivateQueryContext queryContext;
 
     private Map<String, List<FieldResolver>> searchMap = new HashMap<String, List<FieldResolver>>();
 
     private IFilterRequest request;
+    
+    protected Class<T> rootClazz;
 
-    protected AbstractBaseDataFilter(JunctionType junctionType, IFilterRequest request) {
-        this.rootFilterItem = new PrivateFilterItemTree(junctionType);
+    protected AbstractBaseDataFilter(Class<T> rootClazz, JunctionType junctionType, IJoinType joinType, 
+    		IFilterRequest request, IValueResolver valueResolver, IJoinBuilder joinBuilder) {
+        this.rootClazz = rootClazz;
+        this.queryContext = new PrivateQueryContext(junctionType, valueResolver, 
+        		joinBuilder, rootClazz, joinType);
         this.request = request;
     }
     
@@ -88,7 +91,7 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
 
     @SuppressWarnings("unchecked")
     public F addOrder(String orderField, OrderType orderType) {
-        OrderField order = new OrderField(getFieldResolver(orderField, null), orderType);
+        OrderField order = new OrderField(queryContext.addFieldResolver(orderField, null), orderType);
         this.orderFields.add(order);
         return (F) this;
     }
@@ -96,18 +99,6 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
     public F setOrder(String orderField, OrderType orderType) {
         this.orderFields.clear();
         return addOrder(orderField, orderType);
-    }
-
-    protected FieldResolver getFieldResolver(String fieldName, FieldType fieldType) {
-        FieldResolver fieldResolver = fieldResolverMap.get(fieldName);
-        if (fieldResolver == null) {
-            fieldResolver = new FieldResolver(this, fieldName, fieldType);
-            fieldResolverMap.put(fieldName, fieldResolver);
-        }
-        if (fieldResolver.getFieldType() == null && fieldType != null) {
-            fieldResolver.setFieldType(fieldType);
-        }
-        return fieldResolver;
     }
 
     @SuppressWarnings("unchecked")
@@ -136,7 +127,7 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
                 searchMap.put(filterValue, searchList);
             }
             for (String fieldName : fieldNames) {
-                searchList.add(getFieldResolver(fieldName, fieldType));
+                searchList.add(queryContext.addFieldResolver(fieldName, fieldType));
             }
         }
         return (F) this;
@@ -212,12 +203,12 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
     protected void initSearch() {
         if (!searchMap.isEmpty()) {
             PrivateFilterItemTree orFilter = new PrivateFilterItemTree(JunctionType.OR);
-            rootFilterItem.addChild(orFilter);
+            queryContext.addRootChild(orFilter);
             for (String fieldValue : searchMap.keySet()) {
                 List<FieldResolver> fieldResolvers = searchMap.get(fieldValue);
                 for (FieldResolver fieldResolver : fieldResolvers) {
-                    PrivateFilterItem filterItem = createFilterItem(fieldResolver.getFieldName(),
-                            fieldResolver.getFieldType(), fieldValue, FilterType.LIKE, FilterClass.STRING);
+                    PrivateFilterItem filterItem = queryContext.createFilterItem(fieldResolver.getFieldName(),
+                            fieldResolver.getFieldType(), FilterType.Like, fieldValue);
                     orFilter.addChild(filterItem);
                 }
             }
@@ -227,8 +218,7 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
     @SuppressWarnings("unchecked")
     @Override
     public F addCustomFieldResolver(String fieldName, CustomFieldResolver customFieldResolver) {
-        FieldResolver fieldResolver = getFieldResolver(fieldName, FieldType.Criteria);
-        fieldResolver.setCustomFieldResolver(customFieldResolver);
+    	queryContext.addFieldResolver(fieldName, FieldType.Criteria);
         addFilter(fieldName, null);
         return (F) this;
     }
@@ -236,16 +226,14 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
     @SuppressWarnings("unchecked")
     @Override
     public F addFieldResolver(String fieldName, FieldType fieldType, String expression) {
-        FieldResolver fieldResolver = getFieldResolver(fieldName, fieldType);
-        fieldResolver.addResolvers(expression);
+    	queryContext.addFieldResolver(fieldName, fieldType);
         return (F) this;
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public F addFieldResolvers(String fieldName, FieldType fieldType, String... expressions) {
-        FieldResolver fieldResolver = getFieldResolver(fieldName, fieldType);
-        fieldResolver.addResolvers(expressions);
+    	queryContext.addFieldResolvers(fieldName, fieldType, expressions);
         return (F) this;
     }
 
@@ -260,16 +248,6 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
     }
 
     @Override
-    public F addFilter(String fieldName, Object filterValue, FilterClass filterClass) {
-        return addFilter(fieldName, FieldType.Path, filterValue, filterClass);
-    }
-
-    @Override
-    public F addFilter(String fieldName, Object filterValue, FilterType filterType, FilterClass filterClass) {
-        return addFilter(fieldName, FieldType.Path, filterValue, filterType, filterClass);
-    }
-
-    @Override
     public F addFilters(String fieldName, Object[] filterValues) {
         return addFilters(fieldName, FieldType.Path, filterValues);
     }
@@ -280,16 +258,6 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
     }
 
     @Override
-    public F addFilters(String fieldName, Object[] filterValues, FilterClass filterClass) {
-        return addFilters(fieldName, FieldType.Path, filterValues, filterClass);
-    }
-
-    @Override
-    public F addFilters(String fieldName, Object[] filterValues, FilterType filterType, FilterClass filterClass) {
-        return addFilters(fieldName, FieldType.Path, filterValues, filterType, filterClass);
-    }
-
-    @Override
     public F addFilter(String fieldName, FieldType fieldType, Object filterValue) {
         return addFilter(new FilterItem(fieldName, fieldType, filterValue));
     }
@@ -297,17 +265,6 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
     @Override
     public F addFilter(String fieldName, FieldType fieldType, Object filterValue, FilterType filterType) {
         return addFilter(new FilterItem(fieldName, fieldType, filterValue, filterType));
-    }
-
-    @Override
-    public F addFilter(String fieldName, FieldType fieldType, Object filterValue, FilterClass filterClass) {
-        return addFilter(new FilterItem(fieldName, fieldType, filterValue, filterClass));
-    }
-
-    @Override
-    public F addFilter(String fieldName, FieldType fieldType, Object filterValue, FilterType filterType,
-            FilterClass filterClass) {
-        return addFilter(new FilterItem(fieldName, fieldType, filterValue, filterType, filterClass));
     }
 
     @Override
@@ -357,8 +314,9 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
     }
 
     private PrivateFilterItem createFilterItem(FilterItem customFilterItem) {
-        return createFilterItem(customFilterItem.getFieldName(), customFilterItem.getFieldType(),
-                customFilterItem.getFilterValue(), customFilterItem.getFilterType(), customFilterItem.getFilterClass());
+        return queryContext.createFilterItem(
+        		customFilterItem.getFieldName(), customFilterItem.getFieldType(),
+        		customFilterItem.getFilterType(), customFilterItem.getFilterValue());
     }
 
     private PrivateFilterItem[] createFilterItems(FilterItem... filterItems) {
@@ -372,32 +330,18 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
     @SuppressWarnings("unchecked")
     @Override
     public F addFilters(String fieldName, FieldType fieldType, Object[] filterValues) {
-        addFilters(fieldName, fieldType, filterValues, FilterType.EQ, FilterClass.STRING);
+        addFilters(fieldName, fieldType, filterValues, FilterType.Equals);
         return (F) this;
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public F addFilters(String fieldName, FieldType fieldType, Object[] filterValues, FilterType filterType) {
-        addFilters(fieldName, fieldType, filterValues, filterType, FilterClass.STRING);
-        return (F) this;
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public F addFilters(String fieldName, FieldType fieldType, Object[] filterValues, FilterClass filterClass) {
-        addFilters(fieldName, fieldType, filterValues, FilterType.EQ, filterClass);
-        return (F) this;
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public F addFilters(String fieldName, FieldType fieldType, Object[] filterValues, FilterType filterType,
-            FilterClass filterClass) {
         PrivateFilterItemTree orFilter = new PrivateFilterItemTree(JunctionType.OR);
-        rootFilterItem.addChild(orFilter);
+        queryContext.addRootChild(orFilter);
         for (Object filterValue : filterValues) {
-            PrivateFilterItem filterItem = createFilterItem(fieldName, fieldType, filterValue, filterType, filterClass);
+            PrivateFilterItem filterItem = queryContext
+            		.createFilterItem(fieldName, fieldType, filterType, filterValue);
             orFilter.addChild(filterItem);
         }
         return (F) this;
@@ -405,20 +349,20 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
 
     @SuppressWarnings("unchecked")
     private F addFilter(PrivateFilterItem filterItem) {
-        rootFilterItem.addChild(filterItem);
+    	queryContext.addRootChild(filterItem);
         return (F) this;
     }
 
     @SuppressWarnings("unchecked")
     private F addFilter(PrivateFilterItemTree parent, PrivateFilterItem filterItem) {
         parent.addChild(filterItem);
-        rootFilterItem.addChild(parent);
+        queryContext.addRootChild(parent);
         return (F) this;
     }
 
     @SuppressWarnings("unchecked")
     private F addFilter(PrivateFilterItemTree parent) {
-        rootFilterItem.addChild(parent);
+    	queryContext.addRootChild(parent);
         return (F) this;
     }
 
@@ -443,7 +387,7 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
         for (PrivateFilterItem filterItem : filterItems) {
             parent.addChild(filterItem);
         }
-        rootFilterItem.addChild(parent);
+        queryContext.addRootChild(parent);
         return (F) this;
     }
 

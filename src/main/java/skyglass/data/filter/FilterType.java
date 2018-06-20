@@ -1,14 +1,20 @@
 package skyglass.data.filter;
 
 public enum FilterType {
-	EQ("eq"),
-	LIKE("like"),
-	GE("ge"),
-	GT("gt"),
-	LE("le"),
-	LT("lt"),
-	NE("ne"),
-	EQPR("eqpr");
+	Equals("eq"),
+	Like("like"),
+	GreaterOrEquals("ge"),
+	Greater("gt"),
+	LessOrEquals("le"),
+	Less("lt"),
+	NotEquals("ne"),
+	EqualsProp("eqpr"),
+	NotEqualsProp("neqpr"),
+	Exists("ex"),
+	NotExists("nex"),
+	In("in"),
+	NotIn("nin"),
+	IsNull("isn");
 	
 	private String name;
 	
@@ -22,6 +28,6 @@ public enum FilterType {
 				return filterType;
 			}
 		}
-		return FilterType.EQ;
+		return FilterType.Equals;
 	}
 }

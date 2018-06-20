@@ -11,7 +11,7 @@ public class PrivateFilterItemTree extends PrivateFilterItem {
 	private JunctionType junctionType;
 	
 	public PrivateFilterItemTree(JunctionType junctionType) {
-		super(null, null, null, null, null);
+		super(null, null, null, null);
 		this.junctionType = junctionType;		
 	}
 	

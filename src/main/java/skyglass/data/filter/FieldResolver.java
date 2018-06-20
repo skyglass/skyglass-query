@@ -6,7 +6,7 @@ import java.util.Set;
 
 public class FieldResolver {
 	
-	private IBaseDataFilter<?, ?> filter;
+	private PrivateQueryContext queryContext;
 	
 	private String fieldName;
 	
@@ -18,18 +18,18 @@ public class FieldResolver {
 	
 	private CustomFieldResolver customFieldResolver;		
 	
-	public FieldResolver(IBaseDataFilter<?, ?> filter, String fieldName, FieldType fieldType, String... fieldResolvers) {
-		this.filter = filter;
+	public FieldResolver(PrivateQueryContext queryContext, String fieldName, FieldType fieldType, String... fieldResolvers) {
+		this.queryContext = queryContext;
 		this.fieldName = fieldName;
-		this.defaultResolvers.add(filter.resolvePropertyPath(fieldName));
+		this.defaultResolvers.add(queryContext.resolvePropertyPath(fieldName));
 		addResolvers(fieldResolvers);
 		if (fieldType != null) {
 			this.fieldType = fieldType;			
 		}
 	}
 	
-	public FieldResolver(IBaseDataFilter<?, ?> filter, String fieldName, CustomFieldResolver customFieldResolver) {
-		this(filter, fieldName, FieldType.Criteria);
+	public FieldResolver(PrivateQueryContext queryContext, String fieldName, CustomFieldResolver customFieldResolver) {
+		this(queryContext, fieldName, FieldType.Criteria);
 		this.customFieldResolver = customFieldResolver;
 	}	
 	
@@ -69,7 +69,7 @@ public class FieldResolver {
 	
 	public void addResolvers(String... resolvers) {
 		for (String resolver: resolvers) {
-			fieldResolvers.add(filter.resolvePropertyPath(resolver));			
+			fieldResolvers.add(queryContext.resolvePropertyPath(resolver));			
 		}
 	}
 	

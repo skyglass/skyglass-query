@@ -6,7 +6,7 @@ import skyglass.data.filter.Dialect;
 import skyglass.data.filter.FilterType;
 import skyglass.query.model.query.IQuery;
 
-public interface IQueryBuilder<E, S> {
+public interface IQueryBuilder<E, S> extends IValueResolver, IJoinBuilder {
 	
     public IQuery createQuery(String queryString);
 
@@ -66,27 +66,13 @@ public interface IQueryBuilder<E, S> {
 
     public IPredicate getPredicate(String fieldName, FilterType filterType, Supplier<Object> filterValueResolver);
 
-    public String resolvePropertyPath(String associationPath, IJoinType joinType);
-
-    public String resolvePropertyPath(String associationPath, IJoinType joinType, IPredicate onClause);
-
-    public String resolveAliasPath(String associationPath);
-
-    public String resolveAliasPath(String associationPath, IJoinType joinType);
-
-    public String resolveAliasPath(String associationPath, IJoinType joinType, IPredicate onClause);
-    
     public <T> ITypedQuery<T> createQuery(ICriteriaQuery<T> criteriaQuery);
 
     public <E0, S0> ISubQueryBuilder<E0, S0> createSubCriteriaBuilder(ICriteriaQuery<S> parentQuery, Class<E0> subEntityClass, Class<S0> subSelectClass);
 
     public Dialect getDialect();
 
-    public Supplier<Object> objectConverter(Class<?> rootClass, String property, Object value, boolean isCollection);
-
     public Long getCurrentUserId();
-
-    public Supplier<Boolean> numericFieldResolver(Class<?> rootClass, String propertyName);
     
     public static String convertToRegexp(String filterString) {
         String result = filterString.replace("*", "\\*");

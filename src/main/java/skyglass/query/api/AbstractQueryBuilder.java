@@ -13,55 +13,48 @@ import skyglass.query.model.criteria.IPredicate;
 import skyglass.query.model.criteria.IQueryBuilder;
 
 public abstract class AbstractQueryBuilder<E, S> implements IQueryBuilder<E, S> {
-
+	
     private Map<String, IJoin<?, ?>> joins = new HashMap<>();
 
     @Override
     public IPredicate getPredicate(String fieldName, FilterType filterType, Supplier<Object> filterValueResolver) {
-        if (filterType == FilterType.LIKE) {
+        if (filterType == FilterType.Like) {
             return applyLikeFilter(fieldName, filterValueResolver);
-        } else if (filterType == FilterType.EQ) {
+        } else if (filterType == FilterType.Equals) {
             return applyEqualsFilter(fieldName, filterValueResolver);
-        } else if (filterType == FilterType.GE) {
+        } else if (filterType == FilterType.GreaterOrEquals) {
             return applyGreaterOrEqualsFilter(fieldName, filterValueResolver);
-        } else if (filterType == FilterType.GT) {
+        } else if (filterType == FilterType.Greater) {
             return applyGreaterFilter(fieldName, filterValueResolver);
-        } else if (filterType == FilterType.LE) {
+        } else if (filterType == FilterType.LessOrEquals) {
             return applyLessOrEqualsFilter(fieldName, filterValueResolver);
-        } else if (filterType == FilterType.LT) {
+        } else if (filterType == FilterType.Less) {
             return applyLessFilter(fieldName, filterValueResolver);
-        } else if (filterType == FilterType.NE) {
+        } else if (filterType == FilterType.NotEquals) {
             return applyNotEqualsFilter(fieldName, filterValueResolver);
-        } else if (filterType == FilterType.EQPR) {
+        } else if (filterType == FilterType.EqualsProp) {
             return applyEqualPropertyFilter(fieldName, filterValueResolver);
         } else {
             return applyEqualsFilter(fieldName, filterValueResolver);
         }
     }
-
-    @Override
-    public String resolvePropertyPath(String associationPath, IJoinType joinType) {
-        return resolvePropertyPath(associationPath, joinType, null);
-    }
-
-    @Override
-    public String resolvePropertyPath(String associationPath, IJoinType joinType, IPredicate onClause) {
-        return createAliases(associationPath, joinType, onClause, false);
-    }
-
-    @Override
-    public String resolveAliasPath(String associationPath) {
-        return resolveAliasPath(associationPath, IJoinType.INNER);
-    }
-
-    @Override
-    public String resolveAliasPath(String associationPath, IJoinType joinType) {
-        return resolveAliasPath(associationPath, joinType, null);
-    }
-
-    @Override
-    public String resolveAliasPath(String associationPath, IJoinType joinType, IPredicate onClause) {
-        return createAliases(associationPath, joinType, onClause, true);
+    
+   @Override
+   public void addJoin(String path, String parentPath, String alias, IJoinType joinType, IPredicate onClause) {
+        if (joins.containsKey(path)) {
+            return;
+        }
+        IJoin<?, ?> join = null;
+        if (parentPath != null) {
+            IJoin<?, ?> parentJoin = joins.get(parentPath);
+            join = parentJoin.join(alias, joinType);
+        } else {
+            join = getRoot().join(alias, joinType);
+        }
+        joins.put(path, join);
+        if (onClause != null) {
+            join.on(onClause);
+        }
     }
 
     public <T> IExpression<T> getExpression(String expression) {
@@ -85,67 +78,6 @@ public abstract class AbstractQueryBuilder<E, S> implements IQueryBuilder<E, S> 
             return joins.get(currentPath).get(propertyName);
         }
         return null;
-    }
-
-    private String createAliases(String expression, IJoinType joinType, IPredicate onClause, boolean forceLast) {
-        String original = expression;
-        expression = IQueryBuilder.normalizeFieldName(expression, forceLast);
-        String[] values1 = expression.split("\\.");
-        String[] values = values1[0].split("_");
-        if (values1.length == 1 && values.length == 1) {
-            if (forceLast) {
-                createAlias(values1[0], null, values1[0], joinType, onClause);
-            }
-            return original;
-        }
-        int i = 0;
-        String currentPath = values[0];
-        String currentAlias = values[0];
-        createAlias(currentPath, null, values[0], joinType);
-        for (String value : values) {
-            if (i > 0) {
-                if (i == values.length - 1 && values1.length == 1) {
-                    createAlias(currentPath + "." + value, currentPath, currentAlias + "_" + value, joinType, onClause);
-                } else {
-                    createAlias(currentPath + "." + value, currentPath, currentAlias + "_" + value, joinType);
-                }
-                currentAlias = currentAlias + "_" + value;
-                currentPath = currentPath + "." + value;
-            }
-            i++;
-        }
-        if (values1.length == 2) {
-            if (forceLast) {
-                createAlias(currentPath + "." + values1[1], currentPath, currentAlias + "_" + values1[1], joinType,
-                        onClause);
-                currentAlias = currentAlias + "_" + values1[1];
-                return currentAlias;
-            }
-            String propertyName = IQueryBuilder.denormalizePropertyName(values1[1]);
-            return currentAlias + "." + propertyName;
-        }
-        return currentAlias;
-    }
-
-    private void createAlias(String path, String parentPath, String alias, IJoinType joinType) {
-        createAlias(path, parentPath, alias, joinType, null);
-    }
-
-    private void createAlias(String path, String parentPath, String alias, IJoinType joinType, IPredicate onClause) {
-        if (joins.containsKey(path)) {
-            return;
-        }
-        IJoin<?, ?> join = null;
-        if (parentPath != null) {
-            IJoin<?, ?> parentJoin = joins.get(parentPath);
-            join = parentJoin.join(alias, joinType);
-        } else {
-            join = getRoot().join(alias, joinType);
-        }
-        joins.put(path, join);
-        if (onClause != null) {
-            join.on(onClause);
-        }
     }
 
     private IPredicate applyEqualsFilter(String fieldName, Supplier<Object> filterValueResolver) {
@@ -192,5 +124,5 @@ public abstract class AbstractQueryBuilder<E, S> implements IQueryBuilder<E, S> 
             throw new UnsupportedOperationException("Unsupported Number filter value: " + filterValue);
         };
     }
-
+    
 }

@@ -10,42 +10,23 @@ public class FilterItem {
 	
 	private FilterType filterType;
 	
-	private FilterClass filterClass;
-	
 	public FilterItem(String fieldName, Object filterValue) {
 		this(fieldName, FieldType.Path, filterValue);
 	}
-
+	
+    public FilterItem(String fieldName, FieldType fieldType, Object filterValue) {
+    	this(fieldName, fieldType, filterValue, FilterType.Equals);
+    } 
+    
 	public FilterItem(String fieldName, Object filterValue, FilterType filterType) {
 		this(fieldName, FieldType.Path, filterValue, filterType);
 	}
 	
-    public FilterItem(String fieldName, FieldType fieldType, Object filterValue) {
-    	this(fieldName, fieldType, filterValue, FilterType.EQ, FilterClass.STRING);
-    }   
-    
-    public FilterItem(String fieldName, FieldType fieldType, Object filterValue, FilterType filterType) {
-    	this(fieldName, fieldType, filterValue, filterType, FilterClass.STRING);
-    }  
-
-	public FilterItem(String fieldName, Object filterValue, FilterClass filterClass) {
-		this(fieldName, FieldType.Path, filterValue, filterClass);
-	}
-
-	public FilterItem(String fieldName, Object filterValue, FilterType filterType, FilterClass filterClass) {
-		this(fieldName, FieldType.Path, filterValue, filterType, filterClass);
-	}
-	
-    public FilterItem(String fieldName, FieldType fieldType, Object filterValue, FilterClass filterClass) {
-    	this(fieldName, fieldType, filterValue, FilterType.EQ, filterClass);
-    } 
-	
-	public FilterItem(String fieldName, FieldType fieldType, Object filterValue, FilterType filterType, FilterClass filterClass) {
+	public FilterItem(String fieldName, FieldType fieldType, Object filterValue, FilterType filterType) {
 		this.fieldName = fieldName;
 		this.fieldType = fieldType;
 		this.filterValue = filterValue;
 		this.filterType = filterType;
-		this.filterClass = filterClass; 
 	}
 	
 	public String getFieldName() {
@@ -62,10 +43,6 @@ public class FilterItem {
 
 	public FilterType getFilterType() {
 		return filterType;
-	}
-
-	public FilterClass getFilterClass() {
-		return filterClass;
 	}
 
 }
