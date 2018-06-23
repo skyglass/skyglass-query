@@ -2,12 +2,14 @@ package skyglass.query.model.query;
 
 import java.io.Serializable;
 
+import skyglass.data.filter.SelectType;
+
 /**
  * Used to specify field selection in <code>Search</code>.
  * 
  * @see SearchQuery
  */
-public class Field implements Serializable {
+public class SelectField implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -33,69 +35,28 @@ public class Field implements Serializable {
      * <code>OP_COUNT, OP_SUM, OP_MAX</code>. The default is
      * <code>OP_PROPERTY</code>.
      */
-    protected int operator = 0;
+    protected SelectType operator = SelectType.Property;
 
-    /**
-     * Possible value for <code>operator</code>. This is the default value and
-     * does not apply any operator to the column. All the rows in the result set
-     * are returned.
-     */
-    public static final int OP_PROPERTY = 0;
 
-    /**
-     * Possible value for <code>operator</code>. This returns the number of rows
-     * in the result set where the given property is non-null.
-     */
-    public static final int OP_COUNT = 1;
 
-    /**
-     * Possible value for <code>operator</code>. This returns the number of
-     * distinct values of the given property in the result set.
-     */
-    public static final int OP_COUNT_DISTINCT = 2;
-
-    /**
-     * Possible value for <code>operator</code>. This returns the maximum value
-     * of the given property in the result set.
-     */
-    public static final int OP_MAX = 3;
-
-    /**
-     * Possible value for <code>operator</code>. This returns the minimum value
-     * of the given property in the result set.
-     */
-    public static final int OP_MIN = 4;
-
-    /**
-     * Possible value for <code>operator</code>. This returns the sum of the
-     * given property in all rows of the result set.
-     */
-    public static final int OP_SUM = 5;
-
-    /**
-     * Possible value for <code>operator</code>. This returns the average value
-     * of the given property in the result set.
-     */
-    public static final int OP_AVG = 6;
-
-    public Field() {
+    public SelectField() {
     }
 
-    public Field(String property) {
+    public SelectField(String property) {
         this.property = property;
     }
 
-    public Field(String property, String key) {
+    public SelectField(String property, String key) {
         this.property = property;
         this.key = key;
     }
 
-    public Field(String property, int operator) {
+    public SelectField(String property, SelectType operator) {
         this.property = property;
         this.operator = operator;
     }
 
-    public Field(String property, int operator, String key) {
+    public SelectField(String property, SelectType operator, String key) {
         this.property = property;
         this.operator = operator;
         this.key = key;
@@ -117,11 +78,11 @@ public class Field implements Serializable {
         this.key = key;
     }
 
-    public int getOperator() {
+    public SelectType getOperator() {
         return operator;
     }
 
-    public void setOperator(int operator) {
+    public void setOperator(SelectType operator) {
         this.operator = operator;
     }
 
@@ -130,7 +91,7 @@ public class Field implements Serializable {
         final int prime = 31;
         int result = 1;
         result = prime * result + ((key == null) ? 0 : key.hashCode());
-        result = prime * result + operator;
+        result = prime * result + operator.getValue();
         result = prime * result + ((property == null) ? 0 : property.hashCode());
         return result;
     }
@@ -143,7 +104,7 @@ public class Field implements Serializable {
             return false;
         if (getClass() != obj.getClass())
             return false;
-        Field other = (Field) obj;
+        SelectField other = (SelectField) obj;
         if (key == null) {
             if (other.key != null)
                 return false;
@@ -165,25 +126,25 @@ public class Field implements Serializable {
 
         boolean parens = true;
         switch (operator) {
-        case OP_AVG:
+        case Avg:
             sb.append("AVG(");
             break;
-        case OP_COUNT:
+        case Count:
             sb.append("COUNT(");
             break;
-        case OP_COUNT_DISTINCT:
+        case CountDistinct:
             sb.append("COUNT_DISTINCT(");
             break;
-        case OP_MAX:
+        case Max:
             sb.append("MAX(");
             break;
-        case OP_MIN:
+        case Min:
             sb.append("MIN(");
             break;
-        case OP_PROPERTY:
+        case Property:
             parens = false;
             break;
-        case OP_SUM:
+        case Sum:
             sb.append("SUM(");
             break;
         default:

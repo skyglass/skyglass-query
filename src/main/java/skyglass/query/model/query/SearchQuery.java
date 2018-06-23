@@ -27,7 +27,7 @@ public class SearchQuery implements IMutableQuery, Serializable {
 
     protected List<Sort> sorts = new ArrayList<Sort>();
 
-    protected List<Field> fields = new ArrayList<Field>();
+    protected List<SelectField> fields = new ArrayList<SelectField>();
 
     protected boolean distinct;
 
@@ -356,56 +356,7 @@ public class SearchQuery implements IMutableQuery, Serializable {
         QueryUtil.clearSorts(this);
     }
 
-    // Fields
-    public SearchQuery addField(Field field) {
-        QueryUtil.addField(this, field);
-        return this;
-    }
-
-    public SearchQuery addFields(Field... fields) {
-        QueryUtil.addFields(this, fields);
-        return this;
-    }
-
-    /**
-     * If this field is used with <code>resultMode == RESULT_MAP</code>, the
-     * <code>property</code> will also be used as the key for this value in the
-     * map.
-     */
-    public SearchQuery addField(String property) {
-        QueryUtil.addField(this, property);
-        return this;
-    }
-
-    /**
-     * If this field is used with <code>resultMode == RESULT_MAP</code>, the
-     * <code>key</code> will be used as the key for this value in the map.
-     */
-    public SearchQuery addField(String property, String key) {
-        QueryUtil.addField(this, property, key);
-        return this;
-    }
-
-    /**
-     * If this field is used with <code>resultMode == RESULT_MAP</code>, the
-     * <code>property</code> will also be used as the key for this value in the
-     * map.
-     */
-    public SearchQuery addField(String property, int operator) {
-        QueryUtil.addField(this, property, operator);
-        return this;
-    }
-
-    /**
-     * If this field is used with <code>resultMode == RESULT_MAP</code>, the
-     * <code>key</code> will be used as the key for this value in the map.
-     */
-    public SearchQuery addField(String property, int operator, String key) {
-        QueryUtil.addField(this, property, operator, key);
-        return this;
-    }
-
-    public void removeField(Field field) {
+    public void removeField(SelectField field) {
         QueryUtil.removeField(this, field);
     }
 
@@ -540,11 +491,11 @@ public class SearchQuery implements IMutableQuery, Serializable {
         return this;
     }
 
-    public List<Field> getFields() {
+    public List<SelectField> getFields() {
         return fields;
     }
 
-    public SearchQuery setFields(List<Field> fields) {
+    public SearchQuery setFields(List<SelectField> fields) {
         this.fields = fields;
         return this;
     }

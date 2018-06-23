@@ -4,6 +4,8 @@ import java.util.function.Supplier;
 
 import skyglass.data.filter.Dialect;
 import skyglass.data.filter.FilterType;
+import skyglass.data.filter.JunctionType;
+import skyglass.data.filter.PrivateQueryContext;
 import skyglass.query.model.query.IQuery;
 
 public interface IQueryBuilder<E, S> extends IValueResolver, IJoinBuilder {
@@ -73,6 +75,11 @@ public interface IQueryBuilder<E, S> extends IValueResolver, IJoinBuilder {
     public Dialect getDialect();
 
     public Long getCurrentUserId();
+    
+    public PrivateQueryContext setPrivateQueryContext(
+    		JunctionType junctionType, Class<?> rootClazz, IJoinType joinType);
+    
+    public PrivateQueryContext getPrivateQueryContext();
     
     public static String convertToRegexp(String filterString) {
         String result = filterString.replace("*", "\\*");

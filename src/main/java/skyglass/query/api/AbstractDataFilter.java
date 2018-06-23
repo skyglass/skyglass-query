@@ -29,24 +29,16 @@ import skyglass.query.model.criteria.IPredicate;
 import skyglass.query.model.criteria.IQueryBuilder;
 import skyglass.query.model.criteria.ITypedQuery;
 
-public class DataFilter<T> extends AbstractBaseDataFilter<T, IDataFilter<T>> implements IDataFilter<T> {
+public abstract class AbstractDataFilter<T, F> extends AbstractBaseDataFilter<T, F> implements IDataFilter<T, F> {
 
-    private IQueryBuilder<T, T> queryBuilder;
-    
-    public DataFilter(Class<T> rootClazz, JunctionType junctionType, IQueryBuilder<T, T> queryBuilder,
+    public AbstractDataFilter(Class<T> rootClazz, JunctionType junctionType, IQueryBuilder<T, T> queryBuilder,
             IFilterRequest request) {
         this(rootClazz, junctionType, IJoinType.INNER, queryBuilder, request);
     }
 
-    public DataFilter(Class<T> rootClazz, JunctionType junctionType, IJoinType joinType, IQueryBuilder<T, T> queryBuilder,
+    public AbstractDataFilter(Class<T> rootClazz, JunctionType junctionType, IJoinType joinType, IQueryBuilder<T, T> queryBuilder,
             IFilterRequest request) {
-        super(rootClazz, junctionType, joinType, request, queryBuilder, queryBuilder);
-        this.queryBuilder = queryBuilder;
-    }
-
-    @Override
-    public IQueryBuilder<T, T> getQueryBuilder() {
-        return queryBuilder;
+        super(rootClazz, junctionType, joinType, request, queryBuilder);
     }
 
     @Override
@@ -259,18 +251,13 @@ public class DataFilter<T> extends AbstractBaseDataFilter<T, IDataFilter<T>> imp
     }
 
     @Override
-    public void setJoinType(IJoinType joinType) {
-        queryContext.setJoinType(joinType);
-    }
-
-    @Override
-    public IJoinResolver<T, IDataFilter<T>> addLeftJoin(String alias) {
-        return new CustomJoin<T, T, IDataFilter<T>>(this, queryContext, alias, IJoinType.LEFT);
+    public IJoinResolver<T, F> addLeftJoin(String alias) {
+        return new CustomJoin<T, T, F>(self(), queryContext, alias, IJoinType.LEFT);
     }    
         
     @Override
-    public IJoinResolver<T, IDataFilter<T>> addJoin(String alias) {
-        return new CustomJoin<T, T, IDataFilter<T>>(this, queryContext, alias, IJoinType.INNER);
+    public IJoinResolver<T, F> addJoin(String alias) {
+        return new CustomJoin<T, T, F>(self(), queryContext, alias, IJoinType.INNER);
     }
 
 }

@@ -21,7 +21,7 @@ import java.util.List;
  * the result for each row. However, by specifying fields, any combination of
  * individual properties can be returned for each row in the result set. These
  * properties can be returned as maps, lists, arrays or a single object
- * depending on <code>resultMode</code>. See also the {@link Field} class.<br/>
+ * depending on <code>resultMode</code>. See also the {@link SelectField} class.<br/>
  * <br/>
  * 
  * Additionally, fields can be specified using column operators:
@@ -50,7 +50,7 @@ import java.util.List;
  * properties.
  * 
  * @see QueryFilter
- * @see Field
+ * @see SelectField
  * @see Sort
  * @see IMutableQuery
  * 
@@ -187,7 +187,7 @@ public interface ISearchQuery {
 
     public List<Sort> getSorts();
 
-    public List<Field> getFields();
+    public List<SelectField> getFields();
 
     public boolean isDistinct();
 

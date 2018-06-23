@@ -13,10 +13,6 @@ public class CustomJoin<E, S, F> implements IJoinResolver<E, F> {
 
     private String alias;
 
-    private boolean invert;
-
-    private String resolveAlias;
-
     private CompositeFilter<E, F> compositeFilter = new CompositeFilter<E, F>(this, this, true);
 
     private int subQueryCounter = 1;
@@ -83,7 +79,7 @@ public class CustomJoin<E, S, F> implements IJoinResolver<E, F> {
         }
         for (CompositeFilter<E, F> child : compositeFilter.getCompositeChildren()) {
             queryContext.addRootChild(
-            		createCompositeFilterItem(compositeFilter));
+            		createCompositeFilterItem(child));
         }
         for (AtomicFilter atomicFilter : compositeFilter.getAtomicChildren()) {
         	queryContext.addRootChild(createAtomicFilterItem(atomicFilter));
@@ -91,7 +87,6 @@ public class CustomJoin<E, S, F> implements IJoinResolver<E, F> {
         return queryContext.getRootFilterItem();
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
     private <SUB> PrivateFilterItemTree createSubQueryFilterItem(String parentPath, 
     		PrivateQueryContext parentContext,
     		SubQueryFilter<E, SUB, F> subQueryFilter) {
@@ -118,10 +113,10 @@ public class CustomJoin<E, S, F> implements IJoinResolver<E, F> {
                     subQueryContext.addGroupBy(path);
                 } else if (property.getType() == PropertyType.Max) {
                     projectionName = property.getName();
-                    subQueryContext.addSelect(property.getName(), path, ExpressionType.Max);
+                    subQueryContext.addSelectField(property.getName(), SelectType.Max);
                 } else {
                     projectionName = property.getName();
-                    subQueryContext.addSelect(property.getName(), path);
+                    subQueryContext.addSelectField(property.getName());
                 }
                 if (property.isDistinct()) {
                     subQueryContext.setDistinct(true);
@@ -191,7 +186,6 @@ public class CustomJoin<E, S, F> implements IJoinResolver<E, F> {
 
     @Override
     public F resolve(String resolveAlias) {
-        this.resolveAlias = resolveAlias;
         createCompositeFilterItem(compositeFilter);
         return filter;
     }
@@ -203,8 +197,6 @@ public class CustomJoin<E, S, F> implements IJoinResolver<E, F> {
 
     @Override
     public F invert(String resolveAlias) {
-        this.invert = true;
-        this.resolveAlias = resolveAlias;
         if (resolveAlias != null) {
             aliasPath = resolveAlias;
         }

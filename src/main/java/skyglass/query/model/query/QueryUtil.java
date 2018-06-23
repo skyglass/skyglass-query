@@ -6,6 +6,8 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
+import skyglass.data.filter.SelectType;
+
 /**
  * Utilities for working with searches {@link ISearchQuery}, {@link IMutableQuery}.
  */
@@ -32,19 +34,19 @@ public class QueryUtil {
         }
     }
 
-    public static void addField(IMutableQuery search, Field field) {
-        List<Field> fields = search.getFields();
+    public static void addSelectField(IMutableQuery search, SelectField field) {
+        List<SelectField> fields = search.getFields();
         if (fields == null) {
-            fields = new ArrayList<Field>();
+            fields = new ArrayList<SelectField>();
             search.setFields(fields);
         }
         fields.add(field);
     }
 
-    public static void addFields(IMutableQuery search, Field... fields) {
+    public static void addSelectFields(IMutableQuery search, SelectField... fields) {
         if (fields != null) {
-            for (Field field : fields) {
-                addField(search, field);
+            for (SelectField field : fields) {
+                addSelectField(search, field);
             }
         }
     }
@@ -54,10 +56,10 @@ public class QueryUtil {
      * <code>property</code> will also be used as the key for this value in the
      * map.
      */
-    public static void addField(IMutableQuery search, String property) {
+    public static void addSelectField(IMutableQuery search, String property) {
         if (property == null)
             return; // null properties do nothing, don't bother to add them.
-        addField(search, new Field(property));
+        addSelectField(search, new SelectField(property));
     }
 
     /**
@@ -65,30 +67,30 @@ public class QueryUtil {
      * <code>property</code> will also be used as the key for this value in the
      * map.
      */
-    public static void addField(IMutableQuery search, String property, int operator) {
+    public static void addSelectField(IMutableQuery search, String property, SelectType operator) {
         if (property == null)
             return; // null properties do nothing, don't bother to add them.
-        addField(search, new Field(property, operator));
+        addSelectField(search, new SelectField(property, operator));
     }
 
     /**
      * If this field is used with <code>resultMode == RESULT_MAP</code>, the
      * <code>key</code> will be used as the key for this value in the map.
      */
-    public static void addField(IMutableQuery search, String property, int operator, String key) {
+    public static void addSelectField(IMutableQuery search, String property, SelectType operator, String key) {
         if (property == null || key == null)
             return; // null properties do nothing, don't bother to add them.
-        addField(search, new Field(property, operator, key));
+        addSelectField(search, new SelectField(property, operator, key));
     }
 
     /**
      * If this field is used with <code>resultMode == RESULT_MAP</code>, the
      * <code>key</code> will be used as the key for this value in the map.
      */
-    public static void addField(IMutableQuery search, String property, String key) {
+    public static void addSelectField(IMutableQuery search, String property, String key) {
         if (property == null || key == null)
             return; // null properties do nothing, don't bother to add them.
-        addField(search, new Field(property, key));
+        addSelectField(search, new SelectField(property, key));
     }
 
     public static void addFilter(IMutableQuery search, QueryFilter filter) {
@@ -352,7 +354,7 @@ public class QueryUtil {
             search.getFetches().remove(property);
     }
 
-    public static void removeField(IMutableQuery search, Field field) {
+    public static void removeField(IMutableQuery search, SelectField field) {
         if (search.getFields() != null)
             search.getFields().remove(field);
     }
@@ -361,7 +363,7 @@ public class QueryUtil {
         if (search.getFields() == null)
             return;
 
-        Iterator<Field> itr = search.getFields().iterator();
+        Iterator<SelectField> itr = search.getFields().iterator();
         while (itr.hasNext()) {
             if (itr.next().getProperty().equals(property))
                 itr.remove();
@@ -372,9 +374,9 @@ public class QueryUtil {
         if (search.getFields() == null)
             return;
 
-        Iterator<Field> itr = search.getFields().iterator();
+        Iterator<SelectField> itr = search.getFields().iterator();
         while (itr.hasNext()) {
-            Field field = itr.next();
+            SelectField field = itr.next();
             if (field.getProperty().equals(property) && field.getKey().equals(key))
                 itr.remove();
         }
@@ -633,10 +635,10 @@ public class QueryUtil {
      * Modify the search by adding the given fields before the current fields in
      * the search.
      */
-    public static void mergeFieldsBefore(IMutableQuery search, List<Field> fields) {
-        List<Field> list = search.getFields();
+    public static void mergeFieldsBefore(IMutableQuery search, List<SelectField> fields) {
+        List<SelectField> list = search.getFields();
         if (list == null) {
-            list = new ArrayList<Field>();
+            list = new ArrayList<SelectField>();
             search.setFields(list);
         }
 
@@ -647,7 +649,7 @@ public class QueryUtil {
      * Modify the search by adding the given fields before the current fields in
      * the search.
      */
-    public static void mergeFieldsBefore(IMutableQuery search, Field... fields) {
+    public static void mergeFieldsBefore(IMutableQuery search, SelectField... fields) {
         mergeFieldsBefore(search, Arrays.asList(fields));
     }
 
@@ -655,10 +657,10 @@ public class QueryUtil {
      * Modify the search by adding the given fields after the current fields in
      * the search.
      */
-    public static void mergeFieldsAfter(IMutableQuery search, List<Field> fields) {
-        List<Field> list = search.getFields();
+    public static void mergeFieldsAfter(IMutableQuery search, List<SelectField> fields) {
+        List<SelectField> list = search.getFields();
         if (list == null) {
-            list = new ArrayList<Field>();
+            list = new ArrayList<SelectField>();
             search.setFields(list);
         }
 
@@ -669,7 +671,7 @@ public class QueryUtil {
      * Modify the search by adding the given fields after the current fields in
      * the search.
      */
-    public static void mergeFieldsAfter(IMutableQuery search, Field... fields) {
+    public static void mergeFieldsAfter(IMutableQuery search, SelectField... fields) {
         mergeFieldsAfter(search, Arrays.asList(fields));
     }
 
@@ -739,7 +741,7 @@ public class QueryUtil {
         fetches.addAll(source.getFetches());
         destination.setFetches(fetches);
 
-        ArrayList<Field> fields = new ArrayList<Field>();
+        ArrayList<SelectField> fields = new ArrayList<SelectField>();
         fields.addAll(source.getFields());
         destination.setFields(fields);
 
@@ -883,7 +885,7 @@ public class QueryUtil {
      * with the changes so that the original list remains unchanged. If no
      * changes are made, the original list is returned.
      */
-    public static <T> List<T> walkList(List<T> list, ItemVisitor<T> visitor, boolean removeNulls) {
+    public static <T> Collection<T> walkList(Collection<T> list, ItemVisitor<T> visitor, boolean removeNulls) {
         if (list == null)
             return null;
 
@@ -934,7 +936,7 @@ public class QueryUtil {
      * @return if any changes have been made, the new list of Filters; if not,
      *         the original list.
      */
-    public static List<QueryFilter> walkFilters(List<QueryFilter> filters, FilterVisitor visitor,
+    public static Collection<QueryFilter> walkFilters(Collection<QueryFilter> filters, FilterVisitor visitor,
             boolean removeNulls) {
         return walkList(filters, new FilterListVisitor(visitor, removeNulls), removeNulls);
     }
@@ -981,7 +983,7 @@ public class QueryUtil {
                 }
             } else if (filter.isTakesListOfSubFilters()) {
                 if (filter.getValue() instanceof List) {
-                    List<QueryFilter> result = walkFilters((List<QueryFilter>) filter.getValue(), visitor,
+                    Collection<QueryFilter> result = walkFilters((List<QueryFilter>) filter.getValue(), visitor,
                             removeNulls);
                     if (result != filter.getValue()) {
                         filter = new QueryFilter(filter.getProperty(), result, filter.getOperator());

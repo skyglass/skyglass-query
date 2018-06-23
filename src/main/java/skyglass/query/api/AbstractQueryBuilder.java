@@ -6,6 +6,8 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 import skyglass.data.filter.FilterType;
+import skyglass.data.filter.JunctionType;
+import skyglass.data.filter.PrivateQueryContext;
 import skyglass.query.model.criteria.IExpression;
 import skyglass.query.model.criteria.IJoin;
 import skyglass.query.model.criteria.IJoinType;
@@ -15,6 +17,8 @@ import skyglass.query.model.criteria.IQueryBuilder;
 public abstract class AbstractQueryBuilder<E, S> implements IQueryBuilder<E, S> {
 	
     private Map<String, IJoin<?, ?>> joins = new HashMap<>();
+    
+    private PrivateQueryContext privateQueryContext;
 
     @Override
     public IPredicate getPredicate(String fieldName, FilterType filterType, Supplier<Object> filterValueResolver) {
@@ -56,6 +60,18 @@ public abstract class AbstractQueryBuilder<E, S> implements IQueryBuilder<E, S> 
             join.on(onClause);
         }
     }
+   
+   @Override
+   public PrivateQueryContext getPrivateQueryContext() {
+	   return privateQueryContext;
+   }
+   
+   @Override
+   public PrivateQueryContext setPrivateQueryContext(JunctionType junctionType, Class<?> rootClazz, IJoinType joinType) {
+	   this.privateQueryContext = new PrivateQueryContext(
+			   junctionType, this, this, rootClazz, joinType);
+	   return this.privateQueryContext;
+   }
 
     public <T> IExpression<T> getExpression(String expression) {
         String original = expression;

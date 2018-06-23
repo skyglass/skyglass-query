@@ -12,6 +12,7 @@ import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import skyglass.data.filter.PrivateQueryContext;
 import skyglass.query.metadata.Metadata;
 import skyglass.query.metadata.MetadataHelper;
 
@@ -57,20 +58,21 @@ public abstract class BaseQueryProcessor {
 
     protected static final String ROOT_PATH = "";
     
-    protected ISearchQuery searchQuery;
+    protected PrivateQueryContext queryContext;
     
     protected Class<?> searchClass;
     
     protected List<Object> paramList = new ArrayList<Object>();
 
-    protected BaseQueryProcessor(int qlType, MetadataHelper metadataHelper, ISearchQuery searchQuery) {
+    protected BaseQueryProcessor(int qlType, MetadataHelper metadataHelper, 
+    		PrivateQueryContext queryContext) {
         if (metadataHelper == null) {
             throw new IllegalArgumentException("A SearchProcessor cannot be initialized with a null MetadataHelper.");
         }
         this.qlType = qlType;
         this.metadataHelper = metadataHelper;
-        this.searchQuery = searchQuery;
-        this.searchClass = searchQuery.getSearchClass();
+        this.queryContext = queryContext;
+        this.searchClass = queryContext.getRootClazz();
     }
 
     /**
@@ -103,10 +105,10 @@ public abstract class BaseQueryProcessor {
 
         SearchContext ctx = new SearchContext(searchClass, rootAlias, paramList);
 
-        List<Field> fields = checkAndCleanFields(searchQuery.getFields());
+        Collection<SelectField> selectFields = queryContext.getSelectFields();
 
-        String select = generateSelectClause(ctx, fields, searchQuery.isDistinct());
-        String where = generateWhereClause(ctx, checkAndCleanFilters(searchQuery.getFilters()), searchQuery.isDisjunction());
+        String select = generateSelectClause(ctx, selectFields, queryContext.isDistinct());
+        String where = generateWhereClause(ctx, checkAndCleanFilters(queryContext.getQueryFilters()), queryContext.isDisjunction());
         String orderBy = generateOrderByClause(ctx, checkAndCleanSorts(searchQuery.getSorts()));
         applyFetches(ctx, checkAndCleanFetches(searchQuery.getFetches()), fields);
         String from = generateFromClause(ctx, true);
@@ -143,16 +145,16 @@ public abstract class BaseQueryProcessor {
         String from = generateFromClause(ctx, false);
 
         boolean useOperator = false, notUseOperator = false;
-        List<Field> fields = searchQuery.getFields();
+        List<SelectField> fields = searchQuery.getFields();
         if (fields != null) {
-            for (Field field : fields) {
+            for (SelectField field : fields) {
                 switch (field.getOperator()) {
-                case Field.OP_AVG:
-                case Field.OP_COUNT:
-                case Field.OP_COUNT_DISTINCT:
-                case Field.OP_MAX:
-                case Field.OP_MIN:
-                case Field.OP_SUM:
+                case SelectField.OP_AVG:
+                case SelectField.OP_COUNT:
+                case SelectField.OP_COUNT_DISTINCT:
+                case SelectField.OP_MAX:
+                case SelectField.OP_MIN:
+                case SelectField.OP_SUM:
                     useOperator = true;
                     break;
                 default:
@@ -200,14 +202,14 @@ public abstract class BaseQueryProcessor {
      * Internal method for generating the select clause based on the fields of
      * the given search.
      */
-    protected String generateSelectClause(SearchContext ctx, List<Field> fields, boolean distinct) {
+    protected String generateSelectClause(SearchContext ctx, Collection<SelectField> fields, boolean distinct) {
 
         StringBuilder sb = null;
         boolean useOperator = false, notUseOperator = false;
         boolean first = true;
 
         if (fields != null) {
-            for (Field field : fields) {
+            for (SelectField field : fields) {
                 if (first) {
                     sb = new StringBuilder("select ");
                     if (distinct)
@@ -225,27 +227,27 @@ public abstract class BaseQueryProcessor {
                 }
 
                 switch (field.getOperator()) {
-                case Field.OP_AVG:
+                case SelectField.OP_AVG:
                     sb.append("avg(");
                     useOperator = true;
                     break;
-                case Field.OP_COUNT:
+                case SelectField.OP_COUNT:
                     sb.append("count(");
                     useOperator = true;
                     break;
-                case Field.OP_COUNT_DISTINCT:
+                case SelectField.OP_COUNT_DISTINCT:
                     sb.append("count(distinct ");
                     useOperator = true;
                     break;
-                case Field.OP_MAX:
+                case SelectField.OP_MAX:
                     sb.append("max(");
                     useOperator = true;
                     break;
-                case Field.OP_MIN:
+                case SelectField.OP_MIN:
                     sb.append("min(");
                     useOperator = true;
                     break;
-                case Field.OP_SUM:
+                case SelectField.OP_SUM:
                     sb.append("sum(");
                     useOperator = true;
                     break;
@@ -275,7 +277,7 @@ public abstract class BaseQueryProcessor {
     /**
      * Apply the fetch list to the alias tree in the search context.
      */
-    protected void applyFetches(SearchContext ctx, List<String> fetches, List<Field> fields) {
+    protected void applyFetches(SearchContext ctx, List<String> fetches, List<SelectField> fields) {
         if (fetches != null) {
             // apply fetches
             boolean hasFetches = false, hasFields = false;
@@ -287,8 +289,8 @@ public abstract class BaseQueryProcessor {
                 // don't fetch nodes whose ancestors aren't found in the select
                 // clause
                 List<String> fieldProps = new ArrayList<String>();
-                for (Field field : fields) {
-                    if (field.getOperator() == Field.OP_PROPERTY) {
+                for (SelectField field : fields) {
+                    if (field.getOperator() == SelectField.OP_PROPERTY) {
                         fieldProps.add(field.getProperty() + ".");
                     }
                     hasFields = true;
@@ -993,14 +995,9 @@ public abstract class BaseQueryProcessor {
      * <li>The field list may not contain nulls.
      * </ol>
      */
-    protected List<Field> checkAndCleanFields(List<Field> fields) {
-        if (fields == null)
-            return null;
+    protected List<SelectField> checkAndCleanFields(List<SelectField> fields) {
 
-        for (Field field : fields) {
-            if (field == null) {
-                throw new IllegalArgumentException("The search contains a null field.");
-            }
+        for (SelectField field : fields) {
             if (field.getProperty() != null)
                 securityCheckProperty(field.getProperty());
         }
@@ -1040,112 +1037,8 @@ public abstract class BaseQueryProcessor {
         }, true);
     }
 
-    /**
-     * <ol>
-     * <li>Check for injection attack in property strings.
-     * <li>Check for values that are incongruent with the operator.
-     * <li>Remove null filters from the list.
-     * <li>Simplify out junctions (and/or) that have only one sub-filter.
-     * <li>Remove filters that require sub-filters but have none
-     * (and/or/not/some/all/none)
-     * </ol>
-     */
-    public static List<QueryFilter> checkAndCleanFilters(List<QueryFilter> filters) {
-        return QueryUtil.walkFilters(filters, new QueryUtil.FilterVisitor() {
-            @SuppressWarnings({ "rawtypes" })
-			@Override
-            public QueryFilter visitBefore(QueryFilter filter) {
-                if (filter != null && filter.getValue() != null) {
-                    if (filter.isTakesListOfSubFilters()) {
-                        // make sure that filters that take lists of filters
-                        // actually have lists of filters for their values
-                        if (filter.getValue() instanceof List) {
-                            for (Object o : (List) filter.getValue()) {
-                                if (!(o instanceof QueryFilter)) {
-                                    throw new IllegalArgumentException("The search has a filter (" + filter
-                                            + ") for which the value should be a List of Filters but there is an element in the list that is of type: "
-                                            + o.getClass());
-                                }
-                            }
-                        } else {
-                            throw new IllegalArgumentException("The search has a filter (" + filter
-                                    + ") for which the value should be a List of Filters but is not a list. The actual type is "
-                                    + filter.getValue().getClass());
-                        }
-                    } else if (filter.isTakesSingleSubFilter()) {
-                        // make sure filters that take filters actually have
-                        // filters for their values
-                        if (!(filter.getValue() instanceof QueryFilter)) {
-                            throw new IllegalArgumentException("The search has a filter (" + filter
-                                    + ") for which the value should be of type Filter but is of type: "
-                                    + filter.getValue().getClass());
-                        }
-                    } else if (filter.isTakesListOfValues()) {
-                        // make sure filters that take collections or arrays
-                        // actually have collections or arrays for their values
-                        if (!(filter.getValue() instanceof Collection) && !(filter.getValue() instanceof Object[])) {
-                            throw new IllegalArgumentException("The search has a filter (" + filter
-                                    + ") for which the value should be a collection or array but is of type: "
-                                    + filter.getValue().getClass());
-                        }
-                    }
-                }
 
-                return filter;
-            }
 
-            @SuppressWarnings("unchecked")
-            @Override
-            public QueryFilter visitAfter(QueryFilter filter) {
-                if (filter == null)
-                    return null;
-
-                if (!filter.isTakesNoProperty()) {
-                    securityCheckProperty(filter.getProperty());
-                }
-
-                // Remove operators that take sub filters but have none
-                // assigned. Replace conjunctions that only have a single
-                // sub-filter with that sub-filter.
-                if (filter.isTakesSingleSubFilter()) {
-                    if (filter.getValue() == null) {
-                        return null;
-                    }
-                } else if (filter.isTakesListOfSubFilters()) {
-                    if (filter.getValue() == null) {
-                        return null;
-                    } else {
-                        List<QueryFilter> list = (List<QueryFilter>) filter.getValue();
-                        if (list.size() == 0) {
-                            return null;
-                        } else if (list.size() == 1) {
-                            return list.get(0);
-                        }
-                    }
-                }
-
-                return filter;
-            }
-        }, true);
-    }
-
-    /**
-     * Regex pattern for a valid property name/path.
-     */
-    protected static Pattern INJECTION_CHECK = Pattern.compile("^[\\w\\.]*$");
-
-    /**
-     * Used by <code>securityCheck()</code> to check a property string for
-     * injection attack.
-     */
-    protected static void securityCheckProperty(String property) {
-        if (property == null)
-            return;
-        if (!INJECTION_CHECK.matcher(property).matches())
-            throw new IllegalArgumentException(
-                    "A property used in a Search may only contain word characters (alphabetic, numberic and underscore \"_\") and dot \".\" separators. This constraint was violated: "
-                            + property);
-    }
 
     private static final ExampleOptions defaultExampleOptions = new ExampleOptions();
 

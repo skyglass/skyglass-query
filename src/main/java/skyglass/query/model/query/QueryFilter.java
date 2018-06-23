@@ -5,55 +5,26 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-/**
- * <p>
- * A <code>SearchFilter</code> is used by the <code>Search</code> class to
- * specify a restriction on what results should be returned in the search. For
- * example, if a filter <code>SearchFilter.equal("name","Paul")</code> were
- * added to the search, only objects with the property "name" equal to the
- * string "Paul" would be returned.
- * <p>
- * Nested properties can also be specified, for example
- * <code>SearchFilter.greaterThan("employee.age",65)</code>.
- * 
- */
+import skyglass.data.filter.FilterType;
+
 public class QueryFilter implements Serializable {
 
     private static final long serialVersionUID = 5234491851884212534L;
 
-    /**
-     * Property string representing the root entity of the search. This is just
-     * the empty string ("").
-     */
     public static final String ROOT_ENTITY = "";
 
-    /**
-     * The name of the property to filter on. It may be nested. Examples:
-     * <code>"name", "dateOfBirth", "employee.age", "employee.spouse.job.title"</code>
-     */
     protected String property;
 
-    /**
-     * The value to compare the property with. Should be of a compatible type
-     * with the property. Examples: <code>"Fred", new Date(), 45</code>
-     */
     protected Object value;
 
-    /**
-     * The type of comparison to do between the property and the value. The
-     * options are limited to the integer constants on this class:
-     * 
-     * <code>OP_EQAUL, OP_NOT_EQUAL, OP_LESS_THAN, OP_GREATER_THAN, LESS_OR_EQUAL, OP_GREATER_OR_EQUAL, OP_IN, OP_NOT_IN, OP_LIKE, OP_ILIKE, OP_NULL, OP_NOT_NULL, OP_EMPTY, OP_NOT_EMPTY, OP_SOME, OP_ALL, OP_NONE, OP_AND, OP_OR, OP_NOT</code>
-     * .
-     */
-    protected int operator;
+    protected FilterType filterType;
 
-    private QueryFilterType filterType = QueryFilterType.Where;
+    private FilterGroup filterGroup = FilterGroup.Where;
 
     public QueryFilter() {
     }
 
-    public QueryFilter(String property, Object value, int operator) {
+    public QueryFilter(String property, Object value, FilterType operator) {
         this.property = property;
         this.value = value;
         this.operator = operator;
@@ -519,11 +490,11 @@ public class QueryFilter implements Serializable {
     }
 
     public void setHavingType() {
-        this.filterType = QueryFilterType.Having;
+        this.filterType = FilterGroup.Having;
     }
 
     public boolean isHavingType() {
-        return this.filterType == QueryFilterType.Having;
+        return this.filterType == FilterGroup.Having;
     }
 
 }

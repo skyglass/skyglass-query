@@ -1,6 +1,6 @@
 package skyglass.query.model.query;
 
-public enum QueryFilterType {
+public enum FilterGroup {
 
     Where, Having;
 

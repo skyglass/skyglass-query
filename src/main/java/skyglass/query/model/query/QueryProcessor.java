@@ -27,12 +27,12 @@ public class QueryProcessor<E, S> extends BaseQueryProcessor {
 
     private IQueryBuilder<E, S> queryBuilder;
     
-    public static <E, S> QueryProcessor<E, S> getInstance(IQueryBuilder<E, S> queryBuilder, MetadataHelper metadataHelper, ISearchQuery searchQuery) {
-        return new QueryProcessor<E, S>(metadataHelper, queryBuilder, searchQuery);
+    public static <E, S> QueryProcessor<E, S> getInstance(IQueryBuilder<E, S> queryBuilder, MetadataHelper metadataHelper) {
+        return new QueryProcessor<E, S>(metadataHelper, queryBuilder);
     }
 
-    private QueryProcessor(MetadataHelper metadataHelper, IQueryBuilder<E, S> queryBuilder, ISearchQuery searchQuery) {
-        super(QLTYPE_JPQL, metadataHelper, searchQuery);
+    private QueryProcessor(MetadataHelper metadataHelper, IQueryBuilder<E, S> queryBuilder) {
+        super(QLTYPE_JPQL, metadataHelper, queryBuilder.getPrivateQueryContext());
         this.queryBuilder = queryBuilder;
     }
 
@@ -192,9 +192,9 @@ public class QueryProcessor<E, S> extends BaseQueryProcessor {
         int resultMode = searchQuery.getResultMode();
         if (resultMode == ISearchQuery.RESULT_AUTO) {
             int count = 0;
-            Iterator<Field> fieldItr = searchQuery.getFields().iterator();
+            Iterator<SelectField> fieldItr = searchQuery.getFields().iterator();
             while (fieldItr.hasNext()) {
-                Field field = fieldItr.next();
+                SelectField field = fieldItr.next();
                 if (field.getKey() != null && !field.getKey().equals("")) {
                     resultMode = ISearchQuery.RESULT_MAP;
                     break;
@@ -219,9 +219,9 @@ public class QueryProcessor<E, S> extends BaseQueryProcessor {
             break;
         case ISearchQuery.RESULT_MAP:
             List<String> keyList = new ArrayList<String>();
-            Iterator<Field> fieldItr = searchQuery.getFields().iterator();
+            Iterator<SelectField> fieldItr = searchQuery.getFields().iterator();
             while (fieldItr.hasNext()) {
-                Field field = fieldItr.next();
+                SelectField field = fieldItr.next();
                 if (field.getKey() != null && !field.getKey().equals("")) {
                     keyList.add(field.getKey());
                 } else {

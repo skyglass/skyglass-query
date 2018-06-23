@@ -22,7 +22,7 @@ public interface IMutableQuery extends ISearchQuery {
 
     public IMutableQuery setSorts(List<Sort> sorts);
 
-    public IMutableQuery setFields(List<Field> fields);
+    public IMutableQuery setFields(List<SelectField> fields);
 
     public IMutableQuery setDistinct(boolean distinct);
 
