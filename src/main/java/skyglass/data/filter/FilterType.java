@@ -26,6 +26,8 @@ public enum FilterType {
 	Exists(300),
 	NotExists(301);
 	
+	private String name;
+	
 	private int value;
 	
 	private FilterType(int value) {
@@ -40,4 +42,28 @@ public enum FilterType {
 		}
 		return FilterType.Equals;
 	}
+	
+    public boolean isTakesSingleValue() {
+        return value <= 7;
+    }
+
+    public boolean isTakesListOfValues() {
+        return this == In || this == NotIn;
+    }
+
+    public boolean isTakesNoValue() {
+        return value >= 10 && value <= 14;
+    }
+
+    public boolean isTakesSingleSubFilter() {
+        return this == Not || value >= 200;
+    }
+
+    public boolean isTakesListOfSubFilters() {
+        return this == And || this == Or;
+    }
+
+    public boolean isTakesNoProperty() {
+        return value >= 100 && value <= 102;
+    }
 }

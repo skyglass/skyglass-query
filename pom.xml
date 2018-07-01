@@ -5,15 +5,12 @@
 
     <artifactId>skyglass-query</artifactId>
     <groupId>skyglass</groupId>
-    <version>1.003</version> 
+    <version>1.004</version> 
     
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <spring.cloud.version>1.2.5.RELEASE</spring.cloud.version>
         <spring.data.version>1.11.11.RELEASE</spring.data.version>
-        <spring.boot.version>1.5.11.RELEASE</spring.boot.version>
-        <spring.amqp.version>1.7.7.RELEASE</spring.amqp.version>
         <spring.version>4.3.16.RELEASE</spring.version>
     </properties>               
 

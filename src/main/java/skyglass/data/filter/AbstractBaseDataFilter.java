@@ -209,7 +209,7 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
 
     protected void initSearch() {
         if (!searchMap.isEmpty()) {
-            PrivateFilterItemTree orFilter = new PrivateFilterItemTree(JunctionType.OR);
+            PrivateFilterItemTree orFilter = new PrivateFilterItemTree(FilterType.Or);
             queryContext.addRootChild(orFilter);
             for (String fieldValue : searchMap.keySet()) {
                 List<FieldResolver> fieldResolvers = searchMap.get(fieldValue);
@@ -318,13 +318,7 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
 
     @Override
     public F addFilters(String fieldName, FieldType fieldType, Object[] filterValues, FilterType filterType) {
-        PrivateFilterItemTree orFilter = new PrivateFilterItemTree(JunctionType.OR);
-        queryContext.addRootChild(orFilter);
-        for (Object filterValue : filterValues) {
-            PrivateFilterItem filterItem = queryContext
-            		.createFilterItem(fieldName, fieldType, filterType, filterValue);
-            orFilter.addChild(filterItem);
-        }
+        queryContext.addFilters(fieldName, fieldType, filterValues, filterType);
         return self();
     }
     

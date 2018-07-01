@@ -9,6 +9,8 @@ import java.util.Map;
 import skyglass.query.model.criteria.IJoinBuilder;
 import skyglass.query.model.criteria.IJoinType;
 import skyglass.query.model.criteria.IValueResolver;
+import skyglass.query.model.query.FilterGroup;
+import skyglass.query.model.query.InternalUtil;
 import skyglass.query.model.query.QueryFilter;
 import skyglass.query.model.query.QueryUtil;
 import skyglass.query.model.query.SelectField;
@@ -45,7 +47,7 @@ public class PrivateQueryContext {
     public PrivateQueryContext(JunctionType junctionType, IValueResolver valueResolver,
     		IJoinBuilder joinBuilder, Class<?> rootClazz, IJoinType joinType) {
     	this.junctionType = junctionType;
-        this.rootFilterItem = new PrivateFilterItemTree(junctionType);
+        this.rootFilterItem = new PrivateFilterItemTree(JunctionType.toFilterType(junctionType));
         this.valueResolver = valueResolver;
         this.joinBuilder = joinBuilder;
         this.rootClazz = rootClazz;
@@ -75,6 +77,52 @@ public class PrivateQueryContext {
     
     public PrivateFilterItem createFilterItem(String fieldName, FilterType filterType, Object filterValue) {
         return createFilterItem(fieldName, FieldType.Path, filterType, filterValue);
+    }
+    
+    private PrivateFilterItem addFilter(String fieldName, FilterType filterType) {
+        return addFilter(fieldName, filterType, null);
+    }
+    
+    private PrivateFilterItem addFilter(String fieldName, FilterType filterType, Object filterValue) {
+        return createFilterItem(fieldName, filterType, filterValue);
+    }
+    
+    private PrivateFilterItem addFilters(FilterType filterType, PrivateFilterItem... filterItems) {
+        PrivateFilterItemTree parent = createFilterItemTree(filterType);
+        addRootChild(parent);
+        for (PrivateFilterItem filterItem: filterItems) {
+            parent.addChild(filterItem);
+        }
+        return parent;
+    }
+    
+    private PrivateFilterItem addFilters(String fieldName, FilterType filterType, PrivateFilterItem... filterItems) {
+        PrivateFilterItemTree parent = createFilterItemTree(fieldName, filterType);
+        addRootChild(parent);
+        for (PrivateFilterItem filterItem: filterItems) {
+            parent.addChild(filterItem);
+        }
+        return parent;
+    }
+    
+    public PrivateFilterItem addFilters(String fieldName, FieldType fieldType, Object[] filterValues, FilterType filterType) {
+        PrivateFilterItemTree orFilter = new PrivateFilterItemTree(FilterType.Or);
+        addRootChild(orFilter);
+        for (Object filterValue : filterValues) {
+            PrivateFilterItem filterItem = createFilterItem(fieldName, fieldType, filterType, filterValue);
+            orFilter.addChild(filterItem);
+        }
+        return orFilter;
+    }
+    
+    private PrivateFilterItemTree createFilterItemTree(FilterType filterType) {
+        return new PrivateFilterItemTree(filterType);
+    }
+    
+    private PrivateFilterItemTree createFilterItemTree(String fieldName, 
+    		FilterType filterType) {
+        return new PrivateFilterItemTree(fieldResolverContext.addFieldResolver(
+        		this, fieldName, FieldType.Path), filterType);
     }
 
     public PrivateFilterItem createFilterItem(String fieldName, FieldType fieldType,
@@ -139,93 +187,111 @@ public class PrivateQueryContext {
             }
         }
     }
-
-    public void addFilterAll(String property, QueryFilter filter) {
-        addFilter(QueryFilter.all(property, filter));
+    
+    private void addFilters(PrivateFilterItemTree parent, PrivateFilterItem... filterItems) {
+        for (PrivateFilterItem filterItem : filterItems) {
+            parent.addChild(filterItem);
+        }
+        addRootChild(parent);
     }
 
-    public void addFilterAnd(QueryFilter... filters) {
-        addFilter(QueryFilter.and(filters));
+    public PrivateFilterItem all(String fieldName, PrivateFilterItem... filterItems) {
+        return addFilters(fieldName, FilterType.All, filterItems);
     }
 
-    public void addFilterEmpty(String property) {
-        addFilter(QueryFilter.isEmpty(property));
+    public PrivateFilterItem and(PrivateFilterItem... filterItems) {
+        return addFilters(FilterType.And, filterItems);
     }
 
-    public void addFilterEqual(String property, Object value) {
-        addFilter(QueryFilter.equal(property, value));
+    public PrivateFilterItem empty(String fieldName) {
+        return addFilter(fieldName, FilterType.Empty);
     }
 
-    public void addFilterGreaterOrEqual(String property, Object value) {
-        addFilter(QueryFilter.greaterOrEqual(property, value));
+    public PrivateFilterItem equal(String fieldName, Object value) {
+        return addFilter(fieldName, FilterType.Equals, value);
     }
 
-    public void addFilterGreaterThan(String property, Object value) {
-        addFilter(QueryFilter.greaterThan(property, value));
+    public PrivateFilterItem greaterOrEqual(String fieldName, Object value) {
+        return addFilter(fieldName, FilterType.GreaterOrEquals, value);
     }
 
-    public void addFilterILike(String property, String value) {
-        addFilter(QueryFilter.ilike(property, value));
+    public PrivateFilterItem greater(String fieldName, Object value) {
+        return addFilter(fieldName, FilterType.Greater, value);
     }
 
-    public void addFilterIn(String property, Collection<?> value) {
-        addFilter(QueryFilter.in(property, value));
+    public PrivateFilterItem like(String fieldName, String value) {
+        return addFilter(fieldName, FilterType.Like, value);
     }
 
-    public void addFilterIn(String property, Object... value) {
-        addFilter(QueryFilter.in(property, value));
+    public PrivateFilterItem in(String fieldName, Collection<?> values) {
+        return addFilter(fieldName, FilterType.In, values);
     }
 
-    public void addFilterLessOrEqual(String property, Object value) {
-        addFilter(QueryFilter.lessOrEqual(property, value));
+    public PrivateFilterItem in(String fieldName, Object... values) {
+        return addFilter(fieldName, FilterType.In, values);
     }
 
-    public void addFilterLessThan(String property, Object value) {
-        addFilter(QueryFilter.lessThan(property, value));
+    public PrivateFilterItem lessOrEqual(String fieldName, Object value) {
+        return addFilter(fieldName, FilterType.LessOrEquals, value);
     }
 
-    public void addFilterLike(String property, String value) {
-        addFilter(QueryFilter.like(property, value));
+    public PrivateFilterItem less(String fieldName, Object value) {
+        return addFilter(fieldName, FilterType.Less, value);
     }
 
-    public void addFilterNone(String property, QueryFilter filter) {
-        addFilter(QueryFilter.none(property, filter));
+    public PrivateFilterItem none(String fieldName, PrivateFilterItem... filterItems) {
+        return addFilters(fieldName, FilterType.None, filterItems);
     }
 
-    public void addFilterNot(QueryFilter filter) {
-        addFilter(QueryFilter.not(filter));
+    public PrivateFilterItem not(PrivateFilterItem... filterItems) {
+        return addFilters(FilterType.Not, filterItems);
     }
 
-    public void addFilterNotEqual(String property, Object value) {
-        addFilter(QueryFilter.notEqual(property, value));
+    public PrivateFilterItem notEqual(String fieldName, Object value) {
+        return addFilter(fieldName, FilterType.NotEquals, value);
     }
 
-    public void addFilterNotIn(String property, Collection<?> value) {
-        addFilter(QueryFilter.notIn(property, value));
+    public PrivateFilterItem notIn(String fieldName, Collection<?> values) {
+        return addFilter(fieldName, FilterType.NotIn, values);
     }
 
-    public void addFilterNotIn(String property, Object... value) {
-        addFilter(QueryFilter.notIn(property, value));
+    public PrivateFilterItem notIn(String fieldName, Object... values) {
+        return addFilter(fieldName, FilterType.NotIn, values);
     }
 
-    public void addFilterNotEmpty(String property) {
-        addFilter(QueryFilter.isNotEmpty(property));
+    public PrivateFilterItem notEmpty(String fieldName) {
+        return addFilter(fieldName, FilterType.NotEmpty);
     }
 
-    public void addFilterNotNull(String property) {
-        addFilter(QueryFilter.isNotNull(property));
+    public PrivateFilterItem notNull(String fieldName) {
+        return addFilter(fieldName, FilterType.IsNotNull);
     }
 
-    public void addFilterNull(String property) {
-        addFilter(QueryFilter.isNull(property));
+    public PrivateFilterItem isNull(String fieldName) {
+        return addFilter(fieldName, FilterType.IsNull);
     }
 
-    public void addFilterOr(QueryFilter... filters) {
-        addFilter(QueryFilter.or(filters));
+    public PrivateFilterItem or(PrivateFilterItem... filterItems) {
+        return addFilters(FilterType.Or, filterItems);
     }
 
-    public void addFilterSome(String property, QueryFilter filter) {
-        addFilter(QueryFilter.some(property, filter));
+    public PrivateFilterItem some(String fieldName, PrivateFilterItem... filterItems) {
+        return addFilters(fieldName, FilterType.Some, filterItems);
+    }
+    
+    public PrivateFilterItem range(String fieldName, Object minValue, Object maxValue) {
+    	return and(greaterOrEqual(fieldName, minValue),
+    			lessOrEqual(fieldName, maxValue));
+    }
+
+ 
+
+    public void setHavingType() {
+        this.filterType = FilterGroup.Having;
+    }
+
+    public boolean isHavingType() {
+        return this.filterType == FilterGroup.Having;
     }
 
     public void addSort(Sort sort) {
