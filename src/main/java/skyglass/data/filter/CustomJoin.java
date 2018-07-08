@@ -73,7 +73,7 @@ public class CustomJoin<E, S, F> implements IJoinResolver<E, F> {
     }
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
-    private PrivateFilterItemTree createCompositeFilterItem(CompositeFilter<E, F> compositeFilter) {
+    private PrivateCompositeFilterItem createCompositeFilterItem(CompositeFilter<E, F> compositeFilter) {
         if (compositeFilter instanceof SubQueryFilter) {
             return createSubQueryFilterItem(aliasPath, queryContext, (SubQueryFilter) compositeFilter);
         }
@@ -87,7 +87,7 @@ public class CustomJoin<E, S, F> implements IJoinResolver<E, F> {
         return queryContext.getRootFilterItem();
     }
 
-    private <SUB> PrivateFilterItemTree createSubQueryFilterItem(String parentPath, 
+    private <SUB> PrivateCompositeFilterItem createSubQueryFilterItem(String parentPath, 
     		PrivateQueryContext parentContext,
     		SubQueryFilter<E, SUB, F> subQueryFilter) {
     	PrivateQueryContext subQueryContext = createQueryContext(subQueryFilter.isAnd());
@@ -174,7 +174,7 @@ public class CustomJoin<E, S, F> implements IJoinResolver<E, F> {
         	subQueryContext.addRootChild(
         			createAtomicSubQueryFilterItem(subQueryContext, atomicChild));
         }
-        PrivateFilterItemTree rootFilterItem = subQueryContext.getRootFilterItem();
+        PrivateCompositeFilterItem rootFilterItem = subQueryContext.getRootFilterItem();
         parentContext.addSubQueryContext(path, subQueryContext);
         return rootFilterItem;
     }

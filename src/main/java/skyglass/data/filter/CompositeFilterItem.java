@@ -3,15 +3,15 @@ package skyglass.data.filter;
 import java.util.ArrayList;
 import java.util.List;
 
-public class FilterItemTree extends FilterItem {
+public class CompositeFilterItem extends FilterItem {
 	
-	public static FilterItemTree NULL_FILTER = new FilterItemTree(JunctionType.AND);
+	public static CompositeFilterItem NULL_FILTER = new CompositeFilterItem(JunctionType.AND);
 	
 	private List<FilterItem> children = new ArrayList<FilterItem>();
 	
 	private JunctionType junctionType;
 	
-	public FilterItemTree(JunctionType junctionType) {
+	public CompositeFilterItem(JunctionType junctionType) {
 		super(null, null, null, null);
 		this.junctionType = junctionType;		
 	}

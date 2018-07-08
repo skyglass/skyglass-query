@@ -18,7 +18,7 @@ import skyglass.data.filter.IJoinResolver;
 import skyglass.data.filter.JunctionType;
 import skyglass.data.filter.OrderField;
 import skyglass.data.filter.PrivateFilterItem;
-import skyglass.data.filter.PrivateFilterItemTree;
+import skyglass.data.filter.PrivateCompositeFilterItem;
 import skyglass.data.filter.request.IFilterRequest;
 import skyglass.data.query.QueryResult;
 import skyglass.query.model.criteria.IExpression;
@@ -204,12 +204,12 @@ public abstract class AbstractDataFilter<T, F> extends AbstractBaseDataFilter<T,
         }
     }
 
-    private IPredicate applyFilters(PrivateFilterItemTree parent) {
+    private IPredicate applyFilters(PrivateCompositeFilterItem parent) {
         IPredicate totalResult = null;
         for (PrivateFilterItem filterItem : parent.getChildren()) {
             IPredicate result = null;
-            if (filterItem instanceof PrivateFilterItemTree) {
-                result = applyFilters((PrivateFilterItemTree) filterItem);
+            if (filterItem instanceof PrivateCompositeFilterItem) {
+                result = applyFilters((PrivateCompositeFilterItem) filterItem);
             } else {
                 result = applyFilter(filterItem.getFieldResolver(), filterItem.getFilterType(),
                         filterItem.getFilterValueResolver());
@@ -219,7 +219,7 @@ public abstract class AbstractDataFilter<T, F> extends AbstractBaseDataFilter<T,
             }
             if (totalResult == null) {
                 totalResult = result;
-            } else if (parent.getJunctionType() == JunctionType.AND) {
+            } else if (parent.getFilterType() == FilterType.And) {
                 totalResult = queryBuilder.and(result, totalResult);
             } else {
                 totalResult = queryBuilder.or(result, totalResult);

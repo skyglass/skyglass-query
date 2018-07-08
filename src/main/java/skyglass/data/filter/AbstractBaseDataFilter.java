@@ -17,12 +17,11 @@ import skyglass.data.filter.request.IFilterRequest;
 import skyglass.data.query.QueryResult;
 import skyglass.query.model.criteria.IJoinType;
 import skyglass.query.model.criteria.IQueryBuilder;
-import skyglass.query.model.query.QueryFilter;
 import skyglass.query.model.query.Sort;
 
 public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T, F> {
 	
-	protected abstract F self();
+	protected abstract F self();	
 
     protected abstract void initBeforeResult();
 
@@ -209,7 +208,7 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
 
     protected void initSearch() {
         if (!searchMap.isEmpty()) {
-            PrivateFilterItemTree orFilter = new PrivateFilterItemTree(FilterType.Or);
+            PrivateCompositeFilterItem orFilter = new PrivateCompositeFilterItem(FilterType.Or);
             queryContext.addRootChild(orFilter);
             for (String fieldValue : searchMap.keySet()) {
                 List<FieldResolver> fieldResolvers = searchMap.get(fieldValue);
@@ -278,36 +277,25 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
 
     @Override
     public F addFilter(FilterItem filterItem) {
-        if (filterItem instanceof FilterItemTree) {
-            return addFilter(createFilterItemTree((FilterItemTree) filterItem));
-        } else {
-            return addFilter(createFilterItem(filterItem));
-        }
+    	return addFilter(filterItem);
     }
 
     @Override
-    public F addOrFilters(FilterItem... filterItems) {
-        return addOrFilters(createFilterItems(filterItems));
-    }
-
-    @Override
-    public F addAndFilters(FilterItem... filterItems) {
-        return addAndFilters(createFilterItems(filterItems));
-    }
-
-    @Override
-    public F addFilter(FilterItemTree parent, FilterItem filterItem) {
-        return addFilter(createFilterItemTree(parent), createFilterItem(filterItem));
+    public F addFilter(CompositeFilterItem parent, FilterItem filterItem) {
+        queryContext.addFilter(parent, filterItem);
+        return self();
     }
 
     @Override
     public F addFilters(FilterItem... filterItems) {
-        return addFilters(createFilterItems(filterItems));
+        queryContext.addFilters(filterItems);
+        return self();
     }
 
     @Override
-    public F addFilters(FilterItemTree parent, FilterItem... filterItems) {
-        return addFilters(createFilterItemTree(parent), createFilterItems(filterItems));
+    public F addFilters(CompositeFilterItem parent, FilterItem... filterItems) {
+        queryContext.addFilters(parent, filterItems);
+        return self();
     }
     
     @Override
@@ -331,143 +319,137 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
     public F addFieldResolvers(String fieldName, String... expressions) {
         return addFieldResolvers(fieldName, FieldType.Path, expressions);
     }
+
+	@Override
+    public F addAll(String property, FilterItem... filterItems) {
+		queryContext.all(property, filterItems);
+        return self();
+    }
+
+	@Override
+    public F addAnd(FilterItem... filterItems) {
+		queryContext.and(filterItems);
+        return self();
+    }
+
+	@Override
+    public F addEmpty(String property) {
+		queryContext.empty(property);
+        return self();
+    }
+
+	@Override
+    public F addEqual(String property, Object value) {
+		queryContext.equal(property, value);
+        return self();
+    }
+
+	@Override
+    public F addGreaterOrEqual(String property, Object value) {
+		queryContext.greaterOrEqual(property, value);
+        return self();
+    }
+
+	@Override
+    public F addGreater(String property, Object value) {
+		queryContext.greater(property, value);
+        return self();
+    }
+
+	@Override
+    public F addLike(String property, String value) {
+		queryContext.like(property, value);
+        return self();
+    }
+
+	@Override
+    public F addIn(String property, Collection<?> values) {
+		queryContext.in(property, values);
+        return self();
+    }
+
+	@Override
+    public F addIn(String property, Object... values) {
+		queryContext.in(property, values);
+        return self();
+    }
+
+	@Override
+    public F addLessOrEqual(String property, Object value) {
+		queryContext.lessOrEqual(property, value);
+        return self();
+    }
+
+	@Override
+    public F addLess(String property, Object value) {
+		queryContext.less(property, value);
+        return self();
+    }
+
+	@Override
+    public F addNone(String property, FilterItem... filterItems) {
+		queryContext.none(property, filterItems);
+        return self();
+    }
+
+	@Override
+    public F addNot(FilterItem... filterItems) {
+		queryContext.not(filterItems);
+        return self();
+    }
+
+	@Override
+    public F addNotEqual(String property, Object value) {
+		queryContext.notEqual(property, value);
+        return self();
+    }
+
+	@Override
+    public F addNotIn(String property, Collection<?> values) {
+		queryContext.notIn(property, values);
+        return self();
+    }
+
+	@Override
+    public F addNotIn(String property, Object... values) {
+		queryContext.notIn(property, values);
+        return self();
+    }
+
+	@Override
+    public F addNotEmpty(String property) {
+		queryContext.notEmpty(property);
+        return self();
+    }
+
+	@Override
+    public F addNotNull(String property) {
+		queryContext.notNull(property);
+        return self();
+    }
+
+	@Override
+    public F addNull(String property) {
+		queryContext.isNull(property);
+        return self();
+    }
+
+	@Override
+    public F addOr(FilterItem... filterItems) {
+		queryContext.or(filterItems);
+        return self();
+    }
+
+	@Override
+    public F addSome(String property, FilterItem... filterItems) {
+		queryContext.some(property, filterItems);
+        return self();
+    }
 	
 	@Override
-    public F addFilter(QueryFilter filter) {
-		queryContext.addFilter(filter);
-        return self();
-    }
-
-	@Override
-    public F addFilterAll(String property, QueryFilter filter) {
-		queryContext.addFilterAll(property, filter);
-        return self();
-    }
-
-	@Override
-    public F addFilterAnd(QueryFilter... filters) {
-		queryContext.addFilterAnd(filters);
-        return self();
-    }
-
-	@Override
-    public F addFilterEmpty(String property) {
-		queryContext.addFilterEmpty(property);
-        return self();
-    }
-
-	@Override
-    public F addFilterEqual(String property, Object value) {
-		queryContext.addFilterEqual(property, value);
-        return self();
-    }
-
-	@Override
-    public F addFilterGreaterOrEqual(String property, Object value) {
-		queryContext.addFilterGreaterOrEqual(property, value);
-        return self();
-    }
-
-	@Override
-    public F addFilterGreaterThan(String property, Object value) {
-		queryContext.addFilterGreaterThan(property, value);
-        return self();
-    }
-
-	@Override
-    public F addFilterILike(String property, String value) {
-		queryContext.addFilterILike(property, value);
-        return self();
-    }
-
-	@Override
-    public F addFilterIn(String property, Collection<?> value) {
-		queryContext.addFilterIn(property, value);
-        return self();
-    }
-
-	@Override
-    public F addFilterIn(String property, Object... value) {
-		queryContext.addFilterIn(property, value);
-        return self();
-    }
-
-	@Override
-    public F addFilterLessOrEqual(String property, Object value) {
-		queryContext.addFilterLessOrEqual(property, value);
-        return self();
-    }
-
-	@Override
-    public F addFilterLessThan(String property, Object value) {
-		queryContext.addFilterLessThan(property, value);
-        return self();
-    }
-
-	@Override
-    public F addFilterLike(String property, String value) {
-		queryContext.addFilterLike(property, value);
-        return self();
-    }
-
-	@Override
-    public F addFilterNone(String property, QueryFilter filter) {
-		queryContext.addFilterNone(property, filter);
-        return self();
-    }
-
-	@Override
-    public F addFilterNot(QueryFilter filter) {
-		queryContext.addFilterNot(filter);
-        return self();
-    }
-
-	@Override
-    public F addFilterNotEqual(String property, Object value) {
-		queryContext.addFilterNotEqual(property, value);
-        return self();
-    }
-
-	@Override
-    public F addFilterNotIn(String property, Collection<?> value) {
-		queryContext.addFilterNotIn(property, value);
-        return self();
-    }
-
-	@Override
-    public F addFilterNotIn(String property, Object... value) {
-		queryContext.addFilterNotIn(property, value);
-        return self();
-    }
-
-	@Override
-    public F addFilterNotEmpty(String property) {
-		queryContext.addFilterNotEmpty(property);
-        return self();
-    }
-
-	@Override
-    public F addFilterNotNull(String property) {
-		queryContext.addFilterNotNull(property);
-        return self();
-    }
-
-	@Override
-    public F addFilterNull(String property) {
-		queryContext.addFilterNull(property);
-        return self();
-    }
-
-	@Override
-    public F addFilterOr(QueryFilter... filters) {
-		queryContext.addFilterOr(filters);
-        return self();
-    }
-
-	@Override
-    public F addFilterSome(String property, QueryFilter filter) {
-		queryContext.addFilterSome(property, filter);
-        return self();
+    public F addRange(String property, Object minValue, Object maxValue) {
+		queryContext.range(property, minValue, maxValue);
+        return self();   	
     }
 
 	@Override
@@ -528,76 +510,6 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
     public F setJoinType(IJoinType joinType) {
         queryContext.setJoinType(joinType);
         return self();
-    }
-
-    private PrivateFilterItemTree createFilterItemTree(FilterItemTree customFilterItemTree) {
-        PrivateFilterItemTree filterItemTree = new PrivateFilterItemTree(customFilterItemTree.getJunctionType());
-        for (FilterItem customFilterItem : customFilterItemTree.getChildren()) {
-            if (customFilterItem instanceof FilterItemTree) {
-                filterItemTree.addChild(createFilterItemTree((FilterItemTree) customFilterItem));
-            } else {
-                filterItemTree.addChild(createFilterItem(customFilterItem));
-            }
-        }
-        return filterItemTree;
-    }
-
-    private PrivateFilterItem createFilterItem(FilterItem customFilterItem) {
-        return queryContext.createFilterItem(
-        		customFilterItem.getFieldName(), customFilterItem.getFieldType(),
-        		customFilterItem.getFilterType(), customFilterItem.getFilterValue());
-    }
-
-    private PrivateFilterItem[] createFilterItems(FilterItem... filterItems) {
-        PrivateFilterItem[] result = new PrivateFilterItem[filterItems.length];
-        for (int i = 0; i < result.length; i++) {
-            result[i] = createFilterItem(filterItems[i]);
-        }
-        return result;
-    }
-
-    @SuppressWarnings("unchecked")
-    private F addFilter(PrivateFilterItem filterItem) {
-    	queryContext.addRootChild(filterItem);
-        return (F) this;
-    }
-
-    @SuppressWarnings("unchecked")
-    private F addFilter(PrivateFilterItemTree parent, PrivateFilterItem filterItem) {
-        parent.addChild(filterItem);
-        queryContext.addRootChild(parent);
-        return (F) this;
-    }
-
-    @SuppressWarnings("unchecked")
-    private F addFilter(PrivateFilterItemTree parent) {
-    	queryContext.addRootChild(parent);
-        return (F) this;
-    }
-
-    @SuppressWarnings("unchecked")
-    private F addFilters(PrivateFilterItem... filterItems) {
-        for (PrivateFilterItem filterItem : filterItems) {
-            addFilter(filterItem);
-        }
-        return (F) this;
-    }
-
-    private F addOrFilters(PrivateFilterItem... filterItems) {
-        return addFilters(new PrivateFilterItemTree(JunctionType.OR), filterItems);
-    }
-
-    private F addAndFilters(PrivateFilterItem... filterItems) {
-        return addFilters(new PrivateFilterItemTree(JunctionType.AND), filterItems);
-    }
-
-    @SuppressWarnings("unchecked")
-    private F addFilters(PrivateFilterItemTree parent, PrivateFilterItem... filterItems) {
-        for (PrivateFilterItem filterItem : filterItems) {
-            parent.addChild(filterItem);
-        }
-        queryContext.addRootChild(parent);
-        return (F) this;
     }
 
 }

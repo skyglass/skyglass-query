@@ -55,12 +55,8 @@ public enum FilterType {
         return value >= 10 && value <= 14;
     }
 
-    public boolean isTakesSingleSubFilter() {
-        return this == Not || value >= 200;
-    }
-
     public boolean isTakesListOfSubFilters() {
-        return this == And || this == Or;
+        return this == And || this == Or || this == Not || value >= 200;
     }
 
     public boolean isTakesNoProperty() {

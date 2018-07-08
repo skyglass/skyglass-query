@@ -8,7 +8,6 @@ import skyglass.data.query.QueryResult;
 import skyglass.query.model.criteria.IJoinType;
 import skyglass.query.model.criteria.IPredicate;
 import skyglass.query.model.criteria.IQueryBuilder;
-import skyglass.query.model.query.QueryFilter;
 import skyglass.query.model.query.Sort;
 
 public interface IBaseDataFilter<T, F> {
@@ -51,15 +50,11 @@ public interface IBaseDataFilter<T, F> {
 
     public F addFilter(FilterItem filterItem);
 
-    public F addFilter(FilterItemTree parent, FilterItem filterItem);
+    public F addFilter(CompositeFilterItem parent, FilterItem filterItem);
 
     public F addFilters(FilterItem... filterItems);
 
-    public F addOrFilters(FilterItem... filterItems);
-
-    public F addAndFilters(FilterItem... filterItems);
-
-    public F addFilters(FilterItemTree parent, FilterItem... filterItems);
+    public F addFilters(CompositeFilterItem parent, FilterItem... filterItems);
 
     public F addFieldResolver(String fieldName, String expression);
 
@@ -72,54 +67,50 @@ public interface IBaseDataFilter<T, F> {
     public F addCustomFieldResolver(String fieldName, CustomFieldResolver customFieldResolver);
 
     public F addCustomFilterResolver(CustomFilterResolver customFilterResolver);
-    
-    public F addFilter(QueryFilter filter);
 
-    public F addFilters(QueryFilter... filters);
+    public F addAll(String property, FilterItem... filterItems);
+    
+    public F addAnd(FilterItem... filterItems);
+    
+    public F addEmpty(String property);
+    
+    public F addEqual(String property, Object value);
+    
+    public F addGreaterOrEqual(String property, Object value);
+    
+    public F addGreater(String property, Object value);
+    
+    public F addLike(String property, String value);
+    
+    public F addIn(String property, Collection<?> values);
+    
+    public F addIn(String property, Object... values);
+    
+    public F addLessOrEqual(String property, Object value);
+    
+    public F addLess(String property, Object value);
 
-    public F addFilterAll(String property, QueryFilter filter);
+    public F addNone(String property, FilterItem... filterItems);
     
-    public F addFilterAnd(QueryFilter... filters);
+    public F addNot(FilterItem... filterItems);
     
-    public F addFilterEmpty(String property);
+    public F addNotEqual(String property, Object value);
     
-    public F addFilterEqual(String property, Object value);
+    public F addNotIn(String property, Collection<?> values);
     
-    public F addFilterGreaterOrEqual(String property, Object value);
+    public F addNotIn(String property, Object... values);
     
-    public F addFilterGreaterThan(String property, Object value);
+    public F addNotEmpty(String property);
     
-    public F addFilterILike(String property, String value);
+    public F addNotNull(String property);
     
-    public F addFilterIn(String property, Collection<?> value);
+    public F addNull(String property);
     
-    public F addFilterIn(String property, Object... value);
+    public F addOr(FilterItem... filterItems);
     
-    public F addFilterLessOrEqual(String property, Object value);
+    public F addSome(String property, FilterItem... filterItems);
     
-    public F addFilterLessThan(String property, Object value);
-    
-    public F addFilterLike(String property, String value);
-
-    public F addFilterNone(String property, QueryFilter filter);
-    
-    public F addFilterNot(QueryFilter filter);
-    
-    public F addFilterNotEqual(String property, Object value);
-    
-    public F addFilterNotIn(String property, Collection<?> value);
-    
-    public F addFilterNotIn(String property, Object... value);
-    
-    public F addFilterNotEmpty(String property);
-    
-    public F addFilterNotNull(String property);
-    
-    public F addFilterNull(String property);
-    
-    public F addFilterOr(QueryFilter... filters);
-    
-    public F addFilterSome(String property, QueryFilter filter);
+    public F addRange(String property, Object minValue, Object maxValue);
     
     public F addSort(Sort sort);
     

@@ -1,6 +1,6 @@
 package skyglass.data.filter;
 
-import java.util.List;
+import java.util.Collection;
 import java.util.function.Supplier;
 
 import javax.persistence.criteria.CriteriaBuilder;
@@ -8,15 +8,14 @@ import javax.persistence.criteria.CriteriaBuilder;
 import skyglass.query.model.criteria.IQueryBuilder;
 import skyglass.query.model.query.FilterGroup;
 import skyglass.query.model.query.InternalUtil;
-import skyglass.query.model.query.QueryFilter;
 
 public class PrivateFilterItem {
 
     private Class<?> rootClass;
 
-    private FieldResolver fieldResolver;
+    protected FieldResolver fieldResolver;
     protected FilterType filterType;
-    private Object filterValue;
+    protected Object filterValue;
     private Supplier<Object> filterValueResolver;
     private FilterGroup filterGroup = FilterGroup.Where;
 
@@ -48,11 +47,35 @@ public class PrivateFilterItem {
     public FilterType getFilterType() {
         return filterType;
     }
+    
+    public boolean hasNullValue() {
+    	return filterValue != null;
+    }
+    
+    public boolean hasNotNullValue() {
+    	return filterValue != null;
+    }
+    
+    public boolean hasEmptyCollectionValue() {
+    	if (hasCollectionValue()) {
+    		if (filterValue instanceof Collection<?>) {
+    			return ((Collection<?>)filterValue).size() == 0;
+    		} else {
+    			return ((Object[])filterValue).length == 0;
+    		}
+    	}
+    	return false;
+    }
+    
+    public boolean hasCollectionValue() {
+    	return filterValue instanceof Collection || filterValue instanceof Object[];
+    }
+    
+    public Class<?> getValueClass() {
+    	return filterValue.getClass();
+    }
 
     public Supplier<Object> getFilterValueResolver() {
-        if (filterValue == null) {
-            return () -> null;
-        }
         if (filterValueResolver == null) {
             this.filterValueResolver = filterValueResolver();
         }
@@ -60,6 +83,9 @@ public class PrivateFilterItem {
     }
 
     private Supplier<Object> filterValueResolver() {
+        if (filterValue == null) {
+            return () -> null;
+        }
         if (filterValue instanceof CriteriaBuilder) {
             return () -> filterValue;
         }
@@ -82,16 +108,20 @@ public class PrivateFilterItem {
         return filterType.isTakesNoValue();
     }
 
-    public boolean isTakesSingleSubFilter() {
-        return filterType.isTakesSingleSubFilter();
-    }
-
     public boolean isTakesListOfSubFilters() {
         return filterType.isTakesListOfSubFilters();
     }
 
     public boolean isTakesNoProperty() {
         return filterType.isTakesNoProperty();
+    }
+    
+    public void setHavingType() {
+        this.filterGroup = FilterGroup.Having;
+    }
+
+    public boolean isHavingType() {
+        return this.filterGroup == FilterGroup.Having;
     }
     
     @Override
@@ -129,7 +159,6 @@ public class PrivateFilterItem {
         return true;
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public String toString() {
         switch (filterType) {
@@ -161,54 +190,12 @@ public class PrivateFilterItem {
             return "`" + fieldResolver.getFieldName() + "` IS NOT EMPTY";
         case And:
         case Or:
-            if (!(value instanceof List)) {
-                return (operator == QueryFilter.OP_AND ? "AND: " : "OR: ") + "**INVALID VALUE - NOT A LIST: (" + value
-                        + ") **";
-            }
-
-            String op = operator == QueryFilter.OP_AND ? " and " : " or ";
-
-            StringBuilder sb = new StringBuilder("(");
-            boolean first = true;
-            for (Object o : ((List) value)) {
-                if (first) {
-                    first = false;
-                } else {
-                    sb.append(op);
-                }
-                if (o instanceof QueryFilter) {
-                    sb.append(o.toString());
-                } else {
-                    sb.append("**INVALID VALUE - NOT A FILTER: (" + o + ") **");
-                }
-            }
-            if (first)
-                return (operator == QueryFilter.OP_AND ? "AND: " : "OR: ") + "**EMPTY LIST**";
-
-            sb.append(")");
-            return sb.toString();
-        case QueryFilter.OP_NOT:
-            if (!(value instanceof QueryFilter)) {
-                return "NOT: **INVALID VALUE - NOT A FILTER: (" + value + ") **";
-            }
-            return "not " + value.toString();
-        case QueryFilter.OP_SOME:
-            if (!(value instanceof QueryFilter)) {
-                return "SOME: **INVALID VALUE - NOT A FILTER: (" + value + ") **";
-            }
-            return "some `" + property + "` {" + value.toString() + "}";
-        case QueryFilter.OP_ALL:
-            if (!(value instanceof QueryFilter)) {
-                return "ALL: **INVALID VALUE - NOT A FILTER: (" + value + ") **";
-            }
-            return "all `" + property + "` {" + value.toString() + "}";
-        case QueryFilter.OP_NONE:
-            if (!(value instanceof QueryFilter)) {
-                return "NONE: **INVALID VALUE - NOT A FILTER: (" + value + ") **";
-            }
-            return "none `" + property + "` {" + value.toString() + "}";
+        case Not:
+        case Some:
+        case All:
+        case None:
         default:
-            return "**INVALID OPERATOR: (" + operator + ") - VALUE: " + InternalUtil.paramDisplayString(value) + " **";
+            return "**INVALID OPERATOR: (" + filterType + ") - VALUE: " + InternalUtil.paramDisplayString(filterValue) + " **";
         }
     }
     

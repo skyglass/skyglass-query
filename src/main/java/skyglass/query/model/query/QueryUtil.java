@@ -6,6 +6,8 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
+import skyglass.data.filter.PrivateCompositeFilterItem;
+import skyglass.data.filter.PrivateFilterItem;
 import skyglass.data.filter.SelectType;
 
 /**
@@ -936,7 +938,8 @@ public class QueryUtil {
      * @return if any changes have been made, the new list of Filters; if not,
      *         the original list.
      */
-    public static Collection<QueryFilter> walkFilters(Collection<QueryFilter> filters, FilterVisitor visitor,
+    public static Collection<PrivateFilterItem> walkFilters(
+    		Collection<PrivateFilterItem> filters, FilterVisitor visitor,
             boolean removeNulls) {
         return walkList(filters, new FilterListVisitor(visitor, removeNulls), removeNulls);
     }
@@ -944,7 +947,7 @@ public class QueryUtil {
     /**
      * Used in walkFilters
      */
-    private static final class FilterListVisitor extends ItemVisitor<QueryFilter> {
+    private static final class FilterListVisitor extends ItemVisitor<PrivateFilterItem> {
         private FilterVisitor visitor;
         private boolean removeNulls;
 
@@ -954,7 +957,7 @@ public class QueryUtil {
         }
 
         @Override
-        public QueryFilter visit(QueryFilter filter) {
+        public PrivateFilterItem visit(PrivateFilterItem filter) {
             return walkFilter(filter, visitor, removeNulls);
         }
     }
@@ -970,25 +973,19 @@ public class QueryUtil {
      *         original Filter.
      */
     @SuppressWarnings("unchecked")
-    public static QueryFilter walkFilter(QueryFilter filter, FilterVisitor visitor, boolean removeNulls) {
+    public static PrivateFilterItem walkFilter(PrivateFilterItem filter, FilterVisitor visitor, boolean removeNulls) {
         filter = visitor.visitBefore(filter);
 
         if (filter != null) {
             if (filter.isTakesSingleSubFilter()) {
-                if (filter.getValue() instanceof QueryFilter) {
-                    QueryFilter result = walkFilter((QueryFilter) filter.getValue(), visitor, removeNulls);
-                    if (result != filter.getValue()) {
-                        filter = new QueryFilter(filter.getProperty(), result, filter.getOperator());
-                    }
+            	PrivateCompositeFilterItem compositeFilter = (PrivateCompositeFilterItem)filter;
+                if (filter instanceof PrivateCompositeFilterItem) {
+                    walkFilter(
+                    		compositeFilter.getSingleChild(), visitor, removeNulls);
                 }
             } else if (filter.isTakesListOfSubFilters()) {
-                if (filter.getValue() instanceof List) {
-                    Collection<QueryFilter> result = walkFilters((List<QueryFilter>) filter.getValue(), visitor,
-                            removeNulls);
-                    if (result != filter.getValue()) {
-                        filter = new QueryFilter(filter.getProperty(), result, filter.getOperator());
-                    }
-                }
+            	PrivateCompositeFilterItem compositeFilter = (PrivateCompositeFilterItem)filter;
+                walkFilters(compositeFilter.getChildren(), visitor, removeNulls); 
             }
         }
 
@@ -1001,11 +998,11 @@ public class QueryUtil {
      * Visitor for use with walkFilter and walkFilters
      */
     public static class FilterVisitor {
-        public QueryFilter visitBefore(QueryFilter filter) {
+        public PrivateFilterItem visitBefore(PrivateFilterItem filter) {
             return filter;
         }
 
-        public QueryFilter visitAfter(QueryFilter filter) {
+        public PrivateFilterItem visitAfter(PrivateFilterItem filter) {
             return filter;
         }
     }

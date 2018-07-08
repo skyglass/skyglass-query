@@ -3,15 +3,12 @@ package skyglass.data.filter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import skyglass.query.model.criteria.IJoinBuilder;
 import skyglass.query.model.criteria.IJoinType;
 import skyglass.query.model.criteria.IValueResolver;
-import skyglass.query.model.query.FilterGroup;
-import skyglass.query.model.query.InternalUtil;
-import skyglass.query.model.query.QueryFilter;
 import skyglass.query.model.query.QueryUtil;
 import skyglass.query.model.query.SelectField;
 import skyglass.query.model.query.Sort;
@@ -20,7 +17,7 @@ public class PrivateQueryContext {
 	
 	private JunctionType junctionType;
 	
-    private PrivateFilterItemTree rootFilterItem;
+    private PrivateCompositeFilterItem rootFilterItem;
     
     private IValueResolver valueResolver;
     
@@ -38,8 +35,6 @@ public class PrivateQueryContext {
     
     private Collection<SelectField> selectFields = new ArrayList<>();
     
-    private Collection<QueryFilter> queryFilters = new ArrayList<>();
-    
     private Collection<Sort> sorts = new ArrayList<>();
     
     private boolean distinct = false;
@@ -47,7 +42,7 @@ public class PrivateQueryContext {
     public PrivateQueryContext(JunctionType junctionType, IValueResolver valueResolver,
     		IJoinBuilder joinBuilder, Class<?> rootClazz, IJoinType joinType) {
     	this.junctionType = junctionType;
-        this.rootFilterItem = new PrivateFilterItemTree(JunctionType.toFilterType(junctionType));
+        this.rootFilterItem = new PrivateCompositeFilterItem(JunctionType.toFilterType(junctionType));
         this.valueResolver = valueResolver;
         this.joinBuilder = joinBuilder;
         this.rootClazz = rootClazz;
@@ -63,7 +58,7 @@ public class PrivateQueryContext {
     	rootFilterItem.addChild(filterItem);
     }
     
-    public PrivateFilterItemTree getRootFilterItem() {
+    public PrivateCompositeFilterItem getRootFilterItem() {
     	return rootFilterItem;
     }
     
@@ -88,7 +83,7 @@ public class PrivateQueryContext {
     }
     
     private PrivateFilterItem addFilters(FilterType filterType, PrivateFilterItem... filterItems) {
-        PrivateFilterItemTree parent = createFilterItemTree(filterType);
+        PrivateCompositeFilterItem parent = createFilterItemTree(filterType);
         addRootChild(parent);
         for (PrivateFilterItem filterItem: filterItems) {
             parent.addChild(filterItem);
@@ -97,7 +92,7 @@ public class PrivateQueryContext {
     }
     
     private PrivateFilterItem addFilters(String fieldName, FilterType filterType, PrivateFilterItem... filterItems) {
-        PrivateFilterItemTree parent = createFilterItemTree(fieldName, filterType);
+        PrivateCompositeFilterItem parent = createFilterItemTree(fieldName, filterType);
         addRootChild(parent);
         for (PrivateFilterItem filterItem: filterItems) {
             parent.addChild(filterItem);
@@ -106,7 +101,7 @@ public class PrivateQueryContext {
     }
     
     public PrivateFilterItem addFilters(String fieldName, FieldType fieldType, Object[] filterValues, FilterType filterType) {
-        PrivateFilterItemTree orFilter = new PrivateFilterItemTree(FilterType.Or);
+        PrivateCompositeFilterItem orFilter = new PrivateCompositeFilterItem(FilterType.Or);
         addRootChild(orFilter);
         for (Object filterValue : filterValues) {
             PrivateFilterItem filterItem = createFilterItem(fieldName, fieldType, filterType, filterValue);
@@ -115,13 +110,13 @@ public class PrivateQueryContext {
         return orFilter;
     }
     
-    private PrivateFilterItemTree createFilterItemTree(FilterType filterType) {
-        return new PrivateFilterItemTree(filterType);
+    private PrivateCompositeFilterItem createFilterItemTree(FilterType filterType) {
+        return new PrivateCompositeFilterItem(filterType);
     }
     
-    private PrivateFilterItemTree createFilterItemTree(String fieldName, 
+    private PrivateCompositeFilterItem createFilterItemTree(String fieldName, 
     		FilterType filterType) {
-        return new PrivateFilterItemTree(fieldResolverContext.addFieldResolver(
+        return new PrivateCompositeFilterItem(fieldResolverContext.addFieldResolver(
         		this, fieldName, FieldType.Path), filterType);
     }
 
@@ -176,122 +171,107 @@ public class PrivateQueryContext {
         return fieldResolverContext.addFieldResolvers(this, fieldName, fieldType, expressions);
     }
     
-    public void addFilter(QueryFilter filter) {
-        queryFilters.add(filter);
-    }
-
-    public void addFilters(QueryFilter... filters) {
-        if (filters != null) {
-            for (QueryFilter filter : filters) {
-                addFilter(filter);
-            }
-        }
+    public void addFilter(CompositeFilterItem parent, FilterItem filterItem) {
+        addFilter((PrivateCompositeFilterItem)createPrivateFilterItem(parent), 
+        		createPrivateFilterItem(filterItem));
     }
     
-    private void addFilters(PrivateFilterItemTree parent, PrivateFilterItem... filterItems) {
-        for (PrivateFilterItem filterItem : filterItems) {
-            parent.addChild(filterItem);
-        }
-        addRootChild(parent);
-    }
-
-    public PrivateFilterItem all(String fieldName, PrivateFilterItem... filterItems) {
-        return addFilters(fieldName, FilterType.All, filterItems);
-    }
-
-    public PrivateFilterItem and(PrivateFilterItem... filterItems) {
-        return addFilters(FilterType.And, filterItems);
-    }
-
-    public PrivateFilterItem empty(String fieldName) {
-        return addFilter(fieldName, FilterType.Empty);
-    }
-
-    public PrivateFilterItem equal(String fieldName, Object value) {
-        return addFilter(fieldName, FilterType.Equals, value);
-    }
-
-    public PrivateFilterItem greaterOrEqual(String fieldName, Object value) {
-        return addFilter(fieldName, FilterType.GreaterOrEquals, value);
-    }
-
-    public PrivateFilterItem greater(String fieldName, Object value) {
-        return addFilter(fieldName, FilterType.Greater, value);
-    }
-
-    public PrivateFilterItem like(String fieldName, String value) {
-        return addFilter(fieldName, FilterType.Like, value);
-    }
-
-    public PrivateFilterItem in(String fieldName, Collection<?> values) {
-        return addFilter(fieldName, FilterType.In, values);
-    }
-
-    public PrivateFilterItem in(String fieldName, Object... values) {
-        return addFilter(fieldName, FilterType.In, values);
-    }
-
-    public PrivateFilterItem lessOrEqual(String fieldName, Object value) {
-        return addFilter(fieldName, FilterType.LessOrEquals, value);
-    }
-
-    public PrivateFilterItem less(String fieldName, Object value) {
-        return addFilter(fieldName, FilterType.Less, value);
-    }
-
-    public PrivateFilterItem none(String fieldName, PrivateFilterItem... filterItems) {
-        return addFilters(fieldName, FilterType.None, filterItems);
-    }
-
-    public PrivateFilterItem not(PrivateFilterItem... filterItems) {
-        return addFilters(FilterType.Not, filterItems);
-    }
-
-    public PrivateFilterItem notEqual(String fieldName, Object value) {
-        return addFilter(fieldName, FilterType.NotEquals, value);
-    }
-
-    public PrivateFilterItem notIn(String fieldName, Collection<?> values) {
-        return addFilter(fieldName, FilterType.NotIn, values);
-    }
-
-    public PrivateFilterItem notIn(String fieldName, Object... values) {
-        return addFilter(fieldName, FilterType.NotIn, values);
-    }
-
-    public PrivateFilterItem notEmpty(String fieldName) {
-        return addFilter(fieldName, FilterType.NotEmpty);
-    }
-
-    public PrivateFilterItem notNull(String fieldName) {
-        return addFilter(fieldName, FilterType.IsNotNull);
-    }
-
-    public PrivateFilterItem isNull(String fieldName) {
-        return addFilter(fieldName, FilterType.IsNull);
-    }
-
-    public PrivateFilterItem or(PrivateFilterItem... filterItems) {
-        return addFilters(FilterType.Or, filterItems);
-    }
-
-    public PrivateFilterItem some(String fieldName, PrivateFilterItem... filterItems) {
-        return addFilters(fieldName, FilterType.Some, filterItems);
+    public void addFilters(FilterItem... filterItems) {
+        addFilters(createPrivateFilterItems(filterItems));
     }
     
-    public PrivateFilterItem range(String fieldName, Object minValue, Object maxValue) {
-    	return and(greaterOrEqual(fieldName, minValue),
-    			lessOrEqual(fieldName, maxValue));
+    public void addFilters(CompositeFilterItem parent, FilterItem... filterItems) {
+        addFilters((PrivateCompositeFilterItem)createPrivateFilterItem(parent), 
+        		createPrivateFilterItems(filterItems));
     }
 
- 
-
-    public void setHavingType() {
-        this.filterType = FilterGroup.Having;
+    public void all(String fieldName, FilterItem... filterItems) {
+        addFilters(fieldName, FilterType.All, createPrivateFilterItems(filterItems));
     }
 
-    public boolean isHavingType() {
-        return this.filterType == FilterGroup.Having;
+    public void and(FilterItem... filterItems) {
+        addFilters(FilterType.And, createPrivateFilterItems(filterItems));
+    }
+    
+    public void empty(String fieldName) {
+       addFilter(fieldName, FilterType.Empty);
+    }
+
+    public void equal(String fieldName, Object value) {
+        addFilter(fieldName, FilterType.Equals, value);
+    }
+
+    public void greaterOrEqual(String fieldName, Object value) {
+        addFilter(fieldName, FilterType.GreaterOrEquals, value);
+    }
+
+    public void greater(String fieldName, Object value) {
+        addFilter(fieldName, FilterType.Greater, value);
+    }
+
+    public void like(String fieldName, String value) {
+        addFilter(fieldName, FilterType.Like, value);
+    }
+
+    public void in(String fieldName, Collection<?> values) {
+        addFilter(fieldName, FilterType.In, values);
+    }
+
+    public void in(String fieldName, Object... values) {
+        addFilter(fieldName, FilterType.In, values);
+    }
+
+    public void lessOrEqual(String fieldName, Object value) {
+        addFilter(fieldName, FilterType.LessOrEquals, value);
+    }
+
+    public void less(String fieldName, Object value) {
+        addFilter(fieldName, FilterType.Less, value);
+    }
+
+    public void none(String fieldName, FilterItem... filterItems) {
+        addFilters(fieldName, FilterType.None, createPrivateFilterItems(filterItems));
+    }
+
+    public void not(FilterItem... filterItems) {
+        addFilters(FilterType.Not, createPrivateFilterItems(filterItems));
+    }
+
+    public void notEqual(String fieldName, Object value) {
+        addFilter(fieldName, FilterType.NotEquals, value);
+    }
+
+    public void notIn(String fieldName, Collection<?> values) {
+        addFilter(fieldName, FilterType.NotIn, values);
+    }
+
+    public void notIn(String fieldName, Object... values) {
+        addFilter(fieldName, FilterType.NotIn, values);
+    }
+
+    public void notEmpty(String fieldName) {
+        addFilter(fieldName, FilterType.NotEmpty);
+    }
+
+    public void notNull(String fieldName) {
+        addFilter(fieldName, FilterType.IsNotNull);
+    }
+
+    public void isNull(String fieldName) {
+        addFilter(fieldName, FilterType.IsNull);
+    }
+
+    public void or(FilterItem... filterItems) {
+        addFilters(FilterType.Or, createPrivateFilterItems(filterItems));
+    }
+
+    public void some(String fieldName, FilterItem... filterItems) {
+        addFilters(fieldName, FilterType.Some, createPrivateFilterItems(filterItems));
+    }
+    
+    public void range(String fieldName, Object minValue, Object maxValue) {
+    	addFilters(FilterType.And, addFilter(fieldName, FilterType.GreaterOrEquals, minValue),
+    			addFilter(fieldName, FilterType.LessOrEquals, maxValue));
     }
 
     public void addSort(Sort sort) {
@@ -379,8 +359,53 @@ public class PrivateQueryContext {
     	return selectFields;
     }
     
-    public Collection<QueryFilter> getQueryFilters() {
-    	return queryFilters;
+    public String registerParam(Supplier<Object> valueResolver) {
+    	return pathResolver.registerParam(valueResolver);
+    }
+    
+    private PrivateFilterItem createPrivateFilterItem(FilterItem customFilterItem) {
+    	if (customFilterItem instanceof CompositeFilterItem) {
+    		CompositeFilterItem customCompositeFilterItem = (CompositeFilterItem)customFilterItem;
+            PrivateCompositeFilterItem compositeFilterItem = new PrivateCompositeFilterItem(
+            		customCompositeFilterItem.getFilterType());
+            for (FilterItem customFilterItemChild : customCompositeFilterItem.getChildren()) {
+                compositeFilterItem.addChild(createPrivateFilterItem(customFilterItemChild));
+            }
+            return compositeFilterItem;    		
+    	}
+        return createFilterItem(
+        		customFilterItem.getFieldName(), customFilterItem.getFieldType(),
+        		customFilterItem.getFilterType(), customFilterItem.getFilterValue());
+    }
+
+    private PrivateFilterItem[] createPrivateFilterItems(FilterItem... filterItems) {
+        PrivateFilterItem[] result = new PrivateFilterItem[filterItems.length];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = createPrivateFilterItem(filterItems[i]);
+        }
+        return result;
+    }
+    
+    private void addFilter(PrivateCompositeFilterItem parent, PrivateFilterItem filterItem) {
+        parent.addChild(filterItem);
+        addRootChild(parent);
+    }
+
+    private void addFilters(PrivateFilterItem... filterItems) {
+        for (PrivateFilterItem filterItem : filterItems) {
+            addFilter(filterItem);
+        }
+    }
+    
+    private void addFilter(PrivateFilterItem filterItem) {
+    	addRootChild(filterItem);
+    }
+
+    private void addFilters(PrivateCompositeFilterItem parent, PrivateFilterItem... filterItems) {
+        for (PrivateFilterItem filterItem : filterItems) {
+            parent.addChild(filterItem);
+        }
+        addRootChild(parent);
     }
     
     /**
@@ -393,83 +418,52 @@ public class PrivateQueryContext {
      * (and/or/not/some/all/none)
      * </ol>
      */
-    private Collection<QueryFilter> checkAndCleanFilters(Collection<QueryFilter> filters) {
-        return QueryUtil.walkFilters(filters, new QueryUtil.FilterVisitor() {
-            @SuppressWarnings({ "rawtypes" })
-			@Override
-            public QueryFilter visitBefore(QueryFilter filter) {
-                if (filter != null && filter.getValue() != null) {
-                    if (filter.isTakesListOfSubFilters()) {
+    public PrivateCompositeFilterItem checkAndCleanFilters() {
+        QueryUtil.walkFilters(rootFilterItem.getChildren(), new QueryUtil.FilterVisitor() {
+            @Override
+            public PrivateFilterItem visitBefore(PrivateFilterItem filterItem) {
+                if (filterItem != null && filterItem.hasNotNullValue()) {
+                    if (filterItem.isTakesListOfSubFilters()) {
+                    	PrivateCompositeFilterItem compositeFilterItem = (PrivateCompositeFilterItem)filterItem;
                         // make sure that filters that take lists of filters
                         // actually have lists of filters for their values
-                        if (filter.getValue() instanceof List) {
-                            for (Object o : (List) filter.getValue()) {
-                                if (!(o instanceof QueryFilter)) {
-                                    throw new IllegalArgumentException("The search has a filter (" + filter
-                                            + ") for which the value should be a List of Filters but there is an element in the list that is of type: "
-                                            + o.getClass());
-                                }
-                            }
-                        } else {
-                            throw new IllegalArgumentException("The search has a filter (" + filter
-                                    + ") for which the value should be a List of Filters but is not a list. The actual type is "
-                                    + filter.getValue().getClass());
+                        if (compositeFilterItem.getChildren().size() == 0) {
+                            throw new IllegalArgumentException("The query has a composite filter (" + filterItem
+                                    + ") which should have a List of Filters but the list is empty");
                         }
-                    } else if (filter.isTakesSingleSubFilter()) {
-                        // make sure filters that take filters actually have
-                        // filters for their values
-                        if (!(filter.getValue() instanceof QueryFilter)) {
-                            throw new IllegalArgumentException("The search has a filter (" + filter
-                                    + ") for which the value should be of type Filter but is of type: "
-                                    + filter.getValue().getClass());
-                        }
-                    } else if (filter.isTakesListOfValues()) {
+                    } else if (filterItem.isTakesListOfValues()) {
                         // make sure filters that take collections or arrays
                         // actually have collections or arrays for their values
-                        if (!(filter.getValue() instanceof Collection) && !(filter.getValue() instanceof Object[])) {
-                            throw new IllegalArgumentException("The search has a filter (" + filter
+                        if (!filterItem.hasCollectionValue()) {
+                            throw new IllegalArgumentException("The query has a filter (" + filterItem
                                     + ") for which the value should be a collection or array but is of type: "
-                                    + filter.getValue().getClass());
+                                    + filterItem.getValueClass());
                         }
                     }
                 }
 
-                return filter;
+                return filterItem;
             }
 
-            @SuppressWarnings("unchecked")
             @Override
-            public QueryFilter visitAfter(QueryFilter filter) {
-                if (filter == null)
+            public PrivateFilterItem visitAfter(PrivateFilterItem filterItem) {
+                if (filterItem == null)
                     return null;
 
-                if (!filter.isTakesNoProperty()) {
-                    securityCheckProperty(filter.getProperty());
-                }
-
                 // Remove operators that take sub filters but have none
-                // assigned. Replace conjunctions that only have a single
-                // sub-filter with that sub-filter.
-                if (filter.isTakesSingleSubFilter()) {
-                    if (filter.getValue() == null) {
-                        return null;
-                    }
-                } else if (filter.isTakesListOfSubFilters()) {
-                    if (filter.getValue() == null) {
-                        return null;
-                    } else {
-                        List<QueryFilter> list = (List<QueryFilter>) filter.getValue();
-                        if (list.size() == 0) {
-                            return null;
-                        } else if (list.size() == 1) {
-                            return list.get(0);
-                        }
+                // assigned.
+                if (filterItem.isTakesListOfSubFilters()) {
+                	PrivateCompositeFilterItem compositeFilterItem = (PrivateCompositeFilterItem)filterItem;
+                    if (compositeFilterItem.getChildren().size() == 0) {
+                        return null; 
                     }
                 }
 
-                return filter;
+                return filterItem;
             }
         }, true);
+        
+        return rootFilterItem;
     }
-
+    
 }

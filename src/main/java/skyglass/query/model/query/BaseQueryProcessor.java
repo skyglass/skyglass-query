@@ -7,12 +7,18 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import skyglass.data.filter.FilterType;
+import skyglass.data.filter.PrivateCompositeFilterItem;
+import skyglass.data.filter.PrivateFilterItem;
 import skyglass.data.filter.PrivateQueryContext;
+import skyglass.data.filter.criteria.impl.SearchFilter;
+import skyglass.data.filter.criteria.impl.SearchUtil;
 import skyglass.query.metadata.Metadata;
 import skyglass.query.metadata.MetadataHelper;
 
@@ -54,16 +60,8 @@ public abstract class BaseQueryProcessor {
 
     protected MetadataHelper metadataHelper;
 
-    protected String rootAlias = "_it";
-
-    protected static final String ROOT_PATH = "";
-    
     protected PrivateQueryContext queryContext;
     
-    protected Class<?> searchClass;
-    
-    protected List<Object> paramList = new ArrayList<Object>();
-
     protected BaseQueryProcessor(int qlType, MetadataHelper metadataHelper, 
     		PrivateQueryContext queryContext) {
         if (metadataHelper == null) {
@@ -72,7 +70,6 @@ public abstract class BaseQueryProcessor {
         this.qlType = qlType;
         this.metadataHelper = metadataHelper;
         this.queryContext = queryContext;
-        this.searchClass = queryContext.getRootClazz();
     }
 
     /**
@@ -84,31 +81,19 @@ public abstract class BaseQueryProcessor {
     }
 
     /**
-     * This is the string used to represent the root entity of the search within
-     * the query. The default value is <code>"_it"</code>. It may be necessary
-     * to use a different alias if there are entities in the data model with the
-     * name or property "_it".
-     */
-    public void setRootAlias(String alias) {
-        this.rootAlias = alias;
-    }
-
-    /**
      * Generate the QL string for a given search. Fill paramList with the values
      * to be used for the query. All parameters within the query string are
      * specified as named parameters ":pX", where X is the index of the
      * parameter value in paramList.
      */
     public String generateQL() {
-        if (searchClass == null)
-            throw new NullPointerException("The entity class for a search cannot be null");
-
-        SearchContext ctx = new SearchContext(searchClass, rootAlias, paramList);
+        if (queryContext.getRootClazz() == null)
+            throw new NullPointerException("The entity class for a query cannot be null");
 
         Collection<SelectField> selectFields = queryContext.getSelectFields();
 
-        String select = generateSelectClause(ctx, selectFields, queryContext.isDistinct());
-        String where = generateWhereClause(ctx, checkAndCleanFilters(queryContext.getQueryFilters()), queryContext.isDisjunction());
+        String select = generateSelectClause(selectFields, queryContext.isDistinct());
+        String where = generateWhereClause(queryContext.checkAndCleanFilters(), queryContext.isDisjunction());
         String orderBy = generateOrderByClause(ctx, checkAndCleanSorts(searchQuery.getSorts()));
         applyFetches(ctx, checkAndCleanFetches(searchQuery.getFetches()), fields);
         String from = generateFromClause(ctx, true);
@@ -202,8 +187,7 @@ public abstract class BaseQueryProcessor {
      * Internal method for generating the select clause based on the fields of
      * the given search.
      */
-    protected String generateSelectClause(SearchContext ctx, Collection<SelectField> fields, boolean distinct) {
-
+    protected String generateSelectClause(Collection<SelectField> fields, boolean distinct) {
         StringBuilder sb = null;
         boolean useOperator = false, notUseOperator = false;
         boolean first = true;
@@ -405,17 +389,13 @@ public abstract class BaseQueryProcessor {
      * Internal method for generating where clause for given search. Uses filter
      * options from search.
      */
-    protected String generateWhereClause(SearchContext ctx, List<QueryFilter> filters, boolean isDisjunction) {
+    protected String generateWhereClause(PrivateCompositeFilterItem rootFilterItem) {
         String content = null;
-        if (filters == null || filters.size() == 0) {
+        if (rootFilterItem.getChildren() == null || rootFilterItem.getChildren().size() == 0) {
             return "";
-        } else if (filters.size() == 1) {
-            content = filterToQL(ctx, filters.get(0));
         } else {
-            QueryFilter junction = new QueryFilter(null, filters,
-                    isDisjunction ? QueryFilter.OP_OR : QueryFilter.OP_AND);
-            content = filterToQL(ctx, junction);
-        }
+            content = filterToQL(rootFilterItem);
+        };
 
         return (content == null) ? "" : " where " + content;
     }
@@ -424,31 +404,28 @@ public abstract class BaseQueryProcessor {
      * Recursively generate the QL fragment for a given search filter option.
      */
     @SuppressWarnings("rawtypes")
-	protected String filterToQL(SearchContext ctx, QueryFilter filter) {
-        String property = filter.getProperty();
-        Object value = filter.getValue();
-        int operator = filter.getOperator();
+	protected String filterToQL(PrivateFilterItem filterItem) {
+        String property = filterItem.getFieldResolver().getFieldName();
+        FilterType filterType = filterItem.getFilterType();
+        Supplier<Object> filterValueResolver = filterItem.getFilterValueResolver();
 
-        // If the operator needs a value and no value is specified, ignore this
+        // If the filter needs a value and no value is specified, ignore this
         // filter.
         // Only NULL, NOT_NULL, EMPTY and NOT_EMPTY do not need a value.
-        if (value == null && !filter.isTakesNoValue()) {
+        if (filterItem.hasNullValue() && !filterItem.isTakesNoValue()) {
             return null;
         }
 
         // for IN and NOT IN, if value is empty list, return false, and true
         // respectively
-        if (operator == QueryFilter.OP_IN || operator == QueryFilter.OP_NOT_IN) {
-            if (value instanceof Collection && ((Collection) value).size() == 0) {
-                return operator == QueryFilter.OP_IN ? "1 = 2" : "1 = 1";
-            }
-            if (value instanceof Object[] && ((Object[]) value).length == 0) {
-                return operator == QueryFilter.OP_IN ? "1 = 2" : "1 = 1";
+        if (filterType == FilterType.In || filterType == FilterType.NotIn) {
+            if (filterItem.hasEmptyCollectionValue()) {
+                return filterType == FilterType.In ? "1 = 2" : "1 = 1";
             }
         }
 
         // convert numbers to the expected type if needed (ex: Integer to Long)
-        if (filter.isTakesListOfValues()) {
+        if (filterItem.isTakesListOfValues()) {
             value = prepareValue(ctx.rootClass, property, value, true);
         } else if (filter.isTakesSingleValue()) {
             value = prepareValue(ctx.rootClass, property, value, false);
@@ -764,281 +741,6 @@ public abstract class BaseQueryProcessor {
         }, false);
 
     }
-
-    /**
-     * Add value to paramList and return the named parameter string ":pX".
-     */
-    @SuppressWarnings("rawtypes")
-	protected String param(SearchContext ctx, Object value) {
-        if (value instanceof Class) {
-            return ((Class<?>) value).getName();
-        }
-
-        if (value instanceof Collection) {
-            StringBuilder sb = new StringBuilder();
-            boolean first = true;
-            for (Object o : (Collection) value) {
-                if (first) {
-                    first = false;
-                } else {
-                    sb.append(",");
-                }
-                ctx.paramList.add(o);
-                sb.append(":p");
-                sb.append(Integer.toString(ctx.paramList.size()));
-            }
-            return sb.toString();
-        } else if (value instanceof Object[]) {
-            StringBuilder sb = new StringBuilder();
-            boolean first = true;
-            for (Object o : (Object[]) value) {
-                if (first) {
-                    first = false;
-                } else {
-                    sb.append(",");
-                }
-                ctx.paramList.add(o);
-                sb.append(":p");
-                sb.append(Integer.toString(ctx.paramList.size()));
-            }
-            return sb.toString();
-        } else {
-            ctx.paramList.add(value);
-            return ":p" + Integer.toString(ctx.paramList.size());
-        }
-    }
-
-    /**
-     * Given a full path to a property (ex. department.manager.salary), return
-     * the reference to that property that uses the appropriate alias (ex.
-     * a4_manager.salary).
-     */
-    protected String getPathRef(SearchContext ctx, String path) {
-        if (path == null || "".equals(path)) {
-            return ctx.getRootAlias();
-        }
-
-        String[] parts = splitPath(ctx, path);
-
-        return getAlias(ctx, parts[0], false).alias + "." + parts[1];
-    }
-
-    /**
-     * Split a path into two parts. The first part will need to be aliased. The
-     * second part will be a property of that alias. For example:
-     * (department.manager.salary) would return [department.manager, salary].
-     */
-    protected String[] splitPath(SearchContext ctx, String path) {
-        if (path == null || "".equals(path))
-            return null;
-
-        int pos = path.lastIndexOf('.');
-
-        if (pos == -1) {
-            return new String[] { "", path };
-        } else {
-            String lastSegment = path.substring(pos + 1);
-            String currentPath = path;
-            boolean first = true;
-
-            // Basically gobble up as many segments as possible until we come to
-            // an entity. Entities must become aliases so we can use our left
-            // join feature.
-            // The exception is that if a segment is an id, we want to skip the
-            // entity preceding it because (entity.id) is actually stored in the
-            // same table as the foreign key.
-            while (true) {
-                if (metadataHelper.isId(ctx.rootClass, currentPath)) {
-                    // if it's an id property
-                    // skip one segment
-                    if (pos == -1) {
-                        return new String[] { "", path };
-                    }
-                    pos = currentPath.lastIndexOf('.', pos - 1);
-                } else if (!first && metadataHelper.get(ctx.rootClass, currentPath).isEntity()) {
-                    // when we reach an entity (excluding the very first
-                    // segment), we're done
-                    return new String[] { currentPath, path.substring(currentPath.length() + 1) };
-                }
-                first = false;
-
-                // For size, we need to go back to the 'first' behavior
-                // for the next segment.
-                if (pos != -1 && lastSegment.equals("size")
-                        && metadataHelper.get(ctx.rootClass, currentPath.substring(0, pos)).isCollection()) {
-                    first = true;
-                }
-
-                // if that was the last segment, we're done
-                if (pos == -1) {
-                    return new String[] { "", path };
-                }
-                // proceed to the next segment
-                currentPath = currentPath.substring(0, pos);
-                pos = currentPath.lastIndexOf('.');
-                if (pos == -1) {
-                    lastSegment = currentPath;
-                } else {
-                    lastSegment = currentPath.substring(pos + 1);
-                }
-            }
-
-        }
-
-        // 1st
-        // if "id", go 2; try again
-        // if component, go 1; try again
-        // if entity, go 1; try again
-        // if size, go 1; try 1st again
-
-        // successive
-        // if "id", go 2; try again
-        // if component, go 1; try again
-        // if entity, stop
-    }
-
-    /**
-     * Given a full path to an entity (ex. department.manager), return the alias
-     * to reference that entity (ex. a4_manager). If there is no alias for the
-     * given path, one will be created.
-     */
-    protected AliasNode getAlias(SearchContext ctx, String path, boolean setFetch) {
-        if (path == null || path.equals("")) {
-            return ctx.aliases.get(ROOT_PATH);
-        } else if (ctx.aliases.containsKey(path)) {
-            AliasNode node = ctx.aliases.get(path);
-            if (setFetch) {
-                while (node.parent != null) {
-                    node.fetch = true;
-                    node = node.parent;
-                }
-            }
-
-            return node;
-        } else {
-            String[] parts = splitPath(ctx, path);
-
-            int pos = parts[1].lastIndexOf('.');
-
-            String alias = "a" + (ctx.nextAliasNum++) + "_" + (pos == -1 ? parts[1] : parts[1].substring(pos + 1));
-
-            AliasNode node = new AliasNode(parts[1], alias);
-
-            // set up path recursively
-            getAlias(ctx, parts[0], setFetch).addChild(node);
-
-            node.fetch = setFetch;
-            ctx.aliases.put(path, node);
-
-            return node;
-        }
-    }
-
-    protected static final class AliasNode {
-        String property;
-        String alias;
-        boolean fetch;
-        AliasNode parent;
-        List<AliasNode> children = new ArrayList<AliasNode>();
-
-        AliasNode(String property, String alias) {
-            this.property = property;
-            this.alias = alias;
-        }
-
-        void addChild(AliasNode node) {
-            children.add(node);
-            node.parent = this;
-        }
-
-        public String getFullPath() {
-            if (parent == null)
-                return "";
-            else if (parent.parent == null)
-                return property;
-            else
-                return parent.getFullPath() + "." + property;
-        }
-    }
-
-    protected static final class SearchContext {
-        Class<?> rootClass;
-        Map<String, AliasNode> aliases = new HashMap<String, AliasNode>();
-        List<Object> paramList;
-
-        int nextAliasNum = 1;
-        int nextSubqueryNum = 1;
-
-        public SearchContext() {
-        }
-
-        public SearchContext(Class<?> rootClass, String rootAlias, List<Object> paramList) {
-            this.rootClass = rootClass;
-            setRootAlias(rootAlias);
-            this.paramList = paramList;
-        }
-
-        public void setRootAlias(String rootAlias) {
-            this.aliases.put(ROOT_PATH, new AliasNode(ROOT_PATH, rootAlias));
-        }
-
-        public String getRootAlias() {
-            return this.aliases.get(ROOT_PATH).alias;
-        }
-    }
-
-    // ---- SECURITY CHECK ---- //
-
-    /**
-     * <ol>
-     * <li>Check for injection attack in property strings.
-     * <li>The field list may not contain nulls.
-     * </ol>
-     */
-    protected List<SelectField> checkAndCleanFields(List<SelectField> fields) {
-
-        for (SelectField field : fields) {
-            if (field.getProperty() != null)
-                securityCheckProperty(field.getProperty());
-        }
-
-        return fields;
-    }
-
-    /**
-     * <ol>
-     * <li>Check for injection attack in property strings.
-     * <li>Remove null fetches from the list.
-     * </ol>
-     */
-    protected List<String> checkAndCleanFetches(List<String> fetches) {
-        return QueryUtil.walkList(fetches, new QueryUtil.ItemVisitor<String>() {
-            @Override
-            public String visit(String fetch) {
-                securityCheckProperty(fetch);
-                return fetch;
-            }
-        }, true);
-    }
-
-    /**
-     * <ol>
-     * <li>Check for injection attack in property strings.
-     * <li>Remove null sorts from the list.
-     * </ol>
-     */
-    protected List<Sort> checkAndCleanSorts(List<Sort> sorts) {
-        return QueryUtil.walkList(sorts, new QueryUtil.ItemVisitor<Sort>() {
-            @Override
-            public Sort visit(Sort sort) {
-                securityCheckProperty(sort.getProperty());
-                return sort;
-            }
-        }, true);
-    }
-
-
-
 
     private static final ExampleOptions defaultExampleOptions = new ExampleOptions();
 

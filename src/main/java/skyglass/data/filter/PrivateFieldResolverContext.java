@@ -1,6 +1,9 @@
 package skyglass.data.filter;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -10,7 +13,7 @@ public class PrivateFieldResolverContext {
      * Regex pattern for a valid property name/path.
      */
     private static Pattern INJECTION_CHECK = Pattern.compile("^[\\w\\.]*$");
-	
+    
     private Map<String, FieldResolver> fieldResolverMap = new HashMap<String, FieldResolver>();
     
     public FieldResolver addFieldResolver(PrivateQueryContext queryContext, String fieldName) {
@@ -54,5 +57,5 @@ public class PrivateFieldResolverContext {
         fieldResolver.addResolvers(expressions);
         return fieldResolver;
     }
-
+ 
 }

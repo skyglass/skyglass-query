@@ -4,18 +4,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 import skyglass.query.model.query.InternalUtil;
-import skyglass.query.model.query.QueryFilter;
 
 
-public class PrivateFilterItemTree extends PrivateFilterItem {
+public class PrivateCompositeFilterItem extends PrivateFilterItem {
 	
 	private List<PrivateFilterItem> children = new ArrayList<PrivateFilterItem>();
 	
-	public PrivateFilterItemTree(FilterType filterType) {
+	public PrivateCompositeFilterItem(FilterType filterType) {
 		this(null, filterType);	
 	}
 	
-	public PrivateFilterItemTree(FieldResolver fieldResolver, FilterType filterType) {
+	public PrivateCompositeFilterItem(FieldResolver fieldResolver, FilterType filterType) {
 		super(null, fieldResolver, null, filterType);	
 	}
 	
@@ -27,7 +26,13 @@ public class PrivateFilterItemTree extends PrivateFilterItem {
 		return children;
 	}
 	
-    @SuppressWarnings("unchecked")
+	public PrivateFilterItem getSingleChild() {
+		if (children.size() != 1) {
+			throw new UnsupportedOperationException("This filter must have one and only one child");
+		}
+		return children.get(0);
+	}
+	
     @Override
     public String toString() {
         switch (filterType) {
@@ -51,24 +56,15 @@ public class PrivateFilterItemTree extends PrivateFilterItem {
             sb.append(")");
             return sb.toString();
         case Not:
-            return "not " + value.toString();
-        case QueryFilter.OP_SOME:
-            if (!(value instanceof QueryFilter)) {
-                return "SOME: **INVALID VALUE - NOT A FILTER: (" + value + ") **";
-            }
-            return "some `" + property + "` {" + value.toString() + "}";
-        case QueryFilter.OP_ALL:
-            if (!(value instanceof QueryFilter)) {
-                return "ALL: **INVALID VALUE - NOT A FILTER: (" + value + ") **";
-            }
-            return "all `" + property + "` {" + value.toString() + "}";
-        case QueryFilter.OP_NONE:
-            if (!(value instanceof QueryFilter)) {
-                return "NONE: **INVALID VALUE - NOT A FILTER: (" + value + ") **";
-            }
-            return "none `" + property + "` {" + value.toString() + "}";
+            return "not " + getSingleChild().toString();
+        case Some:
+            return "some `" + fieldResolver.getFieldName() + "` {" + getSingleChild().toString() + "}";
+        case All:
+            return "all `" + fieldResolver.getFieldName() + "` {" + getSingleChild().toString() + "}";
+        case None:
+            return "none `" + fieldResolver.getFieldName() + "` {" + getSingleChild().toString() + "}";
         default:
-            return "**INVALID OPERATOR: (" + operator + ") - VALUE: " + InternalUtil.paramDisplayString(value) + " **";
+            return "**INVALID OPERATOR: (" + filterType + ") - VALUE: " + InternalUtil.paramDisplayString(filterValue) + " **";
         }
     }
 }
