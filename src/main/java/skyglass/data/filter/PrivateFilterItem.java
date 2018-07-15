@@ -20,7 +20,7 @@ public class PrivateFilterItem {
     private FilterGroup filterGroup = FilterGroup.Where;
 
     // should be overriden to define different behaviour
-    protected Supplier<Object> objectConverter(String fieldName, Object value) {
+    protected Supplier<Object> objectConverter(String fieldName, Object value, boolean isCollection) {
         return () -> value;
     }
 
@@ -92,7 +92,7 @@ public class PrivateFilterItem {
         if (filterType == FilterType.Like) {
             return () -> IQueryBuilder.processFilterString(filterValue);
         }
-        Object result = objectConverter(fieldResolver.getResolver(), filterValue);
+        Object result = objectConverter(fieldResolver.getResolver(), filterValue, isTakesListOfValues());
         return () -> result;
     }
     

@@ -13,6 +13,7 @@ import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import skyglass.data.filter.CompositeFilterItem;
 import skyglass.data.filter.FilterType;
 import skyglass.data.filter.PrivateCompositeFilterItem;
 import skyglass.data.filter.PrivateFilterItem;
@@ -405,8 +406,9 @@ public abstract class BaseQueryProcessor {
      */
     @SuppressWarnings("rawtypes")
 	protected String filterToQL(PrivateFilterItem filterItem) {
-        String property = filterItem.getFieldResolver().getFieldName();
+        String path = filterItem.getFieldResolver().getFieldName();
         FilterType filterType = filterItem.getFilterType();
+        String filterOperator = filterType.getOperator();
         Supplier<Object> filterValueResolver = filterItem.getFilterValueResolver();
 
         // If the filter needs a value and no value is specified, ignore this
@@ -424,140 +426,109 @@ public abstract class BaseQueryProcessor {
             }
         }
 
-        // convert numbers to the expected type if needed (ex: Integer to Long)
-        if (filterItem.isTakesListOfValues()) {
-            value = prepareValue(ctx.rootClass, property, value, true);
-        } else if (filter.isTakesSingleValue()) {
-            value = prepareValue(ctx.rootClass, property, value, false);
-        }
-
         Metadata metadata;
 
-        switch (operator) {
-        case QueryFilter.OP_NULL:
-            return getPathRef(ctx, property) + " is null";
-        case QueryFilter.OP_NOT_NULL:
-            return getPathRef(ctx, property) + " is not null";
-        case QueryFilter.OP_IN:
-            return getPathRef(ctx, property) + " in (" + param(ctx, value) + ")";
-        case QueryFilter.OP_NOT_IN:
-            return getPathRef(ctx, property) + " not in (" + param(ctx, value) + ")";
-        case QueryFilter.OP_EQUAL:
-            return getPathRef(ctx, property) + " = " + param(ctx, value);
-        case QueryFilter.OP_NOT_EQUAL:
-            return getPathRef(ctx, property) + " != " + param(ctx, value);
-        case QueryFilter.OP_GREATER_THAN:
-            return getPathRef(ctx, property) + " > " + param(ctx, value);
-        case QueryFilter.OP_LESS_THAN:
-            return getPathRef(ctx, property) + " < " + param(ctx, value);
-        case QueryFilter.OP_GREATER_OR_EQUAL:
-            return getPathRef(ctx, property) + " >= " + param(ctx, value);
-        case QueryFilter.OP_LESS_OR_EQUAL:
-            return getPathRef(ctx, property) + " <= " + param(ctx, value);
-        case QueryFilter.OP_GREATER_OR_EQUAL_STRING:
-            return "LOWER(" + getPathRef(ctx, property) + ") >= LOWER(" + param(ctx, value) + ")";
-        case QueryFilter.OP_LESS_OR_EQUAL_STRING:
-            return "LOWER(" + getPathRef(ctx, property) + ") <= LOWER(" + param(ctx, value) + ")";
-        case QueryFilter.OP_LIKE:
-            return getPathRef(ctx, property) + " like " + param(ctx, value.toString());
-        case QueryFilter.OP_ILIKE:
-            return "lower(" + getPathRef(ctx, property) + ") like lower(" + param(ctx, value.toString()) + ")";
-        case QueryFilter.OP_AND:
-        case QueryFilter.OP_OR:
-            if (!(value instanceof List)) {
+        switch (filterType) {
+        case IsNull:
+        case IsNotNull:
+            return queryContext.getPathRef(path) + filterOperator;
+        case In:
+        case NotIn:
+            return queryContext.getPathRef(path) + filterOperator + "(" + queryContext.registerParam(
+            		path, filterValueResolver) + ")";
+        case Equals:
+        case NotEquals:
+        case Greater:
+        case Less:
+        case GreaterOrEquals:
+        case LessOrEquals:
+            return queryContext.getPathRef(path) + filterOperator + queryContext.registerParam(
+            		path, filterValueResolver);
+        case Like:
+            return "LOWER(" + queryContext.getPathRef(path) + ") LIKE LOWER(" 
+            	+ queryContext.registerParam(path, filterValueResolver) + ")";
+        case And:
+        case Or:
+            if (!(filterItem instanceof PrivateCompositeFilterItem)) {
                 return null;
             }
-
-            String op = filter.getOperator() == QueryFilter.OP_AND ? " and " : " or ";
+            
+            PrivateCompositeFilterItem compositeFilterItem = (PrivateCompositeFilterItem) filterItem;
 
             StringBuilder sb = new StringBuilder("(");
             boolean first = true;
-            for (Object o : ((List) value)) {
-                if (o instanceof QueryFilter) {
-                    String filterStr = filterToQL(ctx, (QueryFilter) o);
-                    if (filterStr != null) {
-                        if (first) {
-                            first = false;
-                        } else {
-                            sb.append(op);
-                        }
-                        sb.append(filterStr);
-                    }
-                }
+            for (PrivateFilterItem child : compositeFilterItem.getChildren()) {
+	            String filterStr = filterToQL(child);
+	            if (filterStr != null) {
+	                if (first) {
+	                    first = false;
+	                } else {
+	                    sb.append(filterOperator);
+	                }
+	                sb.append(filterStr);
+	            }
             }
             if (first)
                 return null;
 
             sb.append(")");
             return sb.toString();
-        case QueryFilter.OP_NOT:
-            if (!(value instanceof QueryFilter)) {
+        case Not:
+            if (!(filterItem instanceof PrivateCompositeFilterItem)) {
                 return null;
             }
-            String filterStr = filterToQL(ctx, (QueryFilter) value);
+            
+            compositeFilterItem = (PrivateCompositeFilterItem) filterItem;
+            String filterStr = filterToQL(compositeFilterItem.getSingleChild());
             if (filterStr == null)
                 return null;
 
-            return "not " + filterStr;
-        case QueryFilter.OP_EMPTY:
-            metadata = metadataHelper.get(ctx.rootClass, property);
+            return "NOT " + filterStr;
+        case Empty:
+            metadata = metadataHelper.get(queryContext.getRootClazz(), path);
             if (metadata.isCollection()) {
-                return "not exists elements(" + getPathRef(ctx, property) + ")";
+                return "NOT EXISTS ELEMENTS(" + queryContext.getPathRef(path) + ")";
             } else if (metadata.isString()) {
-                String pathRef = getPathRef(ctx, property);
-                return "(" + pathRef + " is null or " + pathRef + " = '')";
+                String pathRef = queryContext.getPathRef(path);
+                return "(" + pathRef + " IS NULL OR " + pathRef + " = '')";
             } else {
-                return getPathRef(ctx, property) + " is null";
+                return queryContext.getPathRef(path) + " IS NULL";
             }
-        case QueryFilter.OP_NOT_EMPTY:
-            metadata = metadataHelper.get(ctx.rootClass, property);
+        case NotEmpty:
+            metadata = metadataHelper.get(queryContext.getRootClazz(), path);
             if (metadata.isCollection()) {
-                return "exists elements(" + getPathRef(ctx, property) + ")";
+                return "EXISTS ELEMENTS(" + queryContext.getPathRef(path) + ")";
             } else if (metadata.isString()) {
-                String pathRef = getPathRef(ctx, property);
-                return "(" + pathRef + " is not null and " + pathRef + " != '')";
+                String pathRef = queryContext.getPathRef(path);
+                return "(" + pathRef + " IS NOT NULL AND " + pathRef + " != '')";
             } else {
-                return getPathRef(ctx, property) + " is not null";
+                return queryContext.getPathRef(path) + " IS NOT NULL";
             }
-        case QueryFilter.OP_SOME:
-            if (!(value instanceof QueryFilter)) {
+        case Some:
+            if (!(filterItem instanceof PrivateCompositeFilterItem)) {
                 return null;
-            } else if (value instanceof QueryFilter) {
-                String simple = generateSimpleAllOrSome(ctx, property, (QueryFilter) value, "some");
-                if (simple != null) {
-                    return simple;
-                } else {
-                    return "exists " + generateSubquery(ctx, property, (QueryFilter) value);
-                }
-            }
-        case QueryFilter.OP_ALL:
-            if (!(value instanceof QueryFilter)) {
+            }            
+            compositeFilterItem = (PrivateCompositeFilterItem) filterItem;
+            return generateSimpleAllOrSome(compositeFilterItem, "some");
+        case All:
+            if (!(filterItem instanceof PrivateCompositeFilterItem)) {
                 return null;
-            } else if (value instanceof QueryFilter) {
-                String simple = generateSimpleAllOrSome(ctx, property, (QueryFilter) value, "all");
-                if (simple != null) {
-                    return simple;
-                } else {
-                    return "not exists " + generateSubquery(ctx, property, negate((QueryFilter) value));
-                }
-            }
-        case QueryFilter.OP_NONE:
-            if (!(value instanceof QueryFilter)) {
+            }            
+            compositeFilterItem = (PrivateCompositeFilterItem) filterItem;
+            return generateSimpleAllOrSome(compositeFilterItem, "all");   
+        case None:
+            if (!(filterItem instanceof PrivateCompositeFilterItem)) {
                 return null;
-            } else if (value instanceof QueryFilter) {
-                // NOTE: Using "all" for the simple all or some is logically
-                // incorrect. It should be "some". However,
-                // because of a bug in how Hibernate 3.1.1 tries to simplify
-                // "not ... some/all ...) it actually ends
-                // up working as desired. TODO: If and when the Hibernate bug is
-                // fixed, this should be switched to "some".
-                String simple = generateSimpleAllOrSome(ctx, property, (QueryFilter) value, "all");
-                if (simple != null) {
-                    return "not ( " + simple + " )";
-                } else {
-                    return "not exists " + generateSubquery(ctx, property, (QueryFilter) value);
-                }
-            }
+            }            
+            compositeFilterItem = (PrivateCompositeFilterItem) filterItem;
+            return "NOT ( " + generateSimpleAllOrSome(compositeFilterItem, "some") + " )";             
+        case Exists:
+            if (!(filterItem instanceof PrivateCompositeFilterItem)) {
+                return null;
+            }            
+            compositeFilterItem = (PrivateCompositeFilterItem) filterItem;
+            return "EXISTS " + generateSubquery(ctx, property, negate((QueryFilter) value));
+
         default:
             throw new IllegalArgumentException("Filter comparison ( " + operator + " ) is invalid.");
         }
@@ -632,86 +603,15 @@ public abstract class BaseQueryProcessor {
      *            - a string used to fill in the collection operation. The value
      *            should be either "some" or "all".
      */
-    protected String generateSimpleAllOrSome(SearchContext ctx, String property, QueryFilter filter,
+    protected String generateSimpleAllOrSome(PrivateCompositeFilterItem filterItem,
             String operation) {
-        if (filter.getProperty() != null && !filter.getProperty().equals(""))
-            return null;
-
-        String op;
-
-        switch (filter.getOperator()) {
-        case QueryFilter.OP_EQUAL:
-            op = " = ";
-            break;
-        case QueryFilter.OP_NOT_EQUAL:
-            op = " != ";
-            break;
-        case QueryFilter.OP_LESS_THAN:
-            op = " > ";
-            break;
-        case QueryFilter.OP_LESS_OR_EQUAL:
-            op = " >= ";
-            break;
-        case QueryFilter.OP_GREATER_THAN:
-            op = " < ";
-            break;
-        case QueryFilter.OP_GREATER_OR_EQUAL:
-            op = " <= ";
-            break;
-        default:
-            return null;
-        }
-
-        Object value = InternalUtil.convertIfNeeded(filter.getValue(),
-                metadataHelper.get(ctx.rootClass, property).getJavaClass());
-        return param(ctx, value) + op + operation + " elements(" + getPathRef(ctx, property) + ")";
-    }
-
-    /**
-     * Convert a property value to the expected type for that property. Ex. a
-     * Long to and Integer.
-     * 
-     * @param isCollection
-     *            <code>true</code> if the value is a collection of values, for
-     *            example with IN and NOT_IN operators.
-     * @return the converted value.
-     */
-    @SuppressWarnings("rawtypes")
-    protected Object prepareValue(Class<?> rootClass, String property, Object value, boolean isCollection) {
-        if (value == null)
-            return null;
-
-        Class<?> expectedClass;
-        if (property != null && ("class".equals(property) || property.endsWith(".class"))) {
-            expectedClass = Class.class;
-        } else if (property != null && ("size".equals(property) || property.endsWith(".size"))) {
-            expectedClass = Integer.class;
-        } else {
-            expectedClass = metadataHelper.get(rootClass, property).getJavaClass();
-        }
-
-        // convert numbers to the expected type if needed (ex: Integer to Long)
-        if (isCollection) {
-            // Check each element in the collection.
-            Object[] val2;
-
-            if (value instanceof Collection) {
-                val2 = new Object[((Collection) value).size()];
-                int i = 0;
-                for (Object item : (Collection) value) {
-                    val2[i++] = InternalUtil.convertIfNeeded(item, expectedClass);
-                }
-            } else {
-                val2 = new Object[((Object[]) value).length];
-                int i = 0;
-                for (Object item : (Object[]) value) {
-                    val2[i++] = InternalUtil.convertIfNeeded(item, expectedClass);
-                }
-            }
-            return val2;
-        } else {
-            return InternalUtil.convertIfNeeded(value, expectedClass);
-        }
+        PrivateFilterItem child = filterItem.getSingleChild();
+        String path = child.getFieldResolver().getFieldName();
+        FilterType filterType = child.getFilterType();
+        String filterOperator = filterType.getOperator();
+        Supplier<Object> filterValueResolver = child.getFilterValueResolver();
+        return queryContext.registerParam(path, filterValueResolver) 
+        		+ filterOperator + operation + " ELEMENTS(" + queryContext.getPathRef(path) + ")";
     }
 
     /**

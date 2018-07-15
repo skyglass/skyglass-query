@@ -1,7 +1,6 @@
 package skyglass.data.filter;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,6 +11,7 @@ import skyglass.query.model.criteria.IJoinType;
 import skyglass.query.model.criteria.IPathResolver;
 import skyglass.query.model.criteria.IPredicate;
 import skyglass.query.model.criteria.IQueryBuilder;
+import skyglass.query.model.criteria.ITypeResolver;
 
 public class PrivatePathResolver implements IPathResolver {
 	
@@ -25,15 +25,33 @@ public class PrivatePathResolver implements IPathResolver {
     
     private IJoinType joinType;
     
+    private ITypeResolver typeResolver;
+    
+    private Class<?> rootClazz;
+    
     private int nextAliasNum = 1;
     private int nextSubqueryNum = 1;
     
     private Map<String, AliasNode> aliases = new HashMap<String, AliasNode>();
     private List<Supplier<Object>> paramList = new ArrayList<Supplier<Object>>();
     
-    public PrivatePathResolver(IJoinBuilder joinBuilder, IJoinType joinType) {
+    private PrivatePathResolver parentPathResolver;
+    
+    public PrivatePathResolver(Class<?> rootClazz, ITypeResolver typeResolver, 
+    		IJoinBuilder joinBuilder, IJoinType joinType) {
+    	this.rootClazz = rootClazz;
+    	this.typeResolver = typeResolver;
     	this.joinBuilder = joinBuilder;
     	this.joinType = joinType;
+        setRootAlias();
+    }
+    
+    public PrivatePathResolver(Class<?> rootClazz, PrivatePathResolver parentPathResolver) {
+        this.parentPathResolver = parentPathResolver;
+    	this.rootClazz = rootClazz;
+    	this.typeResolver = parentPathResolver.typeResolver;
+    	this.joinBuilder = parentPathResolver.joinBuilder;
+    	this.joinType = parentPathResolver.joinType;
         setRootAlias();
     }
     
@@ -147,10 +165,9 @@ public class PrivatePathResolver implements IPathResolver {
     /**
      * Add value to paramList and return the named parameter string ":pX".
      */
-    @SuppressWarnings("rawtypes")
-	protected String registerParam(Supplier<Object> valueResolver) {
+	protected String registerParam(String path, Supplier<Object> valueResolver) {
         paramList.add(valueResolver);
-        return ":p" + Integer.toString(paramList.size());
+        return ":" + getPropertyRef(path) + Integer.toString(paramList.size());
     }
 
     /**
@@ -166,6 +183,20 @@ public class PrivatePathResolver implements IPathResolver {
         String[] parts = splitPath(path);
 
         return getAlias(parts[0], false).alias + "." + parts[1];
+    }
+    
+    /**
+     * Given a full path to a property (ex. department.manager.salary), return
+     * the property itself (ex. salary).
+     */
+    protected String getPropertyRef(String path) {
+        if (path == null || "".equals(path)) {
+            return "";
+        }
+
+        String[] parts = splitPath(path);
+
+        return parts[1];
     }
 
     /**
@@ -193,14 +224,14 @@ public class PrivatePathResolver implements IPathResolver {
             // entity preceding it because (entity.id) is actually stored in the
             // same table as the foreign key.
             while (true) {
-                if (metadataHelper.isId(ctx.rootClass, currentPath)) {
+                if (typeResolver.isId(rootClazz, currentPath)) {
                     // if it's an id property
                     // skip one segment
                     if (pos == -1) {
                         return new String[] { "", path };
                     }
                     pos = currentPath.lastIndexOf('.', pos - 1);
-                } else if (!first && metadataHelper.get(ctx.rootClass, currentPath).isEntity()) {
+                } else if (!first && typeResolver.isEntity(rootClazz, currentPath)) {
                     // when we reach an entity (excluding the very first
                     // segment), we're done
                     return new String[] { currentPath, path.substring(currentPath.length() + 1) };
@@ -210,7 +241,7 @@ public class PrivatePathResolver implements IPathResolver {
                 // For size, we need to go back to the 'first' behavior
                 // for the next segment.
                 if (pos != -1 && lastSegment.equals("size")
-                        && metadataHelper.get(ctx.rootClass, currentPath.substring(0, pos)).isCollection()) {
+                        && typeResolver.isCollection(rootClazz, currentPath.substring(0, pos))) {
                     first = true;
                 }
 

@@ -8,7 +8,7 @@ import skyglass.data.filter.JunctionType;
 import skyglass.data.filter.PrivateQueryContext;
 import skyglass.query.model.query.IQuery;
 
-public interface IQueryBuilder<E, S> extends IValueResolver, IJoinBuilder {
+public interface IQueryBuilder<E, S> extends ITypeResolver, IJoinBuilder {
 	
     public IQuery createQuery(String queryString);
 

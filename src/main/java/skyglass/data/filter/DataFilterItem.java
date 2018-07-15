@@ -2,21 +2,21 @@ package skyglass.data.filter;
 
 import java.util.function.Supplier;
 
-import skyglass.query.model.criteria.IValueResolver;
+import skyglass.query.model.criteria.ITypeResolver;
 
 public class DataFilterItem extends PrivateFilterItem {
 
-    protected IValueResolver valueResolver;
+    protected ITypeResolver typeResolver;
 
     @Override
-    protected Supplier<Object> objectConverter(String fieldName, Object value) {
-        return valueResolver.objectConverter(getRootClass(), fieldName, value, false);
+    protected Supplier<Object> objectConverter(String fieldName, Object value, boolean isCollection) {
+        return typeResolver.objectConverter(getRootClass(), fieldName, value, isCollection);
     }
 
-    public DataFilterItem(IValueResolver valueResolver, Class<?> rootClass, FieldResolver fieldResolver,
+    public DataFilterItem(ITypeResolver typeResolver, Class<?> rootClass, FieldResolver fieldResolver,
             Object filterValue, FilterType filterType) {
         super(rootClass, fieldResolver, filterValue, filterType);
-        this.valueResolver = valueResolver;
+        this.typeResolver = typeResolver;
     }
 
 }

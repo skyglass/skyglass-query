@@ -8,7 +8,7 @@ import java.util.function.Supplier;
 
 import skyglass.query.model.criteria.IJoinBuilder;
 import skyglass.query.model.criteria.IJoinType;
-import skyglass.query.model.criteria.IValueResolver;
+import skyglass.query.model.criteria.ITypeResolver;
 import skyglass.query.model.query.QueryUtil;
 import skyglass.query.model.query.SelectField;
 import skyglass.query.model.query.Sort;
@@ -19,7 +19,7 @@ public class PrivateQueryContext {
 	
     private PrivateCompositeFilterItem rootFilterItem;
     
-    private IValueResolver valueResolver;
+    private ITypeResolver typeResolver;
     
     private IJoinBuilder joinBuilder;
     
@@ -39,18 +39,31 @@ public class PrivateQueryContext {
     
     private boolean distinct = false;
     
-    public PrivateQueryContext(JunctionType junctionType, IValueResolver valueResolver,
+    private PrivateQueryContext parentContext;
+    
+    public PrivateQueryContext(JunctionType junctionType, ITypeResolver typeResolver,
     		IJoinBuilder joinBuilder, Class<?> rootClazz, IJoinType joinType) {
     	this.junctionType = junctionType;
         this.rootFilterItem = new PrivateCompositeFilterItem(JunctionType.toFilterType(junctionType));
-        this.valueResolver = valueResolver;
+        this.typeResolver = typeResolver;
         this.joinBuilder = joinBuilder;
         this.rootClazz = rootClazz;
-        this.pathResolver = new PrivatePathResolver(joinBuilder, joinType);
+        this.pathResolver = new PrivatePathResolver(rootClazz, typeResolver, joinBuilder, joinType);
+    }
+    
+    public PrivateQueryContext(PrivateQueryContext parentContext, 
+    		PrivateCompositeFilterItem rootFilterItem) {
+    	this.parentContext = parentContext;
+    	this.junctionType = JunctionType.fromFilterType(rootFilterItem.getFilterType());
+        this.rootFilterItem = rootFilterItem;
+        this.typeResolver = parentContext.typeResolver;
+        this.joinBuilder = parentContext.joinBuilder;
+        this.rootClazz = rootFilterItem.getRootClass();
+        this.pathResolver = new PrivatePathResolver(rootClazz, parentContext.pathResolver);
     }
     
     public PrivateQueryContext(PrivateQueryContext parent, boolean isAnd) {
-        this(isAnd ? JunctionType.AND : JunctionType.OR, parent.valueResolver, 
+        this(isAnd ? JunctionType.AND : JunctionType.OR, parent.typeResolver, 
         		parent.joinBuilder, parent.rootClazz, parent.pathResolver.getJoinType());
     }
     
@@ -122,7 +135,7 @@ public class PrivateQueryContext {
 
     public PrivateFilterItem createFilterItem(String fieldName, FieldType fieldType,
     		FilterType filterType, Object filterValue) {
-        return new DataFilterItem(valueResolver, rootClazz, 
+        return new DataFilterItem(typeResolver, rootClazz, 
         		fieldResolverContext.addFieldResolver(this, fieldName, fieldType), filterValue,
                 filterType);
     }
@@ -359,8 +372,12 @@ public class PrivateQueryContext {
     	return selectFields;
     }
     
-    public String registerParam(Supplier<Object> valueResolver) {
-    	return pathResolver.registerParam(valueResolver);
+    public String registerParam(String path, Supplier<Object> valueResolver) {
+    	return pathResolver.registerParam(path, valueResolver);
+    }
+    
+    public String getPathRef(String path) {
+    	return pathResolver.getPathRef(path);
     }
     
     private PrivateFilterItem createPrivateFilterItem(FilterItem customFilterItem) {

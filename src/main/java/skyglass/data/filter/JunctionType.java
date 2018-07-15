@@ -10,4 +10,11 @@ public enum JunctionType {
 		}
 		return FilterType.And;
 	}
+	
+	public static JunctionType fromFilterType(FilterType filterType) {
+		if (filterType == FilterType.Or) {
+			return JunctionType.OR;
+		}
+		return JunctionType.AND;
+	}
 }
