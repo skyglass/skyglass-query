@@ -132,12 +132,16 @@ public interface IBaseDataFilter<T, F> {
 
     public F setJoinType(IJoinType joinType);
 
-    public IJoinResolver<T, F> addJoin(String alias);
-
-    public IJoinResolver<T, F> addLeftJoin(String alias);
-
     public IPredicate createAtomicFilter(String fieldName, FilterType filterType, Supplier<Object> filterValueResolver);
 
     public IQueryBuilder<T, T> getQueryBuilder();
+    
+    public IJoinResolver<T> addJoin(String alias);
+
+    public IJoinResolver<T> addLeftJoin(String alias);
+    
+    public IJoinResolver<T> addSubQueryJoin(String alias);
+
+    public IJoinResolver<T> addSubQueryLeftJoin(String alias);
 
 }

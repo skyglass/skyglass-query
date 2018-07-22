@@ -18,6 +18,7 @@ import skyglass.data.filter.IJoinResolver;
 import skyglass.data.filter.JunctionType;
 import skyglass.data.filter.OrderField;
 import skyglass.data.filter.PrivateFilterItem;
+import skyglass.data.filter.PrivateQueryContext;
 import skyglass.data.filter.PrivateCompositeFilterItem;
 import skyglass.data.filter.request.IFilterRequest;
 import skyglass.data.query.QueryResult;
@@ -29,7 +30,8 @@ import skyglass.query.model.criteria.IPredicate;
 import skyglass.query.model.criteria.IQueryBuilder;
 import skyglass.query.model.criteria.ITypedQuery;
 
-public abstract class AbstractDataFilter<T, F> extends AbstractBaseDataFilter<T, F> implements IDataFilter<T, F> {
+public abstract class AbstractDataFilter<T, F> extends AbstractBaseDataFilter<T, F> 
+	implements IDataFilter<T, F> {
 
     public AbstractDataFilter(Class<T> rootClazz, JunctionType junctionType, IQueryBuilder<T, T> queryBuilder,
             IFilterRequest request) {
@@ -251,13 +253,25 @@ public abstract class AbstractDataFilter<T, F> extends AbstractBaseDataFilter<T,
     }
 
     @Override
-    public IJoinResolver<T, F> addLeftJoin(String alias) {
-        return new CustomJoin<T, T, F>(self(), queryContext, alias, IJoinType.LEFT);
+    public IJoinResolver<T> addLeftJoin(String alias) {
+        return new CustomJoin<T, T>(this, queryContext, alias, IJoinType.LEFT);
     }    
         
     @Override
-    public IJoinResolver<T, F> addJoin(String alias) {
-        return new CustomJoin<T, T, F>(self(), queryContext, alias, IJoinType.INNER);
+    public IJoinResolver<T> addJoin(String alias) {
+        return new CustomJoin<T, T>(this, queryContext, alias, IJoinType.INNER);
+    }
+    
+    @Override
+    public IJoinResolver<T> addSubQueryLeftJoin(String alias) {
+        return new CustomJoin<T, T>(this, 
+        		new PrivateQueryContext(queryContext, queryContext.isDisjunction()), alias, IJoinType.LEFT);
+    }    
+        
+    @Override
+    public IJoinResolver<T> addSubQueryJoin(String alias) {
+        return new CustomJoin<T, T>(this,
+        		new PrivateQueryContext(queryContext, queryContext.isDisjunction()), alias, IJoinType.INNER);
     }
 
 }

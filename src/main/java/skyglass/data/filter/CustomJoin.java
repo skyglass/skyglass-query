@@ -3,7 +3,7 @@ package skyglass.data.filter;
 import skyglass.query.model.criteria.IJoinType;
 import skyglass.query.model.criteria.IQueryBuilder;
 
-public class CustomJoin<E, S, F> implements IJoinResolver<E, F> {
+public class CustomJoin<E, S> implements IJoinResolver<E> {
 
     private IJoinType joinType;
 
@@ -13,48 +13,47 @@ public class CustomJoin<E, S, F> implements IJoinResolver<E, F> {
 
     private String alias;
 
-    private CompositeFilter<E, F> compositeFilter = new CompositeFilter<E, F>(this, this, true);
+    private CompositeFilter<E> compositeFilter = new CompositeFilter<E>(queryContext, this, true);
 
     private int subQueryCounter = 1;
     
-    private F filter;
+    private IJoinResolver<E> parent;
 
-    public CustomJoin(F filter, PrivateQueryContext queryContext, String aliasPath, IJoinType joinType) {
-        this.filter = filter;
+    public CustomJoin(IJoinResolver<E> parent, PrivateQueryContext queryContext, String aliasPath, IJoinType joinType) {
+        this.parent = parent;
     	this.joinType = joinType;
         this.queryContext = queryContext;
         this.aliasPath = aliasPath;
     }
 
     @Override
-    public IJoinResolver<E, F> equals(String propertyName, Object value) {
+    public IJoinResolver<E> equals(String propertyName, Object value) {
         return compositeFilter.equals(propertyName, value);
     }
 
     @Override
-    public IJoinResolver<E, F> notEquals(String propertyName, Object value) {
+    public IJoinResolver<E> notEquals(String propertyName, Object value) {
         return compositeFilter.notEquals(propertyName, value);
     }
 
     @Override
-    public IJoinResolver<E, F> eqProperty(String propertyName, String otherPropertyName) {
+    public IJoinResolver<E> eqProperty(String propertyName, String otherPropertyName) {
         return null;
     }
 
     @Override
-    public IJoinResolver<E, F> and() {
+    public IJoinResolver<E> and() {
         return compositeFilter.and();
     }
 
     @Override
-    public IJoinResolver<E, F> or() {
+    public IJoinResolver<E> or() {
         return compositeFilter.or();
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public IJoinResolver<E, F> done() {
-        return (IJoinResolver<E, F>) resolve();
+    public IJoinResolver<E> done() {
+        return (IJoinResolver<E>) resolve();
     }
 
     private PrivateQueryContext createQueryContext(boolean isAnd) {
@@ -73,11 +72,11 @@ public class CustomJoin<E, S, F> implements IJoinResolver<E, F> {
     }
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
-    private PrivateCompositeFilterItem createCompositeFilterItem(CompositeFilter<E, F> compositeFilter) {
+    private PrivateCompositeFilterItem createCompositeFilterItem(CompositeFilter<E> compositeFilter) {
         if (compositeFilter instanceof SubQueryFilter) {
             return createSubQueryFilterItem(aliasPath, queryContext, (SubQueryFilter) compositeFilter);
         }
-        for (CompositeFilter<E, F> child : compositeFilter.getCompositeChildren()) {
+        for (CompositeFilter<E> child : compositeFilter.getCompositeChildren()) {
             queryContext.addRootChild(
             		createCompositeFilterItem(child));
         }
@@ -89,10 +88,10 @@ public class CustomJoin<E, S, F> implements IJoinResolver<E, F> {
 
     private <SUB> PrivateCompositeFilterItem createSubQueryFilterItem(String parentPath, 
     		PrivateQueryContext parentContext,
-    		SubQueryFilter<E, SUB, F> subQueryFilter) {
+    		SubQueryFilter<E, SUB> subQueryFilter) {
     	PrivateQueryContext subQueryContext = createQueryContext(subQueryFilter.isAnd());
         String subQueryAlias = getNextSubQueryAlias();
-        for (CompositeFilter<E, F> compositeFilter : subQueryFilter.getCompositeChildren()) {
+        for (CompositeFilter<E> compositeFilter : subQueryFilter.getCompositeChildren()) {
             subQueryContext.addRootChild(
             		createCompositeSubQueryFilterItem(subQueryAlias, subQueryContext, 
             				compositeFilter));
@@ -100,7 +99,7 @@ public class CustomJoin<E, S, F> implements IJoinResolver<E, F> {
         for (AtomicFilter atomicFilter : subQueryFilter.getAtomicChildren()) {
         	subQueryContext.addRootChild(createAtomicSubQueryFilterItem(subQueryContext, atomicFilter));
         }
-        SubQueryFilter<E, SUB, F> propertiesSubQueryFilter = (SubQueryFilter<E, SUB, F>) subQueryFilter;
+        SubQueryFilter<E, SUB> propertiesSubQueryFilter = (SubQueryFilter<E, SUB>) subQueryFilter;
         String projectionName = null;
         String[] parentNames = new String[propertiesSubQueryFilter.getProperties().size()];
         int i = 0;
@@ -160,13 +159,13 @@ public class CustomJoin<E, S, F> implements IJoinResolver<E, F> {
     @SuppressWarnings("unchecked")
     private <SUB> PrivateFilterItem createCompositeSubQueryFilterItem(
     		String path, PrivateQueryContext parentContext,
-    		CompositeFilter<E, F> compositeFilter) {
+    		CompositeFilter<E> compositeFilter) {
         if (compositeFilter instanceof SubQueryFilter) {
             return createSubQueryFilterItem(path, parentContext, 
-            		(SubQueryFilter<E, SUB, F>) compositeFilter);
+            		(SubQueryFilter<E, SUB>) compositeFilter);
         }
         PrivateQueryContext subQueryContext = createQueryContext(compositeFilter.isAnd());
-        for (CompositeFilter<E, F> child : compositeFilter.getCompositeChildren()) {
+        for (CompositeFilter<E> child : compositeFilter.getCompositeChildren()) {
         	subQueryContext.addRootChild(
             		createCompositeSubQueryFilterItem(path, subQueryContext, child));
         }
@@ -180,23 +179,23 @@ public class CustomJoin<E, S, F> implements IJoinResolver<E, F> {
     }
 
     @Override
-    public F resolve() {
+    public IJoinResolver<E> resolve() {
         return resolve(null);
     }
 
     @Override
-    public F resolve(String resolveAlias) {
+    public IJoinResolver<E> resolve(String resolveAlias) {
         createCompositeFilterItem(compositeFilter);
-        return filter;
+        return parent;
     }
 
     @Override
-    public F invert() {
+    public IJoinResolver<E> invert() {
         return invert(null);
     }
 
     @Override
-    public F invert(String resolveAlias) {
+    public IJoinResolver<E> invert(String resolveAlias) {
         if (resolveAlias != null) {
             aliasPath = resolveAlias;
         }
@@ -204,7 +203,7 @@ public class CustomJoin<E, S, F> implements IJoinResolver<E, F> {
             alias = queryContext.resolveAliasPath(aliasPath, joinType);
         }
         queryContext.createFilterItem(alias + ".id", FilterType.IsNull, null);
-        return filter;
+        return parent;
     }
 
     private String getNextSubQueryAlias() {
@@ -212,115 +211,137 @@ public class CustomJoin<E, S, F> implements IJoinResolver<E, F> {
     }
 
     @Override
-    public <SUB> SubQueryFilter<E, SUB, F> idExistsSubQuery(Class<SUB> clazz) {
+    public <SUB> SubQueryFilter<E, SUB> idExistsSubQuery(Class<SUB> clazz) {
         return compositeFilter.idExistsSubQuery(clazz);
     }
 
     @Override
-    public <SUB> SubQueryFilter<E, SUB, F> idNotExistsSubQuery(Class<SUB> clazz) {
+    public <SUB> SubQueryFilter<E, SUB> idNotExistsSubQuery(Class<SUB> clazz) {
         return compositeFilter.idNotExistsSubQuery(clazz);
     }
 
     @Override
-    public <SUB> SubQueryFilter<E, SUB, F> propertyExistsSubQuery(Class<SUB> clazz, String alias) {
+    public <SUB> SubQueryFilter<E, SUB> propertyExistsSubQuery(Class<SUB> clazz, String alias) {
         return compositeFilter.propertyExistsSubQuery(clazz, alias);
     }
 
     @Override
-    public <SUB> SubQueryFilter<E, SUB, F> propertyNotExistsSubQuery(Class<SUB> clazz, String alias) {
+    public <SUB> SubQueryFilter<E, SUB> propertyNotExistsSubQuery(Class<SUB> clazz, String alias) {
         return compositeFilter.propertyNotExistsSubQuery(clazz, alias);
     }
 
     @Override
-    public <SUB> SubQueryFilter<E, SUB, F> propertyExistsSubQuery(Class<SUB> clazz, String parentAlias, String alias) {
+    public <SUB> SubQueryFilter<E, SUB> propertyExistsSubQuery(Class<SUB> clazz, String parentAlias, String alias) {
         return compositeFilter.propertyExistsSubQuery(clazz, parentAlias, alias);
     }
 
     @Override
-    public <SUB> SubQueryFilter<E, SUB, F> propertyNotExistsSubQuery(Class<SUB> clazz, String parentAlias,
+    public <SUB> SubQueryFilter<E, SUB> propertyNotExistsSubQuery(Class<SUB> clazz, String parentAlias,
             String alias) {
         return compositeFilter.propertyNotExistsSubQuery(clazz, parentAlias, alias);
     }
 
     @Override
-    public <SUB> SubQueryFilter<E, SUB, F> idInSubQuery(Class<SUB> clazz) {
+    public <SUB> SubQueryFilter<E, SUB> idInSubQuery(Class<SUB> clazz) {
         return compositeFilter.idInSubQuery(clazz);
     }
 
     @Override
-    public <SUB> SubQueryFilter<E, SUB, F> idNotInSubQuery(Class<SUB> clazz) {
+    public <SUB> SubQueryFilter<E, SUB> idNotInSubQuery(Class<SUB> clazz) {
         return compositeFilter.idNotInSubQuery(clazz);
     }
 
     @Override
-    public <SUB> SubQueryFilter<E, SUB, F> propertyEqualsSubQuery(Class<SUB> clazz, String alias) {
+    public <SUB> SubQueryFilter<E, SUB> propertyEqualsSubQuery(Class<SUB> clazz, String alias) {
         return compositeFilter.propertyEqualsSubQuery(clazz, alias);
     }
 
     @Override
-    public <SUB> SubQueryFilter<E, SUB, F> propertyNotEqualsSubQuery(Class<SUB> clazz, String alias) {
+    public <SUB> SubQueryFilter<E, SUB> propertyNotEqualsSubQuery(Class<SUB> clazz, String alias) {
         return compositeFilter.propertyNotEqualsSubQuery(clazz, alias);
     }
 
     @Override
-    public <SUB> SubQueryFilter<E, SUB, F> propertyInSubQuery(Class<SUB> clazz, String alias) {
+    public <SUB> SubQueryFilter<E, SUB> propertyInSubQuery(Class<SUB> clazz, String alias) {
         return compositeFilter.propertyInSubQuery(clazz, alias);
     }
 
     @Override
-    public <SUB> SubQueryFilter<E, SUB, F> propertyNotInSubQuery(Class<SUB> clazz, String alias) {
+    public <SUB> SubQueryFilter<E, SUB> propertyNotInSubQuery(Class<SUB> clazz, String alias) {
         return compositeFilter.propertyNotInSubQuery(clazz, alias);
     }
 
     @Override
-    public <SUB> SubQueryFilter<E, SUB, F> propertyEqualsSubQuery(Class<SUB> clazz, String parentAlias, String alias) {
+    public <SUB> SubQueryFilter<E, SUB> propertyEqualsSubQuery(Class<SUB> clazz, String parentAlias, String alias) {
         return compositeFilter.propertyEqualsSubQuery(clazz, parentAlias, alias);
     }
 
     @Override
-    public <SUB> SubQueryFilter<E, SUB, F> propertyNotEqualsSubQuery(Class<SUB> clazz, String parentAlias,
+    public <SUB> SubQueryFilter<E, SUB> propertyNotEqualsSubQuery(Class<SUB> clazz, String parentAlias,
             String alias) {
         return compositeFilter.propertyNotEqualsSubQuery(clazz, parentAlias, alias);
     }
 
     @Override
-    public <SUB> SubQueryFilter<E, SUB, F> propertyInSubQuery(Class<SUB> clazz, String parentAlias, String alias) {
+    public <SUB> SubQueryFilter<E, SUB> propertyInSubQuery(Class<SUB> clazz, String parentAlias, String alias) {
         return compositeFilter.propertyInSubQuery(clazz, parentAlias, alias);
     }
 
     @Override
-    public <SUB> SubQueryFilter<E, SUB, F> propertyNotInSubQuery(Class<SUB> clazz, String parentAlias, String alias) {
+    public <SUB> SubQueryFilter<E, SUB> propertyNotInSubQuery(Class<SUB> clazz, String parentAlias, String alias) {
         return compositeFilter.propertyNotInSubQuery(clazz, parentAlias, alias);
     }
 
     @Override
-    public <SUB> SubQueryFilter<E, SUB, F> propertiesEqualsSubQuery(Class<SUB> clazz) {
+    public <SUB> SubQueryFilter<E, SUB> propertiesEqualsSubQuery(Class<SUB> clazz) {
         return compositeFilter.propertiesEqualsSubQuery(clazz);
     }
 
     @Override
-    public <SUB> SubQueryFilter<E, SUB, F> propertiesNotEqualsSubQuery(Class<SUB> clazz) {
+    public <SUB> SubQueryFilter<E, SUB> propertiesNotEqualsSubQuery(Class<SUB> clazz) {
         return compositeFilter.propertiesNotEqualsSubQuery(clazz);
     }
 
     @Override
-    public <SUB> SubQueryFilter<E, SUB, F> propertiesInSubQuery(Class<SUB> clazz) {
+    public <SUB> SubQueryFilter<E, SUB> propertiesInSubQuery(Class<SUB> clazz) {
         return compositeFilter.propertiesInSubQuery(clazz);
     }
 
     @Override
-    public <SUB> SubQueryFilter<E, SUB, F> propertiesNotInSubQuery(Class<SUB> clazz) {
+    public <SUB> SubQueryFilter<E, SUB> propertiesNotInSubQuery(Class<SUB> clazz) {
         return compositeFilter.propertiesNotInSubQuery(clazz);
     }
 
     @Override
-    public <SUB> SubQueryFilter<E, SUB, F> propertiesExistSubQuery(Class<SUB> clazz) {
+    public <SUB> SubQueryFilter<E, SUB> propertiesExistSubQuery(Class<SUB> clazz) {
         return compositeFilter.propertiesExistSubQuery(clazz);
     }
 
     @Override
-    public <SUB> SubQueryFilter<E, SUB, F> propertiesNotExistSubQuery(Class<SUB> clazz) {
+    public <SUB> SubQueryFilter<E, SUB> propertiesNotExistSubQuery(Class<SUB> clazz) {
         return compositeFilter.propertiesNotExistSubQuery(clazz);
+    }
+    
+	@Override
+    public IJoinResolver<E> addLeftJoin(String alias) {
+        return new CustomJoin<E, S>(this, queryContext, alias, IJoinType.LEFT);
+    }    
+        
+	@Override
+    public IJoinResolver<E> addJoin(String alias) {
+        return new CustomJoin<E, S>(this, queryContext, alias, IJoinType.INNER);
+    }
+    
+	@Override
+    public IJoinResolver<E> addSubQueryLeftJoin(String alias) {
+        return new CustomJoin<E, S>(this, 
+        		new PrivateQueryContext(queryContext, queryContext.isDisjunction()), alias, IJoinType.LEFT);
+    }    
+        
+	@Override
+    public IJoinResolver<E> addSubQueryJoin(String alias) {
+        return new CustomJoin<E, S>(this,
+        		new PrivateQueryContext(queryContext, queryContext.isDisjunction()), alias, IJoinType.INNER);
     }
 
 }
