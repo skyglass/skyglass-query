@@ -253,25 +253,13 @@ public abstract class AbstractDataFilter<T, F> extends AbstractBaseDataFilter<T,
     }
 
     @Override
-    public IJoinResolver<T> addLeftJoin(String alias) {
-        return new CustomJoin<T, T>(this, queryContext, alias, IJoinType.LEFT);
+    public IJoinResolver<F, T> addLeftJoin(String fieldName, String alias) {
+        return new CustomJoin<F, T>(self(), null, queryContext, fieldName, alias, IJoinType.LEFT);
     }    
         
     @Override
-    public IJoinResolver<T> addJoin(String alias) {
-        return new CustomJoin<T, T>(this, queryContext, alias, IJoinType.INNER);
-    }
-    
-    @Override
-    public IJoinResolver<T> addSubQueryLeftJoin(String alias) {
-        return new CustomJoin<T, T>(this, 
-        		new PrivateQueryContext(queryContext, queryContext.isDisjunction()), alias, IJoinType.LEFT);
-    }    
-        
-    @Override
-    public IJoinResolver<T> addSubQueryJoin(String alias) {
-        return new CustomJoin<T, T>(this,
-        		new PrivateQueryContext(queryContext, queryContext.isDisjunction()), alias, IJoinType.INNER);
+    public IJoinResolver<F, T> addJoin(String fieldName, String alias) {
+        return new CustomJoin<F, T>(self(), null, queryContext, fieldName, alias, IJoinType.INNER);
     }
 
 }

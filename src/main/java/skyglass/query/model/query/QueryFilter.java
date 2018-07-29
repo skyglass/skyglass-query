@@ -19,8 +19,6 @@ public class QueryFilter implements Serializable {
 
     protected FilterType filterType;
 
-
-
     public QueryFilter() {
     }
 

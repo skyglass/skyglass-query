@@ -10,7 +10,7 @@ import skyglass.query.model.criteria.IPredicate;
 import skyglass.query.model.criteria.IQueryBuilder;
 import skyglass.query.model.query.Sort;
 
-public interface IBaseDataFilter<T, F> {
+public interface IBaseDataFilter<T, F>{
 	
     public QueryResult<T> getResult();
 
@@ -136,12 +136,8 @@ public interface IBaseDataFilter<T, F> {
 
     public IQueryBuilder<T, T> getQueryBuilder();
     
-    public IJoinResolver<T> addJoin(String alias);
+    public IJoinResolver<F, T> addJoin(String fieldName, String alias);
 
-    public IJoinResolver<T> addLeftJoin(String alias);
-    
-    public IJoinResolver<T> addSubQueryJoin(String alias);
-
-    public IJoinResolver<T> addSubQueryLeftJoin(String alias);
+    public IJoinResolver<F, T> addLeftJoin(String fieldName, String alias);
 
 }

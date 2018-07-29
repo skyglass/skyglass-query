@@ -521,13 +521,14 @@ public abstract class BaseQueryProcessor {
                 return null;
             }            
             compositeFilterItem = (PrivateCompositeFilterItem) filterItem;
-            return "NOT ( " + generateSimpleAllOrSome(compositeFilterItem, "some") + " )";             
-        case Exists:
+            return "NOT ( " + generateSimpleAllOrSome(compositeFilterItem, "some") + " )";  
+        //TODO: to be implemented
+        /*case Exists:
             if (!(filterItem instanceof PrivateCompositeFilterItem)) {
                 return null;
             }            
             compositeFilterItem = (PrivateCompositeFilterItem) filterItem;
-            return "EXISTS " + generateSubquery(ctx, property, negate((QueryFilter) value));
+            return "EXISTS " + generateSubquery(ctx, property, negate((QueryFilter) value));*/
 
         default:
             throw new IllegalArgumentException("Filter comparison ( " + operator + " ) is invalid.");
