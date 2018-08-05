@@ -35,4 +35,22 @@ public class JpaSubCriteriaBuilder<E0, S, S0> extends AbstractJpaQueryBuilder<E0
         throw new UnsupportedOperationException("cannot get parent query, please use other API");
     }
 
+	@Override
+	public boolean isCollection(Class<?> rootClass, String path) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public boolean isEntity(Class<?> rootClass, String path) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public boolean isId(Class<?> rootClass, String path) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
 }

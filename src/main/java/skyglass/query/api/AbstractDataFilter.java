@@ -8,18 +8,15 @@ import java.util.function.Supplier;
 
 import skyglass.data.filter.AbstractBaseDataFilter;
 import skyglass.data.filter.CustomFilterResolver;
-import skyglass.data.filter.CustomJoin;
 import skyglass.data.filter.CustomJpaFilterResolver;
 import skyglass.data.filter.FieldResolver;
 import skyglass.data.filter.FieldType;
 import skyglass.data.filter.FilterType;
 import skyglass.data.filter.IDataFilter;
-import skyglass.data.filter.IJoinResolver;
 import skyglass.data.filter.JunctionType;
 import skyglass.data.filter.OrderField;
-import skyglass.data.filter.PrivateFilterItem;
-import skyglass.data.filter.PrivateQueryContext;
 import skyglass.data.filter.PrivateCompositeFilterItem;
+import skyglass.data.filter.PrivateFilterItem;
 import skyglass.data.filter.request.IFilterRequest;
 import skyglass.data.query.QueryResult;
 import skyglass.query.model.criteria.IExpression;
@@ -250,16 +247,6 @@ public abstract class AbstractDataFilter<T, F> extends AbstractBaseDataFilter<T,
             return fieldResolver.getCustomFieldResolver().getPredicate();
         }
         return createAtomicFilter(fieldName, filterType, filterValueResolver, true);
-    }
-
-    @Override
-    public IJoinResolver<F, T> addLeftJoin(String fieldName, String alias) {
-        return new CustomJoin<F, T>(self(), null, queryContext, fieldName, alias, IJoinType.LEFT);
-    }    
-        
-    @Override
-    public IJoinResolver<F, T> addJoin(String fieldName, String alias) {
-        return new CustomJoin<F, T>(self(), null, queryContext, fieldName, alias, IJoinType.INNER);
     }
 
 }

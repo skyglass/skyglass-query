@@ -257,5 +257,23 @@ public abstract class AbstractJpaQueryBuilder<E, S> extends AbstractQueryBuilder
     public Supplier<Object> objectConverter(Class<?> rootClass, String property, Object value, boolean isCollection) {
         return () -> jpaMetadataHelper.convertObject(rootClass, property, value, isCollection);
     }
+    
+	@Override
+	public boolean isCollection(Class<?> rootClass, String path) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public boolean isEntity(Class<?> rootClass, String path) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public boolean isId(Class<?> rootClass, String path) {
+		// TODO Auto-generated method stub
+		return false;
+	}
 
 }

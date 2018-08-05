@@ -2,6 +2,8 @@ package skyglass.query.model.query;
 
 import java.util.List;
 
+import skyglass.data.filter.FilterItem;
+
 /**
  * The base search DTO (data transfer object). A Search object is passed into a
  * DAO or Search Processor to define the parameters for a search. There are six
@@ -181,7 +183,7 @@ public interface ISearchQuery {
 
     public Class<?> getSearchClass();
 
-    public List<QueryFilter> getFilters();
+    public List<FilterItem> getFilters();
 
     public boolean isDisjunction();
 

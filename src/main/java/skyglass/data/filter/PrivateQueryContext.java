@@ -3,15 +3,17 @@ package skyglass.data.filter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
+import skyglass.data.query.QueryFilter;
 import skyglass.query.model.criteria.IJoinBuilder;
 import skyglass.query.model.criteria.IJoinType;
 import skyglass.query.model.criteria.ITypeResolver;
 import skyglass.query.model.query.QueryUtil;
 import skyglass.query.model.query.SelectField;
-import skyglass.query.model.query.Sort;
 
 public class PrivateQueryContext {
 	
@@ -33,9 +35,11 @@ public class PrivateQueryContext {
     
     private Collection<PrivateExpression> groupByList = new ArrayList<>();
     
-    private Collection<SelectField> selectFields = new ArrayList<>();
+    private List<OrderField> orderFields = new ArrayList<OrderField>();
     
-    private Collection<Sort> sorts = new ArrayList<>();
+    private List<SelectField> selectFields = new ArrayList<>();
+    
+    private Collection<String> fetches = new ArrayList<>();
     
     private boolean distinct = false;
     
@@ -198,135 +202,99 @@ public class PrivateQueryContext {
         		createPrivateFilterItems(filterItems));
     }
 
-    public void all(String fieldName, FilterItem... filterItems) {
-        addFilters(fieldName, FilterType.All, createPrivateFilterItems(filterItems));
+    public PrivateFilterItem all(String fieldName, FilterItem... filterItems) {
+        return addFilters(fieldName, FilterType.All, createPrivateFilterItems(filterItems));
     }
 
-    public void and(FilterItem... filterItems) {
-        addFilters(FilterType.And, createPrivateFilterItems(filterItems));
+    public PrivateFilterItem and(FilterItem... filterItems) {
+        return addFilters(FilterType.And, createPrivateFilterItems(filterItems));
     }
     
-    public void empty(String fieldName) {
-       addFilter(fieldName, FilterType.Empty);
+    public PrivateFilterItem empty(String fieldName) {
+       return addFilter(fieldName, FilterType.Empty);
     }
 
-    public void equal(String fieldName, Object value) {
-        addFilter(fieldName, FilterType.Equals, value);
+    public PrivateFilterItem equal(String fieldName, Object value) {
+        return addFilter(fieldName, FilterType.Equals, value);
     }
 
-    public void greaterOrEqual(String fieldName, Object value) {
-        addFilter(fieldName, FilterType.GreaterOrEquals, value);
+    public PrivateFilterItem greaterOrEqual(String fieldName, Object value) {
+        return addFilter(fieldName, FilterType.GreaterOrEquals, value);
     }
 
-    public void greater(String fieldName, Object value) {
-        addFilter(fieldName, FilterType.Greater, value);
+    public PrivateFilterItem greater(String fieldName, Object value) {
+        return addFilter(fieldName, FilterType.Greater, value);
     }
 
-    public void like(String fieldName, String value) {
-        addFilter(fieldName, FilterType.Like, value);
+    public PrivateFilterItem like(String fieldName, String value) {
+        return addFilter(fieldName, FilterType.Like, value);
     }
 
-    public void in(String fieldName, Collection<?> values) {
-        addFilter(fieldName, FilterType.In, values);
+    public PrivateFilterItem in(String fieldName, Collection<?> values) {
+        return addFilter(fieldName, FilterType.In, values);
     }
 
-    public void in(String fieldName, Object... values) {
-        addFilter(fieldName, FilterType.In, values);
+    public PrivateFilterItem in(String fieldName, Object... values) {
+        return addFilter(fieldName, FilterType.In, values);
     }
 
-    public void lessOrEqual(String fieldName, Object value) {
-        addFilter(fieldName, FilterType.LessOrEquals, value);
+    public PrivateFilterItem lessOrEqual(String fieldName, Object value) {
+        return addFilter(fieldName, FilterType.LessOrEquals, value);
     }
 
-    public void less(String fieldName, Object value) {
-        addFilter(fieldName, FilterType.Less, value);
+    public PrivateFilterItem less(String fieldName, Object value) {
+        return addFilter(fieldName, FilterType.Less, value);
     }
 
-    public void none(String fieldName, FilterItem... filterItems) {
-        addFilters(fieldName, FilterType.None, createPrivateFilterItems(filterItems));
+    public PrivateFilterItem none(String fieldName, FilterItem... filterItems) {
+        return addFilters(fieldName, FilterType.None, createPrivateFilterItems(filterItems));
     }
 
-    public void not(FilterItem... filterItems) {
-        addFilters(FilterType.Not, createPrivateFilterItems(filterItems));
+    public PrivateFilterItem not(FilterItem... filterItems) {
+        return addFilters(FilterType.Not, createPrivateFilterItems(filterItems));
     }
 
-    public void notEqual(String fieldName, Object value) {
-        addFilter(fieldName, FilterType.NotEquals, value);
+    public PrivateFilterItem notEqual(String fieldName, Object value) {
+        return addFilter(fieldName, FilterType.NotEquals, value);
     }
 
-    public void notIn(String fieldName, Collection<?> values) {
-        addFilter(fieldName, FilterType.NotIn, values);
+    public PrivateFilterItem notIn(String fieldName, Collection<?> values) {
+        return addFilter(fieldName, FilterType.NotIn, values);
     }
 
-    public void notIn(String fieldName, Object... values) {
-        addFilter(fieldName, FilterType.NotIn, values);
+    public PrivateFilterItem notIn(String fieldName, Object... values) {
+        return addFilter(fieldName, FilterType.NotIn, values);
     }
 
-    public void notEmpty(String fieldName) {
-        addFilter(fieldName, FilterType.NotEmpty);
+    public PrivateFilterItem notEmpty(String fieldName) {
+        return addFilter(fieldName, FilterType.NotEmpty);
     }
 
-    public void notNull(String fieldName) {
-        addFilter(fieldName, FilterType.IsNotNull);
+    public PrivateFilterItem notNull(String fieldName) {
+        return addFilter(fieldName, FilterType.IsNotNull);
     }
 
-    public void isNull(String fieldName) {
-        addFilter(fieldName, FilterType.IsNull);
+    public PrivateFilterItem isNull(String fieldName) {
+        return addFilter(fieldName, FilterType.IsNull);
     }
 
-    public void or(FilterItem... filterItems) {
-        addFilters(FilterType.Or, createPrivateFilterItems(filterItems));
+    public PrivateFilterItem or(FilterItem... filterItems) {
+        return addFilters(FilterType.Or, createPrivateFilterItems(filterItems));
     }
 
-    public void some(String fieldName, FilterItem... filterItems) {
-        addFilters(fieldName, FilterType.Some, createPrivateFilterItems(filterItems));
+    public PrivateFilterItem some(String fieldName, FilterItem... filterItems) {
+        return addFilters(fieldName, FilterType.Some, createPrivateFilterItems(filterItems));
     }
     
-    public void range(String fieldName, Object minValue, Object maxValue) {
-    	addFilters(FilterType.And, addFilter(fieldName, FilterType.GreaterOrEquals, minValue),
+    public PrivateFilterItem range(String fieldName, Object minValue, Object maxValue) {
+    	return addFilters(FilterType.And, addFilter(fieldName, FilterType.GreaterOrEquals, minValue),
     			addFilter(fieldName, FilterType.LessOrEquals, maxValue));
     }
-
-    public void addSort(Sort sort) {
-        if (sort == null)
-            return;
-        sorts.add(sort);
-    }
-
-    public void addSorts(Sort... sorts) {
-        if (sorts != null) {
-            for (Sort sort : sorts) {
-                addSort(sort);
-            }
-        }
-    }
-
-    public void addSort(String property, boolean desc) {
-        addSort(property, desc, false);
-    }
-
-    public void addSort(String property, boolean desc, boolean ignoreCase) {
-        if (property == null)
-            return; // null properties do nothing, don't bother to add them.
-        addSort(new Sort(property, desc, ignoreCase));
-    }
-
-    public void addSortAsc(String property) {
-        addSort(property, false, false);
-    }
-
-    public void addSortAsc(String property, boolean ignoreCase) {
-        addSort(property, false, ignoreCase);
-    }
-
-    public void addSortDesc(String property) {
-        addSort(property, true, false);
-    }
-
-    public void addSortDesc(String property, boolean ignoreCase) {
-        addSort(property, true, ignoreCase);
-    }
     
+    public PrivateFilterItem negate(FilterItem filterItem) {
+        return addFilters(FilterType.Not, addExplicitNullChecks(createPrivateFilterItem(filterItem)));
+    }
+
     public void addSelectFields(String... fieldNames) {
     	addSelectFields(SelectType.Property, fieldNames);
     }
@@ -344,6 +312,25 @@ public class PrivateQueryContext {
     public void addSelectField(String fieldName, SelectType selectOperator) {
     	fieldResolverContext.addFieldResolver(this, fieldName);
     	selectFields.add(new SelectField(fieldName, selectOperator));
+    }
+    
+    public void addFetches(String... fieldNames) {
+    	for (String fieldName: fieldNames) {
+    		addFetch(fieldName);
+    	}
+    }
+    
+    public void addFetch(String fieldName) {
+    	fieldResolverContext.addFieldResolver(this, fieldName);
+    	fetches.add(fieldName);
+    }
+    
+    public String getRootAlias() {
+    	return pathResolver.getRootAlias();
+    }
+    
+    public AliasNode getRootNode() {
+    	return pathResolver.getRootNode();
     }
     
     public void addSubQueryExpression(String path, String subQueryPath, FilterType filterType,
@@ -368,8 +355,12 @@ public class PrivateQueryContext {
     	return junctionType == JunctionType.AND;
     }
     
-    public Collection<SelectField> getSelectFields() {
+    public List<SelectField> getSelectFields() {
     	return selectFields;
+    }
+    
+    public Collection<String> getFetches() {
+    	return fetches;
     }
     
     public String registerParam(String path, Supplier<Object> valueResolver) {
@@ -378,6 +369,30 @@ public class PrivateQueryContext {
     
     public String getPathRef(String path) {
     	return pathResolver.getPathRef(path);
+    }
+    
+    public List<Object> getParams() {
+    	return pathResolver.getParams();
+    }
+    
+    public List<OrderField> getOrderFields() {
+        return orderFields;
+    }
+    
+    public void addOrder(String orderField, OrderType orderType) {
+        OrderField order = new OrderField(addFieldResolver(orderField, null), orderType);
+        this.orderFields.add(order);
+    }
+
+    public void setOrder(String orderField, OrderType orderType) {
+        this.orderFields.clear();
+        addOrder(orderField, orderType);
+    }
+
+    public void setDefaultOrder(String orderField, OrderType orderType) {
+        if (this.orderFields.size() == 0) {
+            setOrder(orderField, orderType);
+        }
     }
     
     private PrivateFilterItem createPrivateFilterItem(FilterItem customFilterItem) {
@@ -481,6 +496,27 @@ public class PrivateQueryContext {
         }, true);
         
         return rootFilterItem;
+    }
+    
+    /**
+     * Used by {@link #negate(QueryFilter)}. There's a complication with null
+     * values in the database so that !(x == 1) is not the opposite of (x == 1).
+     * Rather !(x == 1 and x != null) is the same as (x == 1). This method
+     * applies the null check explicitly to all filters included in the given
+     * filter tree.
+     */
+    protected PrivateFilterItem addExplicitNullChecks(PrivateFilterItem filterItem) {
+        return QueryUtil.walkFilter(filterItem, new QueryUtil.FilterVisitor() {
+            @Override
+            public PrivateFilterItem visitAfter(PrivateFilterItem filterItem) {
+                if (filterItem.isTakesSingleValue() || filterItem.isTakesListOfValues()) {
+                    return addFilters(FilterType.And, filterItem, notNull(filterItem.getFieldResolver().getFieldName()));
+                } else {
+                    return filterItem;
+                }
+            }
+        }, false);
+
     }
     
 }

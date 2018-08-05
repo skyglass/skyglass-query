@@ -17,7 +17,6 @@ import skyglass.data.filter.request.IFilterRequest;
 import skyglass.data.query.QueryResult;
 import skyglass.query.model.criteria.IJoinType;
 import skyglass.query.model.criteria.IQueryBuilder;
-import skyglass.query.model.query.Sort;
 
 public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T, F> {
 	
@@ -39,7 +38,6 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
     
     private int rowsPerPage = 10;
     private int pageNumber = 1;
-    private List<OrderField> orderFields = new ArrayList<OrderField>();
     private List<CustomFilterResolver> customFilterResolvers = new ArrayList<CustomFilterResolver>();
     
     protected IQueryBuilder<T, T> queryBuilder;
@@ -84,7 +82,7 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
     }
 
     protected List<OrderField> getOrderFields() {
-        return orderFields;
+        return queryContext.getOrderFields();
     }
 
     @Override
@@ -96,22 +94,19 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
 
     @Override
     public F addOrder(String orderField, OrderType orderType) {
-        OrderField order = new OrderField(queryContext.addFieldResolver(orderField, null), orderType);
-        this.orderFields.add(order);
+        queryContext.addOrder(orderField, orderType);
         return self();
     }
 
     @Override
     public F setOrder(String orderField, OrderType orderType) {
-        this.orderFields.clear();
-        return addOrder(orderField, orderType);
+        queryContext.setOrder(orderField, orderType);
+        return self();
     }
 
     @Override
     public F setDefaultOrder(String orderField, OrderType orderType) {
-        if (this.orderFields.size() == 0) {
-            setOrder(orderField, orderType);
-        }
+        queryContext.setDefaultOrder(orderField, orderType);
         return self();
     }
 
@@ -451,36 +446,6 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
 		queryContext.range(property, minValue, maxValue);
         return self();   	
     }
-
-	@Override
-    public F addSort(Sort sort) {
-		queryContext.addSort(sort);
-        return self();
-    }
-
-	@Override
-    public F addSorts(Sort... sorts) {
-		queryContext.addSorts(sorts);
-        return self();
-    }
-
-	@Override
-    public F addSort(String property, boolean desc) {
-		queryContext.addSort(property, desc);
-        return self();
-    }
-
-	@Override
-    public F addSortAsc(String property) {
-		queryContext.addSortAsc(property);
-        return self();
-    }
-
-	@Override
-    public F addSortDesc(String property) {
-		queryContext.addSortDesc(property);
-        return self();
-    }
     
 	@Override
 	public F addSelectFields(String... fieldNames) {
@@ -510,6 +475,17 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
     public F setJoinType(IJoinType joinType) {
         queryContext.setJoinType(joinType);
         return self();
+    }
+    
+
+    @Override
+    public IJoinResolver<F, T> addLeftJoin(String fieldName, String alias) {
+        return new CustomJoin<F, T>(self(), null, queryContext, fieldName, alias, IJoinType.LEFT);
+    }    
+        
+    @Override
+    public IJoinResolver<F, T> addJoin(String fieldName, String alias) {
+        return new CustomJoin<F, T>(self(), null, queryContext, fieldName, alias, IJoinType.INNER);
     }
 
 }

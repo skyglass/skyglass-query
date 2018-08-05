@@ -2,24 +2,21 @@ package skyglass.query.model.query;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Queue;
 import java.util.function.Supplier;
-import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import skyglass.data.filter.CompositeFilterItem;
+import skyglass.data.filter.AliasNode;
 import skyglass.data.filter.FilterType;
+import skyglass.data.filter.OrderField;
 import skyglass.data.filter.PrivateCompositeFilterItem;
 import skyglass.data.filter.PrivateFilterItem;
 import skyglass.data.filter.PrivateQueryContext;
-import skyglass.data.filter.criteria.impl.SearchFilter;
-import skyglass.data.filter.criteria.impl.SearchUtil;
+import skyglass.data.filter.SelectType;
 import skyglass.query.metadata.Metadata;
 import skyglass.query.metadata.MetadataHelper;
 
@@ -94,10 +91,10 @@ public abstract class BaseQueryProcessor {
         Collection<SelectField> selectFields = queryContext.getSelectFields();
 
         String select = generateSelectClause(selectFields, queryContext.isDistinct());
-        String where = generateWhereClause(queryContext.checkAndCleanFilters(), queryContext.isDisjunction());
-        String orderBy = generateOrderByClause(ctx, checkAndCleanSorts(searchQuery.getSorts()));
-        applyFetches(ctx, checkAndCleanFetches(searchQuery.getFetches()), fields);
-        String from = generateFromClause(ctx, true);
+        String where = generateWhereClause(queryContext.checkAndCleanFilters());
+        String orderBy = generateOrderByClause(queryContext.getOrderFields());
+        applyFetches(queryContext.getFetches(), selectFields);
+        String from = generateFromClause(true);
 
         StringBuilder sb = new StringBuilder();
         sb.append(select);
@@ -122,25 +119,23 @@ public abstract class BaseQueryProcessor {
      * Such a search will always return 1 row.
      */
     public String generateRowCountQL() {
-        if (searchClass == null)
+        if (queryContext.getRootClazz() == null)
             throw new NullPointerException("The entity class for a search cannot be null");
 
-        SearchContext ctx = new SearchContext(searchClass, rootAlias, paramList);
-
-        String where = generateWhereClause(ctx, checkAndCleanFilters(searchQuery.getFilters()), searchQuery.isDisjunction());
-        String from = generateFromClause(ctx, false);
+        String where = generateWhereClause(queryContext.checkAndCleanFilters());
+        String from = generateFromClause(false);
 
         boolean useOperator = false, notUseOperator = false;
-        List<SelectField> fields = searchQuery.getFields();
+        List<SelectField> fields = queryContext.getSelectFields();
         if (fields != null) {
             for (SelectField field : fields) {
                 switch (field.getOperator()) {
-                case SelectField.OP_AVG:
-                case SelectField.OP_COUNT:
-                case SelectField.OP_COUNT_DISTINCT:
-                case SelectField.OP_MAX:
-                case SelectField.OP_MIN:
-                case SelectField.OP_SUM:
+                case Avg:
+                case Count:
+                case CountDistinct:
+                case Max:
+                case Min:
+                case Sum:
                     useOperator = true;
                     break;
                 default:
@@ -157,18 +152,18 @@ public abstract class BaseQueryProcessor {
         }
 
         StringBuilder sb = new StringBuilder();
-        if (!searchQuery.isDistinct()) {
+        if (!queryContext.isDistinct()) {
             sb.append("select count(*)");
         } else if (fields.size() == 0) {
             sb.append("select count(distinct ");
-            sb.append(rootAlias).append(".id)");
+            sb.append(queryContext.getRootAlias()).append(".id)");
         } else if (fields.size() == 1) {
             sb.append("select count(distinct ");
             String prop = fields.get(0).getProperty();
             if (prop == null || "".equals(prop)) {
-                sb.append(ctx.getRootAlias());
+                sb.append(queryContext.getRootAlias());
             } else {
-                sb.append(getPathRef(ctx, prop));
+                sb.append(queryContext.getPathRef(prop));
             }
             sb.append(")");
         } else {
@@ -206,33 +201,33 @@ public abstract class BaseQueryProcessor {
 
                 String prop;
                 if (field.getProperty() == null || "".equals(field.getProperty())) {
-                    prop = ctx.getRootAlias();
+                    prop = queryContext.getRootAlias();
                 } else {
-                    prop = getPathRef(ctx, field.getProperty());
+                    prop = queryContext.getPathRef(field.getProperty());
                 }
 
                 switch (field.getOperator()) {
-                case SelectField.OP_AVG:
+                case Avg:
                     sb.append("avg(");
                     useOperator = true;
                     break;
-                case SelectField.OP_COUNT:
+                case Count:
                     sb.append("count(");
                     useOperator = true;
                     break;
-                case SelectField.OP_COUNT_DISTINCT:
+                case CountDistinct:
                     sb.append("count(distinct ");
                     useOperator = true;
                     break;
-                case SelectField.OP_MAX:
+                case Max:
                     sb.append("max(");
                     useOperator = true;
                     break;
-                case SelectField.OP_MIN:
+                case Min:
                     sb.append("min(");
                     useOperator = true;
                     break;
-                case SelectField.OP_SUM:
+                case Sum:
                     sb.append("sum(");
                     useOperator = true;
                     break;
@@ -249,9 +244,9 @@ public abstract class BaseQueryProcessor {
         if (first) {
             // there are no fields
             if (distinct)
-                return "select distinct " + ctx.getRootAlias();
+                return "select distinct " + queryContext.getRootAlias();
             else
-                return "select " + ctx.getRootAlias();
+                return "select " + queryContext.getRootAlias();
         }
         if (useOperator && notUseOperator) {
             throw new Error("A search can not have a mix of fields with operators and fields without operators.");
@@ -262,38 +257,38 @@ public abstract class BaseQueryProcessor {
     /**
      * Apply the fetch list to the alias tree in the search context.
      */
-    protected void applyFetches(SearchContext ctx, List<String> fetches, List<SelectField> fields) {
+    protected void applyFetches(Collection<String> fetches, Collection<SelectField> selectFields) {
+    	boolean applyFetch = false;
         if (fetches != null) {
             // apply fetches
             boolean hasFetches = false, hasFields = false;
+            List<String> fetchProps = new ArrayList<String>();
             for (String fetch : fetches) {
-                getAlias(ctx, fetch, true);
+                fetchProps.add(queryContext.getPathRef(fetch));
                 hasFetches = true;
             }
-            if (hasFetches && fields != null) {
+            if (hasFetches && selectFields != null) {
                 // don't fetch nodes whose ancestors aren't found in the select
                 // clause
-                List<String> fieldProps = new ArrayList<String>();
-                for (SelectField field : fields) {
-                    if (field.getOperator() == SelectField.OP_PROPERTY) {
-                        fieldProps.add(field.getProperty() + ".");
+                List<String> selectProps = new ArrayList<String>();
+                for (SelectField field : selectFields) {
+                    if (field.getOperator() == SelectType.Property) {
+                        selectProps.add(queryContext.getPathRef(field.getProperty()));
                     }
                     hasFields = true;
                 }
                 if (hasFields) {
-                    for (AliasNode node : ctx.aliases.values()) {
-                        if (node.fetch) {
+                    for (String selectProp: selectProps) {
                             // make sure it has an ancestor in the select clause
                             boolean hasAncestor = false;
-                            for (String field : fieldProps) {
-                                if (node.getFullPath().startsWith(field)) {
+                            for (String fetchProp : fetchProps) {
+                                if (fetchProp.startsWith(selectProp)) {
                                     hasAncestor = true;
                                     break;
                                 }
                             }
                             if (!hasAncestor)
-                                node.fetch = false;
-                        }
+                                applyFetch = false;
                     }
                 }
             }
@@ -309,12 +304,12 @@ public abstract class BaseQueryProcessor {
      * <code>doEagerFetching</code> is <code>true</code>. <b>NOTE:</b> When
      * using eager fetching, <code>applyFetches()</code> must be executed first.
      */
-    protected String generateFromClause(SearchContext ctx, boolean doEagerFetching) {
+    protected String generateFromClause(boolean doEagerFetching) {
         StringBuilder sb = new StringBuilder(" from ");
-        sb.append(ctx.rootClass.getName());
+        sb.append(queryContext.getRootClazz().getName());
         sb.append(" ");
-        sb.append(ctx.getRootAlias());
-        sb.append(generateJoins(ctx, doEagerFetching));
+        sb.append(queryContext.getRootAlias());
+        sb.append(generateJoins(doEagerFetching));
         return sb.toString();
     }
 
@@ -328,25 +323,25 @@ public abstract class BaseQueryProcessor {
      * . <b>NOTE:</b> When using eager fetching, <code>applyFetches()</code>
      * must be executed first.
      */
-    protected String generateJoins(SearchContext ctx, boolean doEagerFetching) {
+    protected String generateJoins(boolean doEagerFetching) {
         StringBuilder sb = new StringBuilder();
 
         // traverse alias graph breadth-first
         Queue<AliasNode> queue = new LinkedList<AliasNode>();
-        queue.offer(ctx.aliases.get(ROOT_PATH));
+        queue.offer(queryContext.getRootNode());
         while (!queue.isEmpty()) {
             AliasNode node = queue.poll();
-            if (node.parent != null) {
+            if (node.getParent() != null) {
                 sb.append(" left join ");
-                if (doEagerFetching && node.fetch)
+                if (doEagerFetching && node.isFetch())
                     sb.append("fetch ");
-                sb.append(node.parent.alias);
+                sb.append(node.getParent().getAlias());
                 sb.append(".");
-                sb.append(node.property);
+                sb.append(node.getProperty());
                 sb.append(" as ");
-                sb.append(node.alias);
+                sb.append(node.getAlias());
             }
-            for (AliasNode child : node.children) {
+            for (AliasNode child : node.getChildren()) {
                 queue.offer(child);
             }
         }
@@ -358,27 +353,23 @@ public abstract class BaseQueryProcessor {
      * Internal method for generating order by clause. Uses sort options from
      * search.
      */
-    protected String generateOrderByClause(SearchContext ctx, List<Sort> sorts) {
-        if (sorts == null)
+    protected String generateOrderByClause(List<OrderField> orderFields) {
+        if (orderFields == null)
             return "";
 
         StringBuilder sb = null;
         boolean first = true;
-        for (Sort sort : sorts) {
+        for (OrderField orderField: orderFields) {
             if (first) {
                 sb = new StringBuilder(" order by ");
                 first = false;
             } else {
                 sb.append(", ");
             }
-            if (sort.isIgnoreCase() && metadataHelper.get(ctx.rootClass, sort.getProperty()).isString()) {
                 sb.append("lower(");
-                sb.append(getPathRef(ctx, sort.getProperty()));
+                sb.append(queryContext.getPathRef(orderField.getOrderField().getFieldName()));
                 sb.append(")");
-            } else {
-                sb.append(getPathRef(ctx, sort.getProperty()));
-            }
-            sb.append(sort.isDesc() ? " desc" : " asc");
+            sb.append(orderField.isDescending() ? " desc" : " asc");
         }
         if (first) {
             return "";
@@ -531,7 +522,7 @@ public abstract class BaseQueryProcessor {
             return "EXISTS " + generateSubquery(ctx, property, negate((QueryFilter) value));*/
 
         default:
-            throw new IllegalArgumentException("Filter comparison ( " + operator + " ) is invalid.");
+            throw new IllegalArgumentException("Filter comparison ( " + filterOperator + " ) is invalid.");
         }
     }
 
@@ -547,9 +538,8 @@ public abstract class BaseQueryProcessor {
      * @param filter
      *            - the filter to use for the where clause of the sub-query
      */
-    protected String generateSubquery(SearchContext ctx, String property, QueryFilter filter) {
-        SearchContext ctx2 = new SearchContext();
-        ctx2.rootClass = metadataHelper.get(ctx.rootClass, property).getJavaClass();
+    /*protected String generateSubquery(String property, PrivateFilterItem filterItem) {
+        Class<?> rootClass = metadataHelper.get(queryContext.getRootClazz(), property).getJavaClass();
         ctx2.setRootAlias(rootAlias + (ctx.nextSubqueryNum++));
         ctx2.paramList = ctx.paramList;
         ctx2.nextAliasNum = ctx.nextAliasNum;
@@ -572,7 +562,7 @@ public abstract class BaseQueryProcessor {
         sb.append(")");
 
         return sb.toString();
-    }
+    }*/
 
     /**
      * <p>
@@ -613,116 +603,6 @@ public abstract class BaseQueryProcessor {
         Supplier<Object> filterValueResolver = child.getFilterValueResolver();
         return queryContext.registerParam(path, filterValueResolver) 
         		+ filterOperator + operation + " ELEMENTS(" + queryContext.getPathRef(path) + ")";
-    }
-
-    /**
-     * Return a filter that negates the given filter.
-     */
-    protected QueryFilter negate(QueryFilter filter) {
-        return QueryFilter.not(addExplicitNullChecks(filter));
-    }
-
-    /**
-     * Used by {@link #negate(QueryFilter)}. There's a complication with null
-     * values in the database so that !(x == 1) is not the opposite of (x == 1).
-     * Rather !(x == 1 and x != null) is the same as (x == 1). This method
-     * applies the null check explicitly to all filters included in the given
-     * filter tree.
-     */
-    protected QueryFilter addExplicitNullChecks(QueryFilter filter) {
-        return QueryUtil.walkFilter(filter, new QueryUtil.FilterVisitor() {
-            @Override
-            public QueryFilter visitAfter(QueryFilter filter) {
-                if (filter.isTakesSingleValue() || filter.isTakesListOfValues()) {
-                    return QueryFilter.and(filter, QueryFilter.isNotNull(filter.getProperty()));
-                } else {
-                    return filter;
-                }
-            }
-        }, false);
-
-    }
-
-    private static final ExampleOptions defaultExampleOptions = new ExampleOptions();
-
-    public QueryFilter getFilterFromExample(Object example) {
-        return getFilterFromExample(example, null);
-    }
-
-    public QueryFilter getFilterFromExample(Object example, ExampleOptions options) {
-        if (example == null)
-            return null;
-        if (options == null)
-            options = defaultExampleOptions;
-
-        List<QueryFilter> filters = new ArrayList<QueryFilter>();
-        LinkedList<String> path = new LinkedList<String>();
-        Metadata metadata = metadataHelper.get(example.getClass());
-        getFilterFromExampleRecursive(example, metadata, options, path, filters);
-
-        if (filters.size() == 0) {
-            return null;
-        } else if (filters.size() == 1) {
-            return filters.get(0);
-        } else {
-            return new QueryFilter("AND", filters, QueryFilter.OP_AND);
-        }
-    }
-
-    private void getFilterFromExampleRecursive(Object example, Metadata metaData, ExampleOptions options,
-            LinkedList<String> path, List<QueryFilter> filters) {
-        if (metaData.isEntity() && !metaData.getIdType().isEmbeddable()) {
-            Object id = metaData.getIdValue(example);
-            if (id != null) {
-                filters.add(QueryFilter.equal(listToPath(path, "id"), id));
-                return;
-            }
-        }
-
-        for (String property : metaData.getProperties()) {
-            if (options.getExcludeProps() != null && options.getExcludeProps().size() != 0) {
-                if (options.getExcludeProps().contains(listToPath(path, property)))
-                    continue;
-            }
-
-            Metadata pMetaData = metaData.getPropertyType(property);
-            if (pMetaData.isCollection()) {
-                // ignore collections
-            } else {
-                Object value = metaData.getPropertyValue(example, property);
-                if (value == null) {
-                    if (!options.isExcludeNulls()) {
-                        filters.add(QueryFilter.isNull(listToPath(path, property)));
-                    }
-                } else if (options.isExcludeZeros() && value instanceof Number && ((Number) value).longValue() == 0) {
-                    // ignore zeros
-                } else {
-                    if (pMetaData.isEntity() || pMetaData.isEmbeddable()) {
-                        path.add(property);
-                        getFilterFromExampleRecursive(value, pMetaData, options, path, filters);
-                        path.removeLast();
-                    } else if (pMetaData.isString()
-                            && (options.getLikeMode() != ExampleOptions.EXACT || options.isIgnoreCase())) {
-                        String val = value.toString();
-                        switch (options.getLikeMode()) {
-                        case ExampleOptions.START:
-                            val = val + "%";
-                            break;
-                        case ExampleOptions.END:
-                            val = "%" + val;
-                            break;
-                        case ExampleOptions.ANYWHERE:
-                            val = "%" + val + "%";
-                            break;
-                        }
-                        filters.add(new QueryFilter(listToPath(path, property), val,
-                                options.isIgnoreCase() ? QueryFilter.OP_ILIKE : QueryFilter.OP_LIKE));
-                    } else {
-                        filters.add(QueryFilter.equal(listToPath(path, property), value));
-                    }
-                }
-            }
-        }
     }
 
     private String listToPath(List<String> list, String lastProperty) {

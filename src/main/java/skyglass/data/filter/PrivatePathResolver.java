@@ -4,7 +4,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import skyglass.query.model.criteria.IJoinBuilder;
 import skyglass.query.model.criteria.IJoinType;
@@ -158,8 +160,16 @@ public class PrivatePathResolver implements IPathResolver {
         this.aliases.put(ROOT_PATH, new AliasNode(ROOT_PATH, rootAlias));
     }
     
-    private String getRootAlias() {
-        return this.aliases.get(ROOT_PATH).alias;
+    public String getRootAlias() {
+        return this.aliases.get(ROOT_PATH).getAlias();
+    }
+    
+    public AliasNode getRootNode() {
+    	return this.aliases.get(ROOT_PATH);
+    }
+    
+    public List<Object> getParams() {
+    	return paramList.stream().map(s -> s.get()).collect(Collectors.toList());
     }
     
     /**
@@ -182,7 +192,7 @@ public class PrivatePathResolver implements IPathResolver {
 
         String[] parts = splitPath(path);
 
-        return getAlias(parts[0], false).alias + "." + parts[1];
+        return getAlias(parts[0], false).getAlias() + "." + parts[1];
     }
     
     /**
@@ -284,9 +294,9 @@ public class PrivatePathResolver implements IPathResolver {
         } else if (aliases.containsKey(path)) {
             AliasNode node = aliases.get(path);
             if (setFetch) {
-                while (node.parent != null) {
-                    node.fetch = true;
-                    node = node.parent;
+                while (node.getParent() != null) {
+                    node.setFetch(true);;
+                    node = node.getParent();
                 }
             }
 
@@ -303,38 +313,11 @@ public class PrivatePathResolver implements IPathResolver {
             // set up path recursively
             getAlias(parts[0], setFetch).addChild(node);
 
-            node.fetch = setFetch;
+            node.setFetch(setFetch);
             aliases.put(path, node);
 
             return node;
         }
     }
     
-    private static final class AliasNode {
-        String property;
-        String alias;
-        boolean fetch;
-        AliasNode parent;
-        List<AliasNode> children = new ArrayList<AliasNode>();
-
-        AliasNode(String property, String alias) {
-            this.property = property;
-            this.alias = alias;
-        }
-
-        void addChild(AliasNode node) {
-            children.add(node);
-            node.parent = this;
-        }
-
-        public String getFullPath() {
-            if (parent == null)
-                return "";
-            else if (parent.parent == null)
-                return property;
-            else
-                return parent.getFullPath() + "." + property;
-        }
-    }
-
 }

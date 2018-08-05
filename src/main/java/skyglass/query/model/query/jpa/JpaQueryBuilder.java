@@ -16,13 +16,10 @@ import skyglass.query.model.criteria.ISubquery;
 import skyglass.query.model.criteria.ITypedQuery;
 import skyglass.query.model.query.IQuery;
 import skyglass.query.model.query.QueryProcessor;
-import skyglass.query.model.query.SearchQuery;
 
 public class JpaQueryBuilder<E, S> extends AbstractQueryBuilder<E, S> {
 
     private QueryProcessor<E, S> queryProcessor;
-    
-    protected SearchQuery searchQuery;
     
     protected Class<E> entityClass;
     
@@ -232,6 +229,24 @@ public class JpaQueryBuilder<E, S> extends AbstractQueryBuilder<E, S> {
 	public Supplier<Boolean> numericFieldResolver(Class<?> rootClass, String propertyName) {
 		// TODO Auto-generated method stub
 		return null;
+	}
+
+	@Override
+	public boolean isCollection(Class<?> rootClass, String path) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public boolean isEntity(Class<?> rootClass, String path) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public boolean isId(Class<?> rootClass, String path) {
+		// TODO Auto-generated method stub
+		return false;
 	}
 
 }

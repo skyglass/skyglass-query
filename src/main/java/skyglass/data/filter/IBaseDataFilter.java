@@ -112,16 +112,6 @@ public interface IBaseDataFilter<T, F>{
     
     public F addRange(String property, Object minValue, Object maxValue);
     
-    public F addSort(Sort sort);
-    
-    public F addSorts(Sort... sorts);
-    
-    public F addSort(String property, boolean desc);
-    
-    public F addSortAsc(String property);
-    
-    public F addSortDesc(String property);
-    
     public F addSelectFields(String... fieldNames);
     
     public F addSelectFields(SelectType operator, String... fieldNames);

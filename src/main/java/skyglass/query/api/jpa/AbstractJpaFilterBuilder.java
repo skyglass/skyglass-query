@@ -3,11 +3,9 @@ package skyglass.query.api.jpa;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 
-import skyglass.data.filter.IDataFilter;
 import skyglass.data.filter.JunctionType;
 import skyglass.data.filter.request.FilterRequest;
 import skyglass.data.filter.request.IFilterRequest;
-import skyglass.query.api.AbstractDataFilter;
 import skyglass.query.api.JpaDataFilter;
 import skyglass.query.model.criteria.IQueryBuilder;
 import skyglass.query.model.criteria.jpa.JpaCriteriaBuilder;
