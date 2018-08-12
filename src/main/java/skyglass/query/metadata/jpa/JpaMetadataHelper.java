@@ -292,4 +292,16 @@ public class JpaMetadataHelper implements MetadataHelper {
                 "Unable to convert value of type " + value.getClass().getName() + " to type " + type.getName());
     }
 
+	@Override
+	public boolean isCollection(Class<?> rootClass, String path) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public boolean isEntity(Class<?> rootClass, String path) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
 }

@@ -2,13 +2,9 @@ package skyglass.data.filter;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.function.Supplier;
 
 import skyglass.data.query.QueryResult;
 import skyglass.query.model.criteria.IJoinType;
-import skyglass.query.model.criteria.IPredicate;
-import skyglass.query.model.criteria.IQueryBuilder;
-import skyglass.query.model.query.Sort;
 
 public interface IBaseDataFilter<T, F>{
 	
@@ -122,10 +118,6 @@ public interface IBaseDataFilter<T, F>{
 
     public F setJoinType(IJoinType joinType);
 
-    public IPredicate createAtomicFilter(String fieldName, FilterType filterType, Supplier<Object> filterValueResolver);
-
-    public IQueryBuilder<T, T> getQueryBuilder();
-    
     public IJoinResolver<F, T> addJoin(String fieldName, String alias);
 
     public IJoinResolver<F, T> addLeftJoin(String fieldName, String alias);

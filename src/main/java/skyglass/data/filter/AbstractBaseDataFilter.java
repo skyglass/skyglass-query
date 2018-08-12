@@ -40,8 +40,6 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
     private int pageNumber = 1;
     private List<CustomFilterResolver> customFilterResolvers = new ArrayList<CustomFilterResolver>();
     
-    protected IQueryBuilder<T, T> queryBuilder;
-    
     protected PrivateQueryContext queryContext;
 
     private Map<String, List<FieldResolver>> searchMap = new HashMap<String, List<FieldResolver>>();
@@ -51,10 +49,9 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
     protected Class<T> rootClazz;
 
     protected AbstractBaseDataFilter(Class<T> rootClazz, JunctionType junctionType, IJoinType joinType, 
-    		IFilterRequest request, IQueryBuilder<T, T> queryBuilder) {
+    		IFilterRequest request, IQueryBuilder<T> queryBuilder) {
         this.rootClazz = rootClazz;
-        this.queryBuilder = queryBuilder;
-        this.queryContext = this.queryBuilder.setPrivateQueryContext(junctionType, rootClazz, joinType);
+        this.queryContext = queryBuilder.setPrivateQueryContext(junctionType, rootClazz, joinType);
         this.request = request;
     }
     
@@ -235,11 +232,6 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
         return self();
     }
     
-    @Override
-    public IQueryBuilder<T, T> getQueryBuilder() {
-        return queryBuilder;
-    }
-
     @Override
     public F addFilter(String fieldName, Object filterValue) {
         return addFilter(fieldName, FieldType.Path, filterValue);

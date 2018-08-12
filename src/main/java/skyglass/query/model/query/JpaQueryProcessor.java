@@ -6,9 +6,7 @@ import java.util.List;
 
 import javax.persistence.EntityManagerFactory;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import skyglass.data.filter.PrivateQueryContext;
 import skyglass.query.metadata.MetadataHelper;
 import skyglass.query.model.criteria.IQueryBuilder;
 
@@ -17,19 +15,17 @@ import skyglass.query.model.criteria.IQueryBuilder;
  * 
  * A singleton instance of this class is maintained for each
  * EntityManagerFactory. This should be accessed using
- * {@link QueryProcessor#getInstanceForEntityManagerFactory(EntityManagerFactory)}.
+ * {@link JpaQueryProcessor#getInstanceForEntityManagerFactory(EntityManagerFactory)}.
  * 
  */
-public class QueryProcessor<E, S> extends BaseQueryProcessor {
-    private IQueryBuilder<E, S> queryBuilder;
+public class JpaQueryProcessor extends BaseJpaQueryProcessor {
     
-    public static <E, S> QueryProcessor<E, S> getInstance(IQueryBuilder<E, S> queryBuilder, MetadataHelper metadataHelper) {
-        return new QueryProcessor<E, S>(metadataHelper, queryBuilder);
+    public static JpaQueryProcessor getInstance(MetadataHelper metadataHelper, PrivateQueryContext queryContext) {
+        return new JpaQueryProcessor(metadataHelper, queryContext);
     }
 
-    private QueryProcessor(MetadataHelper metadataHelper, IQueryBuilder<E, S> queryBuilder) {
-        super(QLTYPE_JPQL, metadataHelper, queryBuilder.getPrivateQueryContext());
-        this.queryBuilder = queryBuilder;
+    private JpaQueryProcessor(MetadataHelper metadataHelper, PrivateQueryContext queryContext) {
+        super(QLTYPE_JPQL, metadataHelper, queryContext);
     }
 
     // --- Public Methods ---
@@ -43,7 +39,7 @@ public class QueryProcessor<E, S> extends BaseQueryProcessor {
      */
     @SuppressWarnings("rawtypes")
     public List search() {
-        String jpql = generateQL();
+        String jpql = generateQueryString();
         IQuery query = queryBuilder.createQuery(jpql);
         addResultMode();
 

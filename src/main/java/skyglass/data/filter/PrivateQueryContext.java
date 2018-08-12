@@ -6,10 +6,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 import skyglass.data.query.QueryFilter;
-import skyglass.query.model.criteria.IJoinBuilder;
 import skyglass.query.model.criteria.IJoinType;
 import skyglass.query.model.criteria.ITypeResolver;
 import skyglass.query.model.query.QueryUtil;
@@ -22,8 +20,6 @@ public class PrivateQueryContext {
     private PrivateCompositeFilterItem rootFilterItem;
     
     private ITypeResolver typeResolver;
-    
-    private IJoinBuilder joinBuilder;
     
     private PrivatePathResolver pathResolver;
     
@@ -46,13 +42,12 @@ public class PrivateQueryContext {
     private PrivateQueryContext parentContext;
     
     public PrivateQueryContext(JunctionType junctionType, ITypeResolver typeResolver,
-    		IJoinBuilder joinBuilder, Class<?> rootClazz, IJoinType joinType) {
+    		Class<?> rootClazz, IJoinType joinType) {
     	this.junctionType = junctionType;
         this.rootFilterItem = new PrivateCompositeFilterItem(JunctionType.toFilterType(junctionType));
         this.typeResolver = typeResolver;
-        this.joinBuilder = joinBuilder;
         this.rootClazz = rootClazz;
-        this.pathResolver = new PrivatePathResolver(rootClazz, typeResolver, joinBuilder, joinType);
+        this.pathResolver = new PrivatePathResolver(rootClazz, typeResolver, joinType);
     }
     
     public PrivateQueryContext(PrivateQueryContext parentContext, 
@@ -61,14 +56,13 @@ public class PrivateQueryContext {
     	this.junctionType = JunctionType.fromFilterType(rootFilterItem.getFilterType());
         this.rootFilterItem = rootFilterItem;
         this.typeResolver = parentContext.typeResolver;
-        this.joinBuilder = parentContext.joinBuilder;
         this.rootClazz = rootFilterItem.getRootClass();
         this.pathResolver = new PrivatePathResolver(rootClazz, parentContext.pathResolver);
     }
     
     public PrivateQueryContext(PrivateQueryContext parent, boolean isAnd) {
         this(isAnd ? JunctionType.AND : JunctionType.OR, parent.typeResolver, 
-        		parent.joinBuilder, parent.rootClazz, parent.pathResolver.getJoinType());
+        		parent.rootClazz, parent.pathResolver.getJoinType());
     }
     
     public void addRootChild(PrivateFilterItem filterItem) {

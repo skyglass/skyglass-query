@@ -7,7 +7,7 @@ import skyglass.query.model.criteria.IRoot;
 import skyglass.query.model.criteria.ISubQueryBuilder;
 import skyglass.query.model.criteria.ISubquery;
 
-public class JpaSubCriteriaBuilder<E0, S, S0> extends AbstractJpaQueryBuilder<E0, S0> implements ISubQueryBuilder<E0, S0> {
+public class JpaSubCriteriaBuilder<E0, S, S0> extends AbstractJpaCriteriaQueryBuilder<E0, S0> implements ISubQueryBuilder<E0, S0> {
 
     private final ISubquery<S0> subQuery;
 

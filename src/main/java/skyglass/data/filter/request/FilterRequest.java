@@ -8,6 +8,7 @@ import java.util.Map;
 import skyglass.data.common.util.StringUtil;
 import skyglass.data.filter.IBaseDataFilter;
 import skyglass.data.filter.OrderType;
+import skyglass.query.model.criteria.ICriteriaQueryBuilder;
 import skyglass.query.model.criteria.IQueryBuilder;
 
 public class FilterRequest implements IFilterRequest {

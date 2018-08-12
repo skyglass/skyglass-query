@@ -12,7 +12,7 @@ import skyglass.data.filter.CustomJpaFilterResolver;
 import skyglass.data.filter.FieldResolver;
 import skyglass.data.filter.FieldType;
 import skyglass.data.filter.FilterType;
-import skyglass.data.filter.IDataFilter;
+import skyglass.data.filter.ICriteriaFilter;
 import skyglass.data.filter.JunctionType;
 import skyglass.data.filter.OrderField;
 import skyglass.data.filter.PrivateCompositeFilterItem;
@@ -24,26 +24,35 @@ import skyglass.query.model.criteria.IJoinType;
 import skyglass.query.model.criteria.IOrder;
 import skyglass.query.model.criteria.IPath;
 import skyglass.query.model.criteria.IPredicate;
-import skyglass.query.model.criteria.IQueryBuilder;
+import skyglass.query.model.criteria.ICriteriaQueryBuilder;
 import skyglass.query.model.criteria.ITypedQuery;
 
-public abstract class AbstractDataFilter<T, F> extends AbstractBaseDataFilter<T, F> 
-	implements IDataFilter<T, F> {
+public abstract class AbstractCriteriaFilter<T, F> extends AbstractBaseDataFilter<T, F> 
+	implements ICriteriaFilter<T, F> {
+	
+	private ICriteriaQueryBuilder<T, T> queryBuilder;
 
-    public AbstractDataFilter(Class<T> rootClazz, JunctionType junctionType, IQueryBuilder<T, T> queryBuilder,
+    public AbstractCriteriaFilter(Class<T> rootClazz, JunctionType junctionType, ICriteriaQueryBuilder<T, T> queryBuilder,
             IFilterRequest request) {
         this(rootClazz, junctionType, IJoinType.INNER, queryBuilder, request);
     }
 
-    public AbstractDataFilter(Class<T> rootClazz, JunctionType junctionType, IJoinType joinType, IQueryBuilder<T, T> queryBuilder,
+    public AbstractCriteriaFilter(Class<T> rootClazz, JunctionType junctionType, IJoinType joinType, ICriteriaQueryBuilder<T, T> queryBuilder,
             IFilterRequest request) {
-        super(rootClazz, junctionType, joinType, request, queryBuilder);
+        super(rootClazz, junctionType, joinType, request, 
+        		queryBuilder);
+        this.queryBuilder = queryBuilder;
     }
 
     @Override
     public IPredicate createAtomicFilter(String fieldName, FilterType filterType,
             Supplier<Object> filterValueResolver) {
         return createAtomicFilter(fieldName, filterType, filterValueResolver, false);
+    }
+    
+    @Override
+    public ICriteriaQueryBuilder<T, T> getQueryBuilder() {
+    	return queryBuilder;
     }
 
     private IPredicate createAtomicFilter(String fieldName, FilterType filterType, Supplier<Object> filterValueResolver,

@@ -19,6 +19,7 @@ import skyglass.data.filter.PrivateQueryContext;
 import skyglass.data.filter.SelectType;
 import skyglass.query.metadata.Metadata;
 import skyglass.query.metadata.MetadataHelper;
+import skyglass.query.model.criteria.IQueryProcessor;
 
 /**
  * This class provides two methods for generating query language to fulfill an
@@ -46,9 +47,9 @@ import skyglass.query.metadata.MetadataHelper;
  * That implementation could be used for EQL and HQL query language as well with
  * no or minor modifications.
  */
-public abstract class BaseQueryProcessor {
+public abstract class BaseJpaQueryProcessor implements IQueryProcessor {
 
-    private static Logger logger = LoggerFactory.getLogger(BaseQueryProcessor.class);
+    private static Logger logger = LoggerFactory.getLogger(BaseJpaQueryProcessor.class);
 
     protected static int QLTYPE_JPQL = 0;
     protected static int QLTYPE_HQL = 1;
@@ -60,7 +61,7 @@ public abstract class BaseQueryProcessor {
 
     protected PrivateQueryContext queryContext;
     
-    protected BaseQueryProcessor(int qlType, MetadataHelper metadataHelper, 
+    protected BaseJpaQueryProcessor(int qlType, MetadataHelper metadataHelper, 
     		PrivateQueryContext queryContext) {
         if (metadataHelper == null) {
             throw new IllegalArgumentException("A SearchProcessor cannot be initialized with a null MetadataHelper.");
@@ -84,7 +85,8 @@ public abstract class BaseQueryProcessor {
      * specified as named parameters ":pX", where X is the index of the
      * parameter value in paramList.
      */
-    public String generateQL() {
+    @Override
+    public String generateQueryString() {
         if (queryContext.getRootClazz() == null)
             throw new NullPointerException("The entity class for a query cannot be null");
 
@@ -395,7 +397,6 @@ public abstract class BaseQueryProcessor {
     /**
      * Recursively generate the QL fragment for a given search filter option.
      */
-    @SuppressWarnings("rawtypes")
 	protected String filterToQL(PrivateFilterItem filterItem) {
         String path = filterItem.getFieldResolver().getFieldName();
         FilterType filterType = filterItem.getFilterType();

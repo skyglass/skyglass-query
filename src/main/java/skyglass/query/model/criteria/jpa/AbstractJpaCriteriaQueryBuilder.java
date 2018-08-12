@@ -6,7 +6,7 @@ import javax.persistence.EntityManager;
 import javax.persistence.criteria.CriteriaBuilder;
 
 import skyglass.data.filter.Dialect;
-import skyglass.query.api.AbstractQueryBuilder;
+import skyglass.query.api.AbstractCriteriaQueryBuilder;
 import skyglass.query.metadata.jpa.JpaMetadataHelper;
 import skyglass.query.model.criteria.ICriteriaQuery;
 import skyglass.query.model.criteria.IExpression;
@@ -16,31 +16,59 @@ import skyglass.query.model.criteria.IRoot;
 import skyglass.query.model.criteria.ISubQueryBuilder;
 import skyglass.query.model.criteria.ISubquery;
 import skyglass.query.model.criteria.ITypedQuery;
-import skyglass.query.model.query.IQuery;
 
-public abstract class AbstractJpaQueryBuilder<E, S> extends AbstractQueryBuilder<E, S> {
+public abstract class AbstractJpaCriteriaQueryBuilder<E, S> extends AbstractCriteriaQueryBuilder<E, S> {
 
     private CriteriaBuilder criteriaBuilder;
     
-    private EntityManager entityManager;
-    
-    private JpaMetadataHelper jpaMetadataHelper;    
-
     private final ICriteriaQuery<S> query;
 
     private final IRoot<E> root;
+    
+    protected JpaMetadataHelper jpaMetadataHelper;
 
-    public AbstractJpaQueryBuilder(EntityManager entityManager, Class<E> entityClass, Class<S> selectClass) {
+    public AbstractJpaCriteriaQueryBuilder(EntityManager entityManager, 
+    		Class<E> entityClass, Class<S> selectClass) {
+    	super(entityManager);
         this.criteriaBuilder = entityManager.getCriteriaBuilder();
-        this.entityManager = entityManager;
-        this.jpaMetadataHelper = JpaMetadataHelper.getInstanceForMetamodel(entityManager.getMetamodel());
         this.query = createQuery(selectClass);
         this.root = query.from(entityClass);
+        this.jpaMetadataHelper = JpaMetadataHelper.getInstanceForMetamodel(entityManager.getMetamodel());
     }
     
 	@Override
-	public IQuery createQuery(String queryString) {
-        return new JpaQuery(entityManager.createQuery(queryString));
+	public String generateQueryString() {
+		throw new UnsupportedOperationException();
+	}
+   
+	@Override
+	public ITypedQuery<E> createQuery(String queryString) {
+       return new JpaTypedQuery<E>(entityManager.createQuery(queryString, rootClazz));
+	}
+	
+    @Override
+    public Supplier<Boolean> numericFieldResolver(Class<?> rootClass, String propertyName) {
+        return () -> jpaMetadataHelper.isNumericField(rootClass, propertyName);
+    }
+
+    @Override
+    public Supplier<Object> objectConverter(Class<?> rootClass, String property, Object value, boolean isCollection) {
+        return () -> jpaMetadataHelper.convertObject(rootClass, property, value, isCollection);
+    }
+    
+	@Override
+	public boolean isCollection(Class<?> rootClass, String path) {
+		return jpaMetadataHelper.isCollection(rootClass, path);
+	}
+
+	@Override
+	public boolean isEntity(Class<?> rootClass, String path) {
+		return jpaMetadataHelper.isEntity(rootClass, path);
+	}
+
+	@Override
+	public boolean isId(Class<?> rootClass, String path) {
+		return jpaMetadataHelper.isId(rootClass, path);
 	}
     
     @Override
@@ -247,33 +275,5 @@ public abstract class AbstractJpaQueryBuilder<E, S> extends AbstractQueryBuilder
     public Dialect getDialect() {
         return Dialect.HANADB;
     }
-
-    @Override
-    public Supplier<Boolean> numericFieldResolver(Class<?> rootClass, String propertyName) {
-        return () -> jpaMetadataHelper.isNumericField(rootClass, propertyName);
-    }
-
-    @Override
-    public Supplier<Object> objectConverter(Class<?> rootClass, String property, Object value, boolean isCollection) {
-        return () -> jpaMetadataHelper.convertObject(rootClass, property, value, isCollection);
-    }
-    
-	@Override
-	public boolean isCollection(Class<?> rootClass, String path) {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	public boolean isEntity(Class<?> rootClass, String path) {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	public boolean isId(Class<?> rootClass, String path) {
-		// TODO Auto-generated method stub
-		return false;
-	}
 
 }

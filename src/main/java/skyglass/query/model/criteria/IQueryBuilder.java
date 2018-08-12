@@ -1,85 +1,50 @@
 package skyglass.query.model.criteria;
 
+import java.util.Date;
 import java.util.function.Supplier;
 
-import skyglass.data.filter.Dialect;
-import skyglass.data.filter.FilterType;
 import skyglass.data.filter.JunctionType;
 import skyglass.data.filter.PrivateQueryContext;
-import skyglass.query.model.query.IQuery;
 
-public interface IQueryBuilder<E, S> extends ITypeResolver, IJoinBuilder {
+public interface IQueryBuilder<E> extends ITypeResolver {
 	
-    public IQuery createQuery(String queryString);
-
-    public IRoot<E> getRoot();
-
-    public ICriteriaQuery<S> getQuery();
-
-    public <T> IExpression<T> getExpression(String expression);
-
-    public <T> ICriteriaQuery<T> createQuery(Class<T> clazz);
-
-    public ICriteriaQuery<Long> createCountCriteria();
-
-    public IExpression<Long> count(IExpression<?> expression);
-
-    public <T> IPredicate isNull(IExpression<T> expression);
-
-    public <T> IPredicate isNotNull(IExpression<T> expression);
-
-    public <T> IPredicate equal(IExpression<T> expression, Supplier<Object> valueResolver);
-
-    public <T> IPredicate equalProperty(IExpression<?> expression1, IExpression<?> expression2);
-
-    public <T> IPredicate notEqual(IExpression<T> expression, Supplier<Object> valueResolver);
-
-    public <T> IPredicate notEqualProperty(IExpression<?> expression1, IExpression<?> expression2);
-
-    public IPredicate gt(IExpression<Number> expression, Supplier<Number> valueResolver);
-
-    public IPredicate ge(IExpression<Number> expression, Supplier<Number> valueResolver);
-
-    public IPredicate lt(IExpression<Number> expression, Supplier<Number> valueResolver);
-
-    public IPredicate le(IExpression<Number> expression, Supplier<Number> valueResolver);
-
-    public IExpression<String> lower(IExpression<String> expression);
-
-    public IPredicate like(IExpression<String> expression, Supplier<String> valueResolver);
-
-    public IOrder desc(IExpression<?> expression);
-
-    public IOrder asc(IExpression<?> expression);
-
-    public <Y> IExpression<String> coalesce(IExpression<? extends Y> expression, Supplier<Y> repacementResolver);
-
-    public IExpression<String> concat(IExpression<String> concat1, IExpression<String> concat2);
-
-    public IPredicate and(IExpression<Boolean> expression1, IExpression<Boolean> expression2);
-
-    public IPredicate or(IExpression<Boolean> expression1, IExpression<Boolean> expression2);
-
-    public IPredicate exists(ISubquery<?> subquery);
-
-    public IPredicate not(IExpression<Boolean> expression);
-
-    public IExpression<Number> max(IExpression<Number> expression);
-
-    public IPredicate getPredicate(String fieldName, FilterType filterType, Supplier<Object> filterValueResolver);
-
-    public <T> ITypedQuery<T> createQuery(ICriteriaQuery<T> criteriaQuery);
-
-    public <E0, S0> ISubQueryBuilder<E0, S0> createSubCriteriaBuilder(ICriteriaQuery<S> parentQuery, Class<E0> subEntityClass, Class<S0> subSelectClass);
-
-    public Dialect getDialect();
-
-    public Long getCurrentUserId();
-    
+	public String generateQueryString();
+	
+    public ITypedQuery<E> createQuery(String queryString);
+	
     public PrivateQueryContext setPrivateQueryContext(
-    		JunctionType junctionType, Class<?> rootClazz, IJoinType joinType);
+    		JunctionType junctionType, Class<E> rootClazz, IJoinType joinType);
     
     public PrivateQueryContext getPrivateQueryContext();
+    
+    public static boolean isMatchesSearchQuery(String result, String searchQuery) {
+        return searchQuery != null && result.toLowerCase().matches(searchQuery.toLowerCase());
+    }
+
+    public static boolean areMatchSearchQuery(String searchQuery, String... results) {
+        if (searchQuery == null) {
+            return false;
+        }
+        for (String result : results) {
+            if (result != null && result.toLowerCase().matches(searchQuery.toLowerCase())) {
+                return true;
+            }
+        }
+        return false;
+    }    
+    
+    public static Supplier<Number> getNumberValue(Supplier<Object> filterValueResolver) {
+        return () -> {
+            Object filterValue = filterValueResolver;
+            if (filterValue instanceof Number) {
+                return (Number) filterValue;
+            }
+            if (filterValue instanceof Date) {
+                return ((Date) filterValue).getTime();
+            }
+            throw new UnsupportedOperationException("Unsupported Number filter value: " + filterValue);
+        };
+    }
     
     public static String convertToRegexp(String filterString) {
         String result = filterString.replace("*", "\\*");

@@ -5,6 +5,7 @@ import java.util.function.Supplier;
 
 import javax.persistence.criteria.CriteriaBuilder;
 
+import skyglass.query.model.criteria.ICriteriaQueryBuilder;
 import skyglass.query.model.criteria.IQueryBuilder;
 import skyglass.query.model.query.FilterGroup;
 import skyglass.query.model.query.InternalUtil;

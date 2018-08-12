@@ -4,11 +4,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import skyglass.query.model.criteria.IJoinBuilder;
 import skyglass.query.model.criteria.IJoinType;
 import skyglass.query.model.criteria.IPathResolver;
 import skyglass.query.model.criteria.IPredicate;
@@ -22,8 +20,6 @@ public class PrivatePathResolver implements IPathResolver {
     private String rootAlias = "_it";
 	
     private Map<String, PrivateJoin> joins = new HashMap<>();
-    
-    private IJoinBuilder joinBuilder;
     
     private IJoinType joinType;
     
@@ -40,10 +36,9 @@ public class PrivatePathResolver implements IPathResolver {
     private PrivatePathResolver parentPathResolver;
     
     public PrivatePathResolver(Class<?> rootClazz, ITypeResolver typeResolver, 
-    		IJoinBuilder joinBuilder, IJoinType joinType) {
+    		IJoinType joinType) {
     	this.rootClazz = rootClazz;
     	this.typeResolver = typeResolver;
-    	this.joinBuilder = joinBuilder;
     	this.joinType = joinType;
         setRootAlias();
     }
@@ -52,7 +47,6 @@ public class PrivatePathResolver implements IPathResolver {
         this.parentPathResolver = parentPathResolver;
     	this.rootClazz = rootClazz;
     	this.typeResolver = parentPathResolver.typeResolver;
-    	this.joinBuilder = parentPathResolver.joinBuilder;
     	this.joinType = parentPathResolver.joinType;
         setRootAlias();
     }
@@ -142,7 +136,6 @@ public class PrivatePathResolver implements IPathResolver {
     }
 
     private void createAlias(String path, String parentPath, String alias, IJoinType joinType, IPredicate onClause) {
-    	joinBuilder.addJoin(path, parentPath, alias, joinType, onClause);
         if (joins.containsKey(path)) {
             return;
         }

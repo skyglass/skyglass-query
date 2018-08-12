@@ -66,4 +66,8 @@ public interface MetadataHelper {
     public boolean isNumericField(Class<?> rootClass, String propertyName);
 
     public Object convertObject(Class<?> rootClass, String property, Object value, boolean isCollection);
+    
+    public boolean isCollection(Class<?> rootClass, String path);
+    
+    public boolean isEntity(Class<?> rootClass, String path);
 }
