@@ -1,8 +1,7 @@
-package skyglass.query.api;
+package skyglass.query.criteria.api;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -18,14 +17,12 @@ import skyglass.data.filter.OrderField;
 import skyglass.data.filter.PrivateCompositeFilterItem;
 import skyglass.data.filter.PrivateFilterItem;
 import skyglass.data.filter.request.IFilterRequest;
-import skyglass.data.query.QueryResult;
+import skyglass.query.model.criteria.ICriteriaQueryBuilder;
 import skyglass.query.model.criteria.IExpression;
 import skyglass.query.model.criteria.IJoinType;
 import skyglass.query.model.criteria.IOrder;
 import skyglass.query.model.criteria.IPath;
 import skyglass.query.model.criteria.IPredicate;
-import skyglass.query.model.criteria.ICriteriaQueryBuilder;
-import skyglass.query.model.criteria.ITypedQuery;
 
 public abstract class AbstractCriteriaFilter<T, F> extends AbstractBaseDataFilter<T, F> 
 	implements ICriteriaFilter<T, F> {
@@ -63,73 +60,12 @@ public abstract class AbstractCriteriaFilter<T, F> extends AbstractBaseDataFilte
         return queryBuilder.getPredicate(fieldName, filterType, filterValueResolver);
     }
 
-    @Override
-    public List<T> getFullResult() {
-        doApplyFilter();
-        resolveCustomFilters();
-        doApplyOrder();
-        List<T> result = createResultQuery().getResultList();
-        return result;
-    }
-
-    @Override
-    protected void initBeforeResult() {
-        initSearch();
-    }
-
-    @Override
-    protected long getRowCount() {
-        doApplyFilter();
-        resolveCustomFilters();
-        long rowCount = createCountResultQuery().getSingleResult();
-        return rowCount;
-    }
-
-    @Override
-    protected QueryResult<T> getPagedResult() {
-        long rowCount = getRowCount();
-        QueryResult<T> result = new QueryResult<T>();
-        result.setTotalRecords(rowCount);
-        if (rowCount == 0) {
-            result.setResults(Collections.emptyList());
-            return result;
-        }
-        ITypedQuery<T> query = setRootResult();
-        result.setResults(query.getResultList());
-        return result;
-    }
-
-    private ITypedQuery<T> setRootResult() {
-        int rowsPerPage = getRowsPerPage();
-        doApplyOrder();
-        ITypedQuery<T> result = createResultQuery();
-        result.setFirstResult((getPageNumber() - 1) * rowsPerPage);
-        result.setMaxResults(rowsPerPage);
-        return result;
-    }
-
-    private ITypedQuery<T> createResultQuery() {
-        return queryBuilder.createQuery(queryBuilder.createQuery(rootClazz));
-    }
-
-    private ITypedQuery<Long> createCountResultQuery() {
-        return queryBuilder.createQuery(queryBuilder.createCountCriteria());
-    }
-
-    @Override
-    protected List<T> getUnpagedResult() {
-        doApplyFilter();
-        resolveCustomFilters();
-        doApplyOrder();
-        return createResultQuery().getResultList();
-    }
-
     @SuppressWarnings("unchecked")
     @Override
     protected void resolveCustomFilter(CustomFilterResolver filterResolver) {
         ((CustomJpaFilterResolver<T, T>) filterResolver).addCustomFilter(queryBuilder);
     }
-
+    
     @Override
     protected void applyOrder(List<OrderField> orderFields) {
         for (OrderField orderField : orderFields) {
@@ -184,17 +120,6 @@ public abstract class AbstractCriteriaFilter<T, F> extends AbstractBaseDataFilte
         }
     }
 
-    private String getFieldResolver(int i, Collection<String> fieldResolvers) {
-        int j = 0;
-        for (String fieldResolver : fieldResolvers) {
-            if (j == i) {
-                return fieldResolver;
-            }
-            j++;
-        }
-        return null;
-    }
-
     @SuppressWarnings({ "unchecked", "rawtypes" })
     private IExpression<?> coalesce(String concat) {
         return queryBuilder.coalesce(queryBuilder.lower((IPath) queryBuilder.getExpression(concat)), () -> "");
@@ -205,8 +130,9 @@ public abstract class AbstractCriteriaFilter<T, F> extends AbstractBaseDataFilte
         return queryBuilder.concat((IExpression) concat1, (IExpression) concat2);
     }
 
-    protected void doApplyFilter() {
-        IPredicate result = applyFilters(queryContext.getRootFilterItem());
+    @Override
+    protected void applyFilter(PrivateCompositeFilterItem rootFilterItem) {
+        IPredicate result = applyFilters(rootFilterItem);
         if (result != null) {
             queryBuilder.getQuery().where(result);
         }

@@ -55,4 +55,16 @@ public class TestMetadataHelper implements MetadataHelper {
 		return null;
 	}
 
+	@Override
+	public boolean isCollection(Class<?> rootClass, String path) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public boolean isEntity(Class<?> rootClass, String path) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
 }

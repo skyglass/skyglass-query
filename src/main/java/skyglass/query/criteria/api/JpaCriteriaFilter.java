@@ -1,4 +1,4 @@
-package skyglass.query.api;
+package skyglass.query.criteria.api;
 
 import skyglass.data.filter.JunctionType;
 import skyglass.data.filter.request.IFilterRequest;

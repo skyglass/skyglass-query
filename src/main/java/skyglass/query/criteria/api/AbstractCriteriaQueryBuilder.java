@@ -1,27 +1,34 @@
-package skyglass.query.api;
+package skyglass.query.criteria.api;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import javax.persistence.EntityManager;
-
 import skyglass.data.filter.FilterType;
+import skyglass.data.filter.PrivateQueryContext;
+import skyglass.query.api.AbstractQueryBuilder;
+import skyglass.query.metadata.MetadataHelper;
 import skyglass.query.model.criteria.ICriteriaQueryBuilder;
 import skyglass.query.model.criteria.IExpression;
 import skyglass.query.model.criteria.IJoin;
 import skyglass.query.model.criteria.IJoinType;
 import skyglass.query.model.criteria.IPredicate;
 import skyglass.query.model.criteria.IQueryBuilder;
+import skyglass.query.model.criteria.IQueryProcessor;
 
 public abstract class AbstractCriteriaQueryBuilder<E, S> extends AbstractQueryBuilder<E, S>
 	implements ICriteriaQueryBuilder<E, S> {
 	
-    private Map<String, IJoin<?, ?>> joins = new HashMap<>();
-    
-    public AbstractCriteriaQueryBuilder(EntityManager entityManager) {
- 	   super(entityManager);
-    }
+    public AbstractCriteriaQueryBuilder(MetadataHelper metadataHelper) {
+		super(metadataHelper);
+	}
+
+	private Map<String, IJoin<?, ?>> joins = new HashMap<>();
+	
+	@Override
+	public IQueryProcessor setQueryProcessor(MetadataHelper metadataHelper, PrivateQueryContext privateQueryContext) {
+		return null;
+	}
 
     @Override
     public IPredicate getPredicate(String fieldName, FilterType filterType, 

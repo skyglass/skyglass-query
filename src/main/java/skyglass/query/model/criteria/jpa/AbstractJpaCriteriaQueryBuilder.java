@@ -2,18 +2,17 @@ package skyglass.query.model.criteria.jpa;
 
 import java.util.function.Supplier;
 
-import javax.persistence.EntityManager;
 import javax.persistence.criteria.CriteriaBuilder;
 
 import skyglass.data.filter.Dialect;
-import skyglass.query.api.AbstractCriteriaQueryBuilder;
-import skyglass.query.metadata.jpa.JpaMetadataHelper;
+import skyglass.query.criteria.api.AbstractCriteriaQueryBuilder;
+import skyglass.query.metadata.MetadataHelper;
 import skyglass.query.model.criteria.ICriteriaQuery;
 import skyglass.query.model.criteria.IExpression;
 import skyglass.query.model.criteria.IOrder;
 import skyglass.query.model.criteria.IPredicate;
+import skyglass.query.model.criteria.IQueryProcessor;
 import skyglass.query.model.criteria.IRoot;
-import skyglass.query.model.criteria.ISubQueryBuilder;
 import skyglass.query.model.criteria.ISubquery;
 import skyglass.query.model.criteria.ITypedQuery;
 
@@ -24,51 +23,38 @@ public abstract class AbstractJpaCriteriaQueryBuilder<E, S> extends AbstractCrit
     private final ICriteriaQuery<S> query;
 
     private final IRoot<E> root;
-    
-    protected JpaMetadataHelper jpaMetadataHelper;
 
-    public AbstractJpaCriteriaQueryBuilder(EntityManager entityManager, 
-    		Class<E> entityClass, Class<S> selectClass) {
-    	super(entityManager);
-        this.criteriaBuilder = entityManager.getCriteriaBuilder();
-        this.query = createQuery(selectClass);
+    public AbstractJpaCriteriaQueryBuilder(CriteriaBuilder criteriaBuilder, 
+    		Class<E> entityClass, Class<S> selectClass, MetadataHelper metadataHelper) {
+    	super(metadataHelper);
+        this.criteriaBuilder = criteriaBuilder;
+        this.query = createCriteriaQuery(selectClass);
         this.root = query.from(entityClass);
-        this.jpaMetadataHelper = JpaMetadataHelper.getInstanceForMetamodel(entityManager.getMetamodel());
     }
     
 	@Override
 	public String generateQueryString() {
 		throw new UnsupportedOperationException();
 	}
+	
+	@Override
+	public String generateCountQueryString() {
+		throw new UnsupportedOperationException();
+	}
    
 	@Override
-	public ITypedQuery<E> createQuery(String queryString) {
-       return new JpaTypedQuery<E>(entityManager.createQuery(queryString, rootClazz));
+	public <T> ITypedQuery<T> createQuery(Class<T> clazz) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public ITypedQuery<Long> createCountQuery() {
+		throw new UnsupportedOperationException();
 	}
 	
-    @Override
-    public Supplier<Boolean> numericFieldResolver(Class<?> rootClass, String propertyName) {
-        return () -> jpaMetadataHelper.isNumericField(rootClass, propertyName);
-    }
-
-    @Override
-    public Supplier<Object> objectConverter(Class<?> rootClass, String property, Object value, boolean isCollection) {
-        return () -> jpaMetadataHelper.convertObject(rootClass, property, value, isCollection);
-    }
-    
 	@Override
-	public boolean isCollection(Class<?> rootClass, String path) {
-		return jpaMetadataHelper.isCollection(rootClass, path);
-	}
-
-	@Override
-	public boolean isEntity(Class<?> rootClass, String path) {
-		return jpaMetadataHelper.isEntity(rootClass, path);
-	}
-
-	@Override
-	public boolean isId(Class<?> rootClass, String path) {
-		return jpaMetadataHelper.isId(rootClass, path);
+	public IQueryProcessor getQueryProcessor() {
+		throw new UnsupportedOperationException();
 	}
     
     @Override
@@ -89,7 +75,7 @@ public abstract class AbstractJpaCriteriaQueryBuilder<E, S> extends AbstractCrit
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
     @Override
-    public <T> ICriteriaQuery<T> createQuery(Class<T> clazz) {
+    public <T> ICriteriaQuery<T> createCriteriaQuery(Class<T> clazz) {
         return new JpaCriteriaQuery(criteriaBuilder.createQuery(clazz));
     }
 
@@ -236,7 +222,7 @@ public abstract class AbstractJpaCriteriaQueryBuilder<E, S> extends AbstractCrit
 
     @Override
     public ICriteriaQuery<Long> createCountCriteria() {
-        ICriteriaQuery<Long> countCriteria = createQuery(Long.class);
+        ICriteriaQuery<Long> countCriteria = createCountCriteria();
         IRoot<S> entityRoot = countCriteria.from(getQuery().getResultType());
         countCriteria.select(count(entityRoot));
         countCriteria.where(getQuery().getRestriction());
@@ -257,18 +243,6 @@ public abstract class AbstractJpaCriteriaQueryBuilder<E, S> extends AbstractCrit
             }
         }
         return false;
-    }
-
-    @Override
-    public <E0, S0> ISubQueryBuilder<E0, S0> createSubCriteriaBuilder(ICriteriaQuery<S> parentQuery, 
-    		Class<E0> subEntityClass, Class<S0> subSelectClass) {
-        return new JpaSubCriteriaBuilder<E0, S, S0>(entityManager, parentQuery, subEntityClass, subSelectClass);
-    }
-
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-    @Override
-    public <T> ITypedQuery<T> createQuery(ICriteriaQuery<T> criteriaQuery) {
-        return new JpaTypedQuery(entityManager.createQuery(((JpaCriteriaQuery) criteriaQuery).getCriteriaQuery()));
     }
 
     @Override

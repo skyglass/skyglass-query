@@ -70,7 +70,7 @@ public class PrivateQueryContext {
     }
     
     public PrivateCompositeFilterItem getRootFilterItem() {
-    	return rootFilterItem;
+    	return checkAndCleanFilters();
     }
     
     public PrivateFilterItem createFilterItem(String fieldName, Object filterValue) {

@@ -5,15 +5,27 @@ import java.util.function.Supplier;
 
 import skyglass.data.filter.JunctionType;
 import skyglass.data.filter.PrivateQueryContext;
+import skyglass.query.metadata.MetadataHelper;
 
 public interface IQueryBuilder<E> extends ITypeResolver {
 	
+	public IQueryProcessor getQueryProcessor();
+	
 	public String generateQueryString();
 	
+	public String generateCountQueryString();
+	
+    public <T> ITypedQuery<T> createQuery(Class<T> clazz);
+	
     public ITypedQuery<E> createQuery(String queryString);
+    
+    public ITypedQuery<Long> createCountQuery();
 	
     public PrivateQueryContext setPrivateQueryContext(
     		JunctionType junctionType, Class<E> rootClazz, IJoinType joinType);
+    
+    public IQueryProcessor setQueryProcessor(
+    		MetadataHelper metadataHelper, PrivateQueryContext privateQueryContext);
     
     public PrivateQueryContext getPrivateQueryContext();
     

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -17,24 +18,20 @@ import skyglass.data.filter.request.IFilterRequest;
 import skyglass.data.query.QueryResult;
 import skyglass.query.model.criteria.IJoinType;
 import skyglass.query.model.criteria.IQueryBuilder;
+import skyglass.query.model.criteria.IQueryProcessor;
+import skyglass.query.model.criteria.ITypedQuery;
+import skyglass.query.model.query.ISearchQuery;
+import skyglass.query.model.query.SelectField;
 
 public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T, F> {
 	
 	protected abstract F self();	
-
-    protected abstract void initBeforeResult();
-
-    protected abstract Iterable<T> getFullResult();	
 	
-    protected abstract long getRowCount();
-
-    protected abstract QueryResult<T> getPagedResult();
-
-    protected abstract List<T> getUnpagedResult();
-
-    protected abstract void applyOrder(List<OrderField> orderFields);
+	protected abstract void applyFilter(PrivateCompositeFilterItem rootFilterItem);
 
     protected abstract void resolveCustomFilter(CustomFilterResolver filterResolver);
+    
+    protected abstract void applyOrder(List<OrderField> orderFields);
     
     private int rowsPerPage = 10;
     private int pageNumber = 1;
@@ -47,12 +44,30 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
     private IFilterRequest request;
     
     protected Class<T> rootClazz;
-
+    
+	private IQueryBuilder<T> queryBuilder;
+	
     protected AbstractBaseDataFilter(Class<T> rootClazz, JunctionType junctionType, IJoinType joinType, 
     		IFilterRequest request, IQueryBuilder<T> queryBuilder) {
         this.rootClazz = rootClazz;
         this.queryContext = queryBuilder.setPrivateQueryContext(junctionType, rootClazz, joinType);
         this.request = request;
+        this.queryBuilder = queryBuilder;
+    }
+    
+	protected IQueryProcessor getQueryProcessor() {
+		return queryBuilder.getQueryProcessor();
+	}
+    
+    protected String getFieldResolver(int i, Collection<String> fieldResolvers) {
+        int j = 0;
+        for (String fieldResolver : fieldResolvers) {
+            if (j == i) {
+                return fieldResolver;
+            }
+            j++;
+        }
+        return null;
     }
     
     protected Object parseExpression(Object object, String expression) {
@@ -80,6 +95,62 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
 
     protected List<OrderField> getOrderFields() {
         return queryContext.getOrderFields();
+    }
+    
+    public List<T> getFullResult() {
+        applyFilter(queryContext.getRootFilterItem());
+        resolveCustomFilters();
+        doApplyOrder();
+        List<T> result = createResultQuery().getResultList();
+        return result;
+    }
+
+    protected void initBeforeResult() {
+        initSearch();
+    }
+
+    protected long getRowCount() {
+        applyFilter(queryContext.getRootFilterItem());
+        resolveCustomFilters();
+        long rowCount = createCountResultQuery().getSingleResult();
+        return rowCount;
+    }
+
+    protected QueryResult<T> getPagedResult() {
+        long rowCount = getRowCount();
+        QueryResult<T> result = new QueryResult<T>();
+        result.setTotalRecords(rowCount);
+        if (rowCount == 0) {
+            result.setResults(Collections.emptyList());
+            return result;
+        }
+        ITypedQuery<T> query = setRootResult();
+        result.setResults(query.getResultList());
+        return result;
+    }
+
+    private ITypedQuery<T> setRootResult() {
+        int rowsPerPage = getRowsPerPage();
+        doApplyOrder();
+        ITypedQuery<T> result = createResultQuery();
+        result.setFirstResult((getPageNumber() - 1) * rowsPerPage);
+        result.setMaxResults(rowsPerPage);
+        return result;
+    }
+
+    private ITypedQuery<T> createResultQuery() {
+        return queryBuilder.createQuery(rootClazz);
+    }
+
+    private ITypedQuery<Long> createCountResultQuery() {
+        return queryBuilder.createCountQuery();
+    }
+
+    protected List<T> getUnpagedResult() {
+        applyFilter(queryContext.getRootFilterItem());
+        resolveCustomFilters();
+        doApplyOrder();
+        return createResultQuery().getResultList();
     }
 
     @Override
@@ -187,6 +258,7 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
         return self();
     }
 
+    @Override
     public F addSearch(final String filterValue, final String... fieldNames) {
         addSearch(searchMap, filterValue, FieldType.Path, fieldNames);
         return self();
@@ -478,6 +550,36 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
     @Override
     public IJoinResolver<F, T> addJoin(String fieldName, String alias) {
         return new CustomJoin<F, T>(self(), null, queryContext, fieldName, alias, IJoinType.INNER);
+    }
+    
+    private void addResultMode() {
+        int resultMode = ISearchQuery.RESULT_MAP;
+
+        switch (resultMode) {
+        case ISearchQuery.RESULT_ARRAY:
+            // TODO: how to set result transformer on jpa query?
+            // query.setResultTransformer(ARRAY_RESULT_TRANSFORMER);
+            break;
+        case ISearchQuery.RESULT_LIST:
+            // query.setResultTransformer(Transformers.TO_LIST);
+            break;
+        case ISearchQuery.RESULT_MAP:
+            List<String> keyList = new ArrayList<String>();
+            Iterator<SelectField> fieldItr = queryContext.getSelectFields().iterator();
+            while (fieldItr.hasNext()) {
+                SelectField field = fieldItr.next();
+                if (field.getKey() != null && !field.getKey().equals("")) {
+                    keyList.add(field.getKey());
+                } else {
+                    keyList.add(field.getProperty());
+                }
+            }
+            // query.setResultTransformer(new
+            // MapResultTransformer(keyList.toArray(new String[0])));
+            break;
+        default: // ISearch.RESULT_SINGLE
+            break;
+        }
     }
 
 }

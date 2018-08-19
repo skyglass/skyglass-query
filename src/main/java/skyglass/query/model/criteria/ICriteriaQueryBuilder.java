@@ -13,7 +13,7 @@ public interface ICriteriaQueryBuilder<E, S> extends IQueryBuilder<E>, IJoinBuil
 
     public <T> IExpression<T> getExpression(String expression);
 
-    public <T> ICriteriaQuery<T> createQuery(Class<T> clazz);
+    public <T> ICriteriaQuery<T> createCriteriaQuery(Class<T> clazz);
 
     public ICriteriaQuery<Long> createCountCriteria();
 
@@ -63,9 +63,9 @@ public interface ICriteriaQueryBuilder<E, S> extends IQueryBuilder<E>, IJoinBuil
 
     public IPredicate getPredicate(String fieldName, FilterType filterType, Supplier<Object> filterValueResolver);
 
-    public <T> ITypedQuery<T> createQuery(ICriteriaQuery<T> criteriaQuery);
+    public <T> ITypedQuery<T> createTypedQuery(ICriteriaQuery<T> criteriaQuery);
 
-    public <E0, S0> ISubQueryBuilder<E0, S0> createSubCriteriaBuilder(ICriteriaQuery<S> parentQuery, Class<E0> subEntityClass, Class<S0> subSelectClass);
+    public ISubQueryBuilder<E, S> createSubCriteriaBuilder(ICriteriaQuery<S> parentQuery, Class<E> subEntityClass, Class<S> subSelectClass);
 
     public Dialect getDialect();
 
