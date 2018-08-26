@@ -5,7 +5,7 @@
 
     <artifactId>skyglass-query</artifactId>
     <groupId>skyglass</groupId>
-    <version>1.011</version> 
+    <version>1.012</version> 
     
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>

@@ -21,7 +21,7 @@ public class FieldResolver {
 	public FieldResolver(PrivateQueryContext queryContext, String fieldName, FieldType fieldType, String... fieldResolvers) {
 		this.queryContext = queryContext;
 		this.fieldName = fieldName;
-		this.defaultResolvers.add(queryContext.resolvePropertyPath(fieldName));
+		this.defaultResolvers.add(queryContext.getPathRef(fieldName));
 		addResolvers(fieldResolvers);
 		if (fieldType != null) {
 			this.fieldType = fieldType;			
@@ -69,7 +69,7 @@ public class FieldResolver {
 	
 	public void addResolvers(String... resolvers) {
 		for (String resolver: resolvers) {
-			fieldResolvers.add(queryContext.resolvePropertyPath(resolver));			
+			fieldResolvers.add(queryContext.getPathRef(resolver));			
 		}
 	}
 	

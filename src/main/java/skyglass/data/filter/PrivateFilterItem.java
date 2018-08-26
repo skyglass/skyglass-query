@@ -5,7 +5,8 @@ import java.util.function.Supplier;
 
 import javax.persistence.criteria.CriteriaBuilder;
 
-import skyglass.query.model.criteria.ICriteriaQueryBuilder;
+import org.apache.commons.lang3.StringUtils;
+
 import skyglass.query.model.criteria.IQueryBuilder;
 import skyglass.query.model.query.FilterGroup;
 import skyglass.query.model.query.InternalUtil;
@@ -50,7 +51,8 @@ public class PrivateFilterItem {
     }
     
     public boolean hasNullValue() {
-    	return filterValue != null;
+    	return filterValue == null || 
+    			(filterValue instanceof String && StringUtils.isBlank((String)filterValue));
     }
     
     public boolean hasNotNullValue() {

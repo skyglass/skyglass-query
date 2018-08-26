@@ -332,7 +332,10 @@ public class JpaQueryProcessor implements IQueryProcessor {
       }
     
     private String applyMultipleOrder(OrderField orderField) {
-        return concat(0, orderField.getOrderField().getResolvers());
+    	StringBuilder sb = new StringBuilder();
+        sb.append(concat(0, orderField.getOrderField().getResolvers()));
+        sb.append(orderField.isDescending() ? " desc" : " asc");
+        return sb.toString();
     }
 
     private String applySingleOrder(OrderField orderField) {
@@ -389,9 +392,76 @@ public class JpaQueryProcessor implements IQueryProcessor {
         }
         return null;
     }
+    
+    private String filterToQL(PrivateFilterItem filterItem) {
+        if (filterItem instanceof PrivateCompositeFilterItem) {
+            return filterCompositeToQL(filterItem);
+        }
+        String totalResult = null;
+        for (String field : filterItem.getFieldResolver().getResolvers()) {
+            String result = filterAtomicToQL(filterItem, field);
+            if (totalResult == null) {
+                totalResult = result;
+            } else {
+                totalResult = "(" + totalResult + ") OR (" + result + ")";
+            }
+        }
+        return totalResult;
+    }
 
-	protected String filterToQL(PrivateFilterItem filterItem) {
-        String path = filterItem.getFieldResolver().getFieldName();
+	private String filterCompositeToQL(PrivateFilterItem filterItem) {		
+        FilterType filterType = filterItem.getFilterType();
+        String filterOperator = filterType.getOperator();
+        PrivateCompositeFilterItem compositeFilterItem = (PrivateCompositeFilterItem) filterItem;
+
+        switch (filterType) {
+        case And:
+        case Or:         
+            StringBuilder sb = new StringBuilder("(");
+            boolean first = true;
+            for (PrivateFilterItem child : compositeFilterItem.getChildren()) {
+	            String filterStr = filterToQL(child);
+	            if (filterStr != null) {
+	                if (first) {
+	                    first = false;
+	                } else {
+	                    sb.append(filterOperator);
+	                }
+	                sb.append(filterStr);
+	            }
+            }
+            if (first)
+                return null;
+
+            sb.append(")");
+            return sb.toString();
+        case Not:
+            String filterStr = filterToQL(compositeFilterItem.getSingleChild());
+            if (filterStr == null)
+                return null;
+
+            return "NOT " + filterStr;
+        case Some:
+            return generateSimpleAllOrSome(compositeFilterItem, "some");
+        case All:          
+            compositeFilterItem = (PrivateCompositeFilterItem) filterItem;
+            return generateSimpleAllOrSome(compositeFilterItem, "all");   
+        case None:
+            return "NOT ( " + generateSimpleAllOrSome(compositeFilterItem, "some") + " )";  
+        //TODO: to be implemented
+        /*case Exists:
+            if (!(filterItem instanceof PrivateCompositeFilterItem)) {
+                return null;
+            }            
+            compositeFilterItem = (PrivateCompositeFilterItem) filterItem;
+            return "EXISTS " + generateSubquery(ctx, property, negate((QueryFilter) value));*/
+
+        default:
+            throw new IllegalArgumentException("Filter comparison ( " + filterOperator + " ) is invalid.");
+        }
+    }
+	
+	private String filterAtomicToQL(PrivateFilterItem filterItem, String path) {
         FilterType filterType = filterItem.getFilterType();
         String filterOperator = filterType.getOperator();
         Supplier<Object> filterValueResolver = filterItem.getFilterValueResolver();
@@ -432,43 +502,7 @@ public class JpaQueryProcessor implements IQueryProcessor {
         case Like:
             return "LOWER(" + queryContext.getPathRef(path) + ") LIKE LOWER(" 
             	+ queryContext.registerParam(path, filterValueResolver) + ")";
-        case And:
-        case Or:
-            if (!(filterItem instanceof PrivateCompositeFilterItem)) {
-                return null;
-            }
-            
-            PrivateCompositeFilterItem compositeFilterItem = (PrivateCompositeFilterItem) filterItem;
-
-            StringBuilder sb = new StringBuilder("(");
-            boolean first = true;
-            for (PrivateFilterItem child : compositeFilterItem.getChildren()) {
-	            String filterStr = filterToQL(child);
-	            if (filterStr != null) {
-	                if (first) {
-	                    first = false;
-	                } else {
-	                    sb.append(filterOperator);
-	                }
-	                sb.append(filterStr);
-	            }
-            }
-            if (first)
-                return null;
-
-            sb.append(")");
-            return sb.toString();
-        case Not:
-            if (!(filterItem instanceof PrivateCompositeFilterItem)) {
-                return null;
-            }
-            
-            compositeFilterItem = (PrivateCompositeFilterItem) filterItem;
-            String filterStr = filterToQL(compositeFilterItem.getSingleChild());
-            if (filterStr == null)
-                return null;
-
-            return "NOT " + filterStr;
+        
         case Empty:
             metadata = metadataHelper.get(queryContext.getRootClazz(), path);
             if (metadata.isCollection()) {
@@ -489,31 +523,6 @@ public class JpaQueryProcessor implements IQueryProcessor {
             } else {
                 return queryContext.getPathRef(path) + " IS NOT NULL";
             }
-        case Some:
-            if (!(filterItem instanceof PrivateCompositeFilterItem)) {
-                return null;
-            }            
-            compositeFilterItem = (PrivateCompositeFilterItem) filterItem;
-            return generateSimpleAllOrSome(compositeFilterItem, "some");
-        case All:
-            if (!(filterItem instanceof PrivateCompositeFilterItem)) {
-                return null;
-            }            
-            compositeFilterItem = (PrivateCompositeFilterItem) filterItem;
-            return generateSimpleAllOrSome(compositeFilterItem, "all");   
-        case None:
-            if (!(filterItem instanceof PrivateCompositeFilterItem)) {
-                return null;
-            }            
-            compositeFilterItem = (PrivateCompositeFilterItem) filterItem;
-            return "NOT ( " + generateSimpleAllOrSome(compositeFilterItem, "some") + " )";  
-        //TODO: to be implemented
-        /*case Exists:
-            if (!(filterItem instanceof PrivateCompositeFilterItem)) {
-                return null;
-            }            
-            compositeFilterItem = (PrivateCompositeFilterItem) filterItem;
-            return "EXISTS " + generateSubquery(ctx, property, negate((QueryFilter) value));*/
 
         default:
             throw new IllegalArgumentException("Filter comparison ( " + filterOperator + " ) is invalid.");

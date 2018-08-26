@@ -6,6 +6,11 @@ import skyglass.data.filter.request.IFilterRequest;
 
 public class TestFilterBuilder {
 	
+    public static TestJpaQueryFilter testDataFilter() {
+        TestJpaQueryFilter dataFilter = new TestJpaQueryFilter(JunctionType.AND, null);
+        return dataFilter;
+    }
+	
     public static TestJpaQueryFilter testDataFilter(IFilterRequest request, JunctionType junctionType) {
         TestJpaQueryFilter dataFilter = new TestJpaQueryFilter(junctionType, request);
         FilterRequest.initDataFilter(dataFilter, request);

@@ -55,7 +55,7 @@ public abstract class AbstractCriteriaFilter<T, F> extends AbstractBaseDataFilte
     private IPredicate createAtomicFilter(String fieldName, FilterType filterType, Supplier<Object> filterValueResolver,
             boolean resolvePropertyPath) {
         if (resolvePropertyPath) {
-            fieldName = queryContext.resolvePropertyPath(fieldName);
+            fieldName = queryContext.getPathRef(fieldName);
         }
         return queryBuilder.getPredicate(fieldName, filterType, filterValueResolver);
     }

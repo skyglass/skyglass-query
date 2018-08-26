@@ -7,10 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import skyglass.data.query.QueryFilter;
 import skyglass.query.model.criteria.IJoinType;
 import skyglass.query.model.criteria.ITypeResolver;
-import skyglass.query.model.query.QueryUtil;
 import skyglass.query.model.query.SelectField;
 
 public class PrivateQueryContext {
@@ -70,7 +68,7 @@ public class PrivateQueryContext {
     }
     
     public PrivateCompositeFilterItem getRootFilterItem() {
-    	return checkAndCleanFilters();
+    	return rootFilterItem;
     }
     
     public PrivateFilterItem createFilterItem(String fieldName, Object filterValue) {
@@ -138,18 +136,6 @@ public class PrivateQueryContext {
                 filterType);
     }
     
-    public String resolveAliasPath(String path, IJoinType joinType) {
-    	return pathResolver.resolveAliasPath(path, joinType);
-    }
-    
-    public String resolvePropertyPath(String path) {
-    	return pathResolver.resolvePropertyPath(path);
-    }
-    
-    public String resolvePropertyPath(String path, IJoinType joinType) {
-    	return pathResolver.resolvePropertyPath(path, joinType);
-    }
-    
     public void setJoinType(IJoinType joinType) {
     	pathResolver.setJoinType(joinType);
     }
@@ -180,6 +166,14 @@ public class PrivateQueryContext {
 
     public FieldResolver addFieldResolvers(String fieldName, FieldType fieldType, String... expressions) {
         return fieldResolverContext.addFieldResolvers(this, fieldName, fieldType, expressions);
+    }
+    
+    public void addFilter(FilterItem filterItem) {
+    	addFilters(filterItem);
+    }
+    
+    public void addFilter(PrivateFilterItem filterItem) {
+    	addRootChild(filterItem);
     }
     
     public void addFilter(CompositeFilterItem parent, FilterItem filterItem) {
@@ -286,7 +280,7 @@ public class PrivateQueryContext {
     }
     
     public PrivateFilterItem negate(FilterItem filterItem) {
-        return addFilters(FilterType.Not, addExplicitNullChecks(createPrivateFilterItem(filterItem)));
+        return addFilters(FilterType.Not, createPrivateFilterItem(filterItem));
     }
 
     public void addSelectFields(String... fieldNames) {
@@ -423,94 +417,11 @@ public class PrivateQueryContext {
         }
     }
     
-    private void addFilter(PrivateFilterItem filterItem) {
-    	addRootChild(filterItem);
-    }
-
     private void addFilters(PrivateCompositeFilterItem parent, PrivateFilterItem... filterItems) {
         for (PrivateFilterItem filterItem : filterItems) {
             parent.addChild(filterItem);
         }
         addRootChild(parent);
-    }
-    
-    /**
-     * <ol>
-     * <li>Check for injection attack in property strings.
-     * <li>Check for values that are incongruent with the operator.
-     * <li>Remove null filters from the list.
-     * <li>Simplify out junctions (and/or) that have only one sub-filter.
-     * <li>Remove filters that require sub-filters but have none
-     * (and/or/not/some/all/none)
-     * </ol>
-     */
-    public PrivateCompositeFilterItem checkAndCleanFilters() {
-        QueryUtil.walkFilters(rootFilterItem.getChildren(), new QueryUtil.FilterVisitor() {
-            @Override
-            public PrivateFilterItem visitBefore(PrivateFilterItem filterItem) {
-                if (filterItem != null && filterItem.hasNotNullValue()) {
-                    if (filterItem.isTakesListOfSubFilters()) {
-                    	PrivateCompositeFilterItem compositeFilterItem = (PrivateCompositeFilterItem)filterItem;
-                        // make sure that filters that take lists of filters
-                        // actually have lists of filters for their values
-                        if (compositeFilterItem.getChildren().size() == 0) {
-                            throw new IllegalArgumentException("The query has a composite filter (" + filterItem
-                                    + ") which should have a List of Filters but the list is empty");
-                        }
-                    } else if (filterItem.isTakesListOfValues()) {
-                        // make sure filters that take collections or arrays
-                        // actually have collections or arrays for their values
-                        if (!filterItem.hasCollectionValue()) {
-                            throw new IllegalArgumentException("The query has a filter (" + filterItem
-                                    + ") for which the value should be a collection or array but is of type: "
-                                    + filterItem.getValueClass());
-                        }
-                    }
-                }
-
-                return filterItem;
-            }
-
-            @Override
-            public PrivateFilterItem visitAfter(PrivateFilterItem filterItem) {
-                if (filterItem == null)
-                    return null;
-
-                // Remove operators that take sub filters but have none
-                // assigned.
-                if (filterItem.isTakesListOfSubFilters()) {
-                	PrivateCompositeFilterItem compositeFilterItem = (PrivateCompositeFilterItem)filterItem;
-                    if (compositeFilterItem.getChildren().size() == 0) {
-                        return null; 
-                    }
-                }
-
-                return filterItem;
-            }
-        }, true);
-        
-        return rootFilterItem;
-    }
-    
-    /**
-     * Used by {@link #negate(QueryFilter)}. There's a complication with null
-     * values in the database so that !(x == 1) is not the opposite of (x == 1).
-     * Rather !(x == 1 and x != null) is the same as (x == 1). This method
-     * applies the null check explicitly to all filters included in the given
-     * filter tree.
-     */
-    protected PrivateFilterItem addExplicitNullChecks(PrivateFilterItem filterItem) {
-        return QueryUtil.walkFilter(filterItem, new QueryUtil.FilterVisitor() {
-            @Override
-            public PrivateFilterItem visitAfter(PrivateFilterItem filterItem) {
-                if (filterItem.isTakesSingleValue() || filterItem.isTakesListOfValues()) {
-                    return addFilters(FilterType.And, filterItem, notNull(filterItem.getFieldResolver().getFieldName()));
-                } else {
-                    return filterItem;
-                }
-            }
-        }, false);
-
     }
     
 }

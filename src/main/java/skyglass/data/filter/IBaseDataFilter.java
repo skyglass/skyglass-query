@@ -13,8 +13,12 @@ public interface IBaseDataFilter<T, F>{
     public long getResultCount();
 
     public List<T> getUnpagedList();
+    
+    public F addOrder(String orderField);
 
     public F addOrder(String orderField, OrderType orderType);
+    
+    public F setOrder(String orderField);
 
     public F setOrder(String orderField, OrderType orderType);
 
@@ -32,17 +36,17 @@ public interface IBaseDataFilter<T, F>{
 
     public F addFilter(String fieldName, Object filterValue, FilterType filterType);
 
-    public F addFilters(String fieldName, Object[] filterValues);
-
-    public F addFilters(String fieldName, Object[] filterValues, FilterType filterType);
-
     public F addFilter(String fieldName, FieldType fieldType, Object filterValue);
 
-    public F addFilter(String fieldName, FieldType fieldType, Object filterValue, FilterType filterType);
+    public F addFilter(String fieldName, FieldType fieldType, Object filterValue, FilterType filterType);    
 
-    public F addFilters(String fieldName, FieldType fieldType, Object[] filterValues);
+    public F addFilters(String fieldName, Object... filterValues);
 
-    public F addFilters(String fieldName, FieldType fieldType, Object[] filterValues, FilterType filterType);
+    public F addFilters(String fieldName, FilterType filterType, Object... filterValues);
+
+    public F addFilters(String fieldName, FieldType fieldType, Object... filterValues);
+
+    public F addFilters(String fieldName, FieldType fieldType, FilterType filterType, Object... filterValues);
 
     public F addFilter(FilterItem filterItem);
 
@@ -117,9 +121,15 @@ public interface IBaseDataFilter<T, F>{
     public F addSelectField(String fieldName, SelectType operator);
 
     public F setJoinType(IJoinType joinType);
+    
+	public F setDistinct(boolean distinct);
 
     public IJoinResolver<F, T> addJoin(String fieldName, String alias);
 
     public IJoinResolver<F, T> addLeftJoin(String fieldName, String alias);
-
+    
+	public String generateQueryString();
+	
+	public String generateCountQueryString();
+	
 }

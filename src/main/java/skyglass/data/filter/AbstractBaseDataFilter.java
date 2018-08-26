@@ -20,7 +20,6 @@ import skyglass.query.model.criteria.IJoinType;
 import skyglass.query.model.criteria.IQueryBuilder;
 import skyglass.query.model.criteria.IQueryProcessor;
 import skyglass.query.model.criteria.ITypedQuery;
-import skyglass.query.model.query.ISearchQuery;
 import skyglass.query.model.query.SelectField;
 
 public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T, F> {
@@ -98,20 +97,21 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
     }
     
     public List<T> getFullResult() {
-        applyFilter(queryContext.getRootFilterItem());
-        resolveCustomFilters();
-        doApplyOrder();
         List<T> result = createResultQuery().getResultList();
         return result;
     }
 
-    protected void initBeforeResult() {
+    private void initBeforeResult() {
         initSearch();
+        doApplyFilterAndOrder();
+    }
+    
+    private void initBeforeCountResult() {
+        initSearch();
+        doApplyFilter();
     }
 
     protected long getRowCount() {
-        applyFilter(queryContext.getRootFilterItem());
-        resolveCustomFilters();
         long rowCount = createCountResultQuery().getSingleResult();
         return rowCount;
     }
@@ -131,7 +131,6 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
 
     private ITypedQuery<T> setRootResult() {
         int rowsPerPage = getRowsPerPage();
-        doApplyOrder();
         ITypedQuery<T> result = createResultQuery();
         result.setFirstResult((getPageNumber() - 1) * rowsPerPage);
         result.setMaxResults(rowsPerPage);
@@ -146,24 +145,27 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
         return queryBuilder.createCountQuery();
     }
 
-    protected List<T> getUnpagedResult() {
-        applyFilter(queryContext.getRootFilterItem());
-        resolveCustomFilters();
-        doApplyOrder();
-        return createResultQuery().getResultList();
-    }
-
     @Override
     public F setPaging(Integer rowsPerPage, Integer pageNumber) {
         this.rowsPerPage = rowsPerPage;
         this.pageNumber = pageNumber;
         return self();
     }
+    
+    @Override
+    public F addOrder(String orderField) {
+        return addOrder(orderField, OrderType.ASC);
+    }
 
     @Override
     public F addOrder(String orderField, OrderType orderType) {
         queryContext.addOrder(orderField, orderType);
         return self();
+    }
+    
+    @Override
+    public F setOrder(String orderField) {
+        return setOrder(orderField, OrderType.ASC);
     }
 
     @Override
@@ -228,7 +230,7 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
             return getEmptyResult().getResults();
         }
         initBeforeResult();
-        return getUnpagedResult();
+        return getFullResult();
     }
 
     @Override
@@ -236,17 +238,27 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
         if (returnEmptyResult()) {
             return 0;
         }
-        initBeforeResult();
+        initBeforeCountResult();
         return getRowCount();
     }
 
-    protected boolean doApplyOrder() {
+    private boolean doApplyOrder() {
         List<OrderField> orderFields = getOrderFields();
         if (orderFields.size() > 0) {
             applyOrder(orderFields);
             return true;
         }
         return false;
+    }
+    
+    private void doApplyFilterAndOrder() {
+        doApplyFilter();
+        doApplyOrder();
+    }
+    
+    private void doApplyFilter() {
+        applyFilter(queryContext.getRootFilterItem());
+        resolveCustomFilters();
     }
 
     @Override
@@ -315,13 +327,13 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
     }
 
     @Override
-    public F addFilters(String fieldName, Object[] filterValues) {
+    public F addFilters(String fieldName, Object... filterValues) {
         return addFilters(fieldName, FieldType.Path, filterValues);
     }
 
     @Override
-    public F addFilters(String fieldName, Object[] filterValues, FilterType filterType) {
-        return addFilters(fieldName, FieldType.Path, filterValues, filterType);
+    public F addFilters(String fieldName, FilterType filterType, Object... filterValues) {
+        return addFilters(fieldName, FieldType.Path, filterType, filterValues);
     }
 
     @Override
@@ -336,7 +348,8 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
 
     @Override
     public F addFilter(FilterItem filterItem) {
-    	return addFilter(filterItem);
+    	queryContext.addFilter(filterItem);
+    	return self();
     }
 
     @Override
@@ -358,13 +371,12 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
     }
     
     @Override
-    public F addFilters(String fieldName, FieldType fieldType, Object[] filterValues) {
-        addFilters(fieldName, fieldType, filterValues, FilterType.Equals);
-        return self();
+    public F addFilters(String fieldName, FieldType fieldType, Object... filterValues) {
+        return addFilters(fieldName, fieldType, FilterType.Equals, filterValues);
     }
 
     @Override
-    public F addFilters(String fieldName, FieldType fieldType, Object[] filterValues, FilterType filterType) {
+    public F addFilters(String fieldName, FieldType fieldType, FilterType filterType, Object... filterValues) {
         queryContext.addFilters(fieldName, fieldType, filterValues, filterType);
         return self();
     }
@@ -541,6 +553,12 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
         return self();
     }
     
+    @Override
+    public F setDistinct(boolean distinct) {
+    	queryContext.setDistinct(distinct);
+    	return self();
+    }
+    
 
     @Override
     public IJoinResolver<F, T> addLeftJoin(String fieldName, String alias) {
@@ -552,18 +570,30 @@ public abstract class AbstractBaseDataFilter<T, F> implements IBaseDataFilter<T,
         return new CustomJoin<F, T>(self(), null, queryContext, fieldName, alias, IJoinType.INNER);
     }
     
+    @Override
+	public String generateQueryString() {
+    	initBeforeResult();
+		return queryBuilder.generateQueryString();
+	}
+	
+    @Override
+	public String generateCountQueryString() {
+    	initBeforeCountResult();
+		return queryBuilder.generateCountQueryString();
+	}
+    
     private void addResultMode() {
-        int resultMode = ISearchQuery.RESULT_MAP;
+        ResultMode resultMode = ResultMode.MAP;
 
         switch (resultMode) {
-        case ISearchQuery.RESULT_ARRAY:
+        case ARRAY:
             // TODO: how to set result transformer on jpa query?
             // query.setResultTransformer(ARRAY_RESULT_TRANSFORMER);
             break;
-        case ISearchQuery.RESULT_LIST:
+        case LIST:
             // query.setResultTransformer(Transformers.TO_LIST);
             break;
-        case ISearchQuery.RESULT_MAP:
+        case MAP:
             List<String> keyList = new ArrayList<String>();
             Iterator<SelectField> fieldItr = queryContext.getSelectFields().iterator();
             while (fieldItr.hasNext()) {

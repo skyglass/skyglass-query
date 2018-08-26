@@ -8,16 +8,15 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import skyglass.query.model.criteria.IJoinType;
-import skyglass.query.model.criteria.IPathResolver;
 import skyglass.query.model.criteria.IPredicate;
 import skyglass.query.model.criteria.IQueryBuilder;
 import skyglass.query.model.criteria.ITypeResolver;
 
-public class PrivatePathResolver implements IPathResolver {
+public class PrivatePathResolver {
 	
     private static final String ROOT_PATH = "";
     
-    private String rootAlias = "_it";
+    private String rootAlias = "_root";
 	
     private Map<String, PrivateJoin> joins = new HashMap<>();
     
@@ -50,55 +49,23 @@ public class PrivatePathResolver implements IPathResolver {
     	this.joinType = parentPathResolver.joinType;
         setRootAlias();
     }
-    
-    @Override
-    public String resolvePropertyPath(String associationPath) {
-        return resolvePropertyPath(associationPath, joinType);
-    }
-    
-    @Override
-    public String resolvePropertyPath(String associationPath, IJoinType joinType) {
-        return resolvePropertyPath(associationPath, joinType, null);
-    }
 
-    @Override
-    public String resolvePropertyPath(String associationPath, IJoinType joinType, IPredicate onClause) {
-        return createAliases(associationPath, joinType, onClause, false);
-    }
-
-    @Override
-    public String resolveAliasPath(String associationPath) {
-        return resolveAliasPath(associationPath, joinType);
-    }
-
-    @Override
-    public String resolveAliasPath(String associationPath, IJoinType joinType) {
-        return resolveAliasPath(associationPath, joinType, null);
-    }
-
-    @Override
-    public String resolveAliasPath(String associationPath, IJoinType joinType, IPredicate onClause) {
-        return createAliases(associationPath, joinType, onClause, true);
-    }
-    
-	@Override
 	public IJoinType getJoinType() {
 		return joinType;
 	}
 
-	@Override
 	public void setJoinType(IJoinType joinType) {
 		this.joinType = joinType;		
 	}
     
-    private String createAliases(String expression, IJoinType joinType, IPredicate onClause, boolean forceLast) {
+    private String createAliases(String expression, IJoinType joinType, boolean forceLast) {
         String original = expression;
         expression = IQueryBuilder.normalizeFieldName(expression, forceLast);
         String[] values1 = expression.split("\\.");
         String[] values = values1[0].split("_");
         if (values1.length == 1 && values.length == 1) {
             if (forceLast) {
-                createAlias(values1[0], null, values1[0], joinType, onClause);
+                createAlias(values1[0], null, values1[0], joinType);
             }
             return original;
         }
@@ -109,7 +76,7 @@ public class PrivatePathResolver implements IPathResolver {
         for (String value : values) {
             if (i > 0) {
                 if (i == values.length - 1 && values1.length == 1) {
-                    createAlias(currentPath + "." + value, currentPath, currentAlias + "_" + value, joinType, onClause);
+                    createAlias(currentPath + "." + value, currentPath, currentAlias + "_" + value, joinType);
                 } else {
                     createAlias(currentPath + "." + value, currentPath, currentAlias + "_" + value, joinType);
                 }
@@ -120,8 +87,7 @@ public class PrivatePathResolver implements IPathResolver {
         }
         if (values1.length == 2) {
             if (forceLast) {
-                createAlias(currentPath + "." + values1[1], currentPath, currentAlias + "_" + values1[1], joinType,
-                        onClause);
+                createAlias(currentPath + "." + values1[1], currentPath, currentAlias + "_" + values1[1], joinType);
                 currentAlias = currentAlias + "_" + values1[1];
                 return currentAlias;
             }
@@ -170,7 +136,7 @@ public class PrivatePathResolver implements IPathResolver {
      */
 	protected String registerParam(String path, Supplier<Object> valueResolver) {
         paramList.add(valueResolver);
-        return ":" + getPropertyRef(path) + Integer.toString(paramList.size());
+        return ":p" + Integer.toString(paramList.size());
     }
 
     /**
