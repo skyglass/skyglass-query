@@ -1,4 +1,4 @@
-# Skyglass Security - client-side security module for AngularJS.
+# Skyglass Query - declarative query builder framework
 
 * angular-spring-security is a demo project which shows how to implement following security features:
 
