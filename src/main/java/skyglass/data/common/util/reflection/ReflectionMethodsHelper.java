@@ -7,11 +7,10 @@ import java.lang.reflect.Modifier;
 import java.util.Collection;
 import java.util.Map;
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
-
-import skyglass.data.common.util.StringUtil;
 
 public class ReflectionMethodsHelper {
 
@@ -133,7 +132,7 @@ public class ReflectionMethodsHelper {
 
     public static Object getFieldValue(Object obj, String name, boolean silent) {
         Object result = null;
-        if (obj != null && !StringUtil.isEmpty(name)) {
+        if (obj != null && !StringUtils.isBlank(name)) {
             try {
                 Field field = findField(name, obj.getClass());
                 if (field != null) {
