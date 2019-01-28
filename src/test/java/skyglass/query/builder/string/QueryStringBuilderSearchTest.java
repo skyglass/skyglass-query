@@ -3,6 +3,7 @@ package skyglass.query.builder.string;
 import org.junit.Assert;
 import org.junit.Test;
 
+import skyglass.query.builder.SearchType;
 import skyglass.query.builder.result.MockQuery;
 
 public class QueryStringBuilderSearchTest {

@@ -2,6 +2,9 @@ package skyglass.query.builder.string;
 
 import java.util.List;
 
+import skyglass.query.builder.QueryRequestDTO;
+
+@SuppressWarnings("serial")
 public class MockQueryRequestDto extends QueryRequestDTO {
 
 	private String test;

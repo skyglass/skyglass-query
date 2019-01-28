@@ -3,7 +3,8 @@ package skyglass.query.builder.result;
 import java.util.Collections;
 import java.util.List;
 
-import skyglass.query.builder.string.QueryRequestDTO;
+import skyglass.query.builder.QueryRequestDTO;
+import skyglass.query.builder.QueryResult;
 import skyglass.query.builder.string.QueryStringBuilder;
 
 public class QueryResultBuilder<T> {

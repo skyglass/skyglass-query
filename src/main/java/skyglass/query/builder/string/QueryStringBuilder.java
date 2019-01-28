@@ -15,8 +15,9 @@ import skyglass.query.NativeQueryUtil;
 import skyglass.query.builder.OrderBuilder;
 import skyglass.query.builder.OrderField;
 import skyglass.query.builder.OrderType;
+import skyglass.query.builder.QueryRequestDTO;
+import skyglass.query.builder.QueryResult;
 import skyglass.query.builder.result.QueryManager;
-import skyglass.query.builder.result.QueryResult;
 
 public class QueryStringBuilder {
 

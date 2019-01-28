@@ -4,11 +4,7 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import skyglass.query.builder.result.DtoConverter;
-import skyglass.query.builder.result.EntityDtoConverter;
-import skyglass.query.builder.result.QueryResult;
-import skyglass.query.builder.result.QueryResultBuilder;
-import skyglass.query.builder.result.QueryResultProvider;
+import skyglass.query.builder.QueryResult;
 import skyglass.query.builder.string.QueryStringBuilder;
 
 public class TestQueryManager {

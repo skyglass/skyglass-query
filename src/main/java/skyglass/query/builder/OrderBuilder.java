@@ -3,10 +3,13 @@ package skyglass.query.builder;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.lang3.StringUtils;
+import skyglass.query.QueryTranslationUtil;
 
-import skyglass.query.builder.string.QueryRequestDTO;
-
+/**
+ * This class allows to build order fields from QueryRequestDTO in a declarative way.
+ * Each OrderField class contains information on how to build correspondent SQL ORDER BY part
+ * 
+ */
 public class OrderBuilder {
 
 	private List<OrderField> orderFields = new ArrayList<OrderField>();
@@ -18,47 +21,67 @@ public class OrderBuilder {
 	}
 
 	public OrderBuilder bindOrder(String alias, String... orderFields) {
+		return bindOrder(alias, FieldType.String, orderFields);
+	}
+
+	public OrderBuilder bindOrder(String alias, FieldType fieldType, String... orderFields) {
 		if (alias.equals(queryRequest.getOrderField())) {
-			setOrder(queryRequest.getOrderType(), orderFields);
+			setOrder(queryRequest.getOrderType(), fieldType, orderFields);
 		}
 		return this;
 	}
 
 	public OrderBuilder bindTranslatableOrder(String alias, String... orderFields) {
-		return bindOrder(alias, getTranslatedOrderFields(orderFields));
+		return bindOrder(alias, FieldType.String, QueryTranslationUtil.getTranslatedFields(getCurrentLang(), orderFields));
 	}
 
 	public OrderBuilder addOrder(OrderType orderType, String... orderFields) {
-		OrderField order = new OrderField(new FieldResolver(queryRequest, orderFields), orderType);
+		return addOrder(orderType, FieldType.String, orderFields);
+	}
+
+	public OrderBuilder addOrder(OrderType orderType, FieldType fieldType, String... orderFields) {
+		OrderField order = new OrderField(new FieldResolver(orderFields), orderType, fieldType);
 		this.orderFields.add(order);
 		return this;
 	}
 
 	public OrderBuilder setOrder(OrderType orderType, String... orderFields) {
+		return setOrder(orderType, FieldType.String, orderFields);
+	}
+
+	public OrderBuilder setOrder(OrderType orderType, FieldType fieldType, String... orderFields) {
 		this.orderFields.clear();
-		addOrder(orderType, orderFields);
+		addOrder(orderType, fieldType, orderFields);
 		return this;
 	}
 
 	public OrderBuilder setDefaultTranslatableOrder(OrderType orderType, String... orderFields) {
-		return setDefaultOrder(orderType, getTranslatedOrderFields(orderFields));
+		return setDefaultOrder(orderType, FieldType.String, QueryTranslationUtil.getTranslatedFields(getCurrentLang(), orderFields));
 	}
 
 	public OrderBuilder setDefaultTranslatableOrders(OrderType orderType, String... orderFields) {
-		return setDefaultOrders(orderType, getTranslatedOrderFields(orderFields));
+		return setDefaultOrders(orderType, FieldType.String, QueryTranslationUtil.getTranslatedFields(getCurrentLang(), orderFields));
 	}
 
 	public OrderBuilder setDefaultOrder(OrderType orderType, String... orderFields) {
+		return setDefaultOrder(orderType, FieldType.String, orderFields);
+	}
+
+	public OrderBuilder setDefaultOrders(OrderType orderType, String... orderFields) {
+		return setDefaultOrders(orderType, FieldType.String, orderFields);
+	}
+
+	public OrderBuilder setDefaultOrder(OrderType orderType, FieldType fieldType, String... orderFields) {
 		if (this.orderFields.size() == 0) {
-			setOrder(orderType, orderFields);
+			setOrder(orderType, fieldType, orderFields);
 		}
 		return this;
 	}
 
-	public OrderBuilder setDefaultOrders(OrderType orderType, String... orderFields) {
+	public OrderBuilder setDefaultOrders(OrderType orderType, FieldType fieldType, String... orderFields) {
 		if (this.orderFields.size() == 0) {
 			for (String orderField : orderFields) {
-				addOrder(orderType, orderField);
+				addOrder(orderType, fieldType, orderField);
 			}
 		}
 		return this;
@@ -68,15 +91,8 @@ public class OrderBuilder {
 		return orderFields;
 	}
 
-	private String[] getTranslatedOrderFields(String... orderFields) {
-		String[] result = new String[orderFields.length];
-		for (int i = 0; i < orderFields.length; i++) {
-			result[i] = orderFields[i] + "." + getCurrentLang();
-		}
-		return result;
+	private String getCurrentLang() {
+		return queryRequest == null ? null : queryRequest.getLang();
 	}
 
-	private String getCurrentLang() {
-		return StringUtils.isNotBlank(queryRequest.getLang()) ? queryRequest.getLang() : QueryRequestDTO.DEFAULT_LANGUAGE_CODE;
-	}
 }

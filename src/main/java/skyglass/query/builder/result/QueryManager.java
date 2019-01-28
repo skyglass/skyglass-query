@@ -9,10 +9,11 @@ import java.util.function.Supplier;
 
 import javax.persistence.Query;
 
+import skyglass.query.builder.QueryResult;
 import skyglass.query.builder.string.QueryStringBuilder;
 
 public interface QueryManager {
-	
+
 	public Query createNativeQuery(String sqlString);
 
 	public <T, DTO> QueryResult<DTO> getDtoResult(QueryStringBuilder queryStringBuilder, Function<T, DTO> entityDtoConverter, Class<T> type);

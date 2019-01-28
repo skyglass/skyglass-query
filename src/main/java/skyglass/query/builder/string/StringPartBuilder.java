@@ -8,6 +8,9 @@ import java.util.List;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
+import skyglass.query.builder.SearchBuilder;
+import skyglass.query.builder.SearchType;
+
 public class StringPartBuilder {
 
 	public static final String SEARCH_TERM_FIELD = "searchTerm";
@@ -550,13 +553,11 @@ public class StringPartBuilder {
 		return this;
 	}
 
-	StringPartBuilder buildSearch(List<SearchParameter> parameters, List<SearchField> searchFields) {
+	StringPartBuilder buildSearch(List<SearchParameter> parameters, SearchBuilder searchBuilder) {
 		for (SearchParameter searchParameter : parameters) {
 			setSearchParameter(searchParameter.getParamName(), searchParameter.getValue(), searchParameter.getSearchType());
 		}
-		for (SearchField searchField : searchFields) {
-			append(QueryProcessor.applySearch(root.isNativeQuery(), searchField));
-		}
+		append(QueryProcessor.applySearch(root.isNativeQuery(), searchBuilder));
 		return this;
 	}
 

@@ -1,38 +1,44 @@
 package skyglass.query.builder;
 
+import java.util.ArrayList;
 import java.util.List;
 
-import skyglass.query.builder.string.QueryRequestDTO;
-import skyglass.query.builder.string.SearchField;
-import skyglass.query.builder.string.SearchType;
-import skyglass.query.builder.string.StringPartBuilder;
-
+/**
+ * This class allows to build search fields from QueryRequestDTO in a declarative way.
+ * Each SearchField class contains information on how to build correspondent SQL LIKE part in WHERE clause
+ * 
+ */
 public class SearchBuilder {
 
-	private List<SearchField> searchFields;
+	public static final String SEARCH_TERM_FIELD = "searchTerm";
+
+	private List<SearchField> searchFields = new ArrayList<>();
 
 	private QueryRequestDTO queryRequest;
 
 	private SearchType searchType;
 
-	public SearchBuilder(QueryRequestDTO queryRequest, SearchType searchType) {
-		this.searchType = searchType;
-		this.queryRequest = queryRequest;
-	}
+	private String searchTermField;
+
+	private boolean searchAllTranslations = true;
 
 	public SearchBuilder(QueryRequestDTO queryRequest, String... searchFields) {
-		this(queryRequest, SearchType.IgnoreCase);
-		this.searchFields.add(new SearchField(new FieldResolver(queryRequest, searchFields), StringPartBuilder.SEARCH_TERM_FIELD, searchType, false, queryRequest.getLang()));
+		this(queryRequest, SearchType.IgnoreCase, SEARCH_TERM_FIELD, false, searchFields);
+	}
+
+	public SearchBuilder(QueryRequestDTO queryRequest, String searchTermField, boolean translatable, String... searchFields) {
+		this(queryRequest, SearchType.IgnoreCase, searchTermField, translatable, searchFields);
 	}
 
 	public SearchBuilder(QueryRequestDTO queryRequest, boolean translatable, String... searchFields) {
-		this(queryRequest, SearchType.IgnoreCase);
-		this.searchFields.add(new SearchField(new FieldResolver(queryRequest, searchFields), StringPartBuilder.SEARCH_TERM_FIELD, searchType, translatable, queryRequest.getLang()));
+		this(queryRequest, SearchType.IgnoreCase, SEARCH_TERM_FIELD, translatable, searchFields);
 	}
 
-	public SearchBuilder(QueryRequestDTO queryRequest, SearchType searchType, boolean translatable, String... searchFields) {
-		this(queryRequest, searchType);
-		this.searchFields.add(new SearchField(new FieldResolver(queryRequest, searchFields), StringPartBuilder.SEARCH_TERM_FIELD, searchType, translatable, queryRequest.getLang()));
+	private SearchBuilder(QueryRequestDTO queryRequest, SearchType searchType, String searchTermField, boolean translatable, String... searchFields) {
+		this.searchType = searchType;
+		this.queryRequest = queryRequest;
+		this.searchTermField = searchTermField;
+		this.searchFields.add(new SearchField(new FieldResolver(searchFields), searchTermField, searchType, translatable, queryRequest.getLang()));
 	}
 
 	public SearchBuilder addSearch(String... searchFields) {
@@ -52,12 +58,20 @@ public class SearchBuilder {
 	}
 
 	private SearchBuilder addSearch(SearchType searchType, boolean translatable, String... searchFields) {
-		this.searchFields.add(new SearchField(new FieldResolver(queryRequest, searchFields), StringPartBuilder.SEARCH_TERM_FIELD, searchType, translatable, queryRequest.getLang()));
+		this.searchFields.add(new SearchField(new FieldResolver(searchFields), searchTermField, searchType, translatable, queryRequest.getLang()));
 		return this;
 	}
 
-	public List<SearchField> getSearchFields() {
-		return searchFields;
+	public SearchField[] getSearchFields() {
+		return searchFields.toArray(new SearchField[0]);
+	}
+
+	public boolean isSearchAllTranslations() {
+		return searchAllTranslations;
+	}
+
+	public void setSearchAllTranslations(boolean searchAllTranslations) {
+		this.searchAllTranslations = searchAllTranslations;
 	}
 
 }

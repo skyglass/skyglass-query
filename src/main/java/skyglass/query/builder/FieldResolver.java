@@ -3,15 +3,18 @@ package skyglass.query.builder;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-import skyglass.query.builder.string.QueryParamProcessor;
-import skyglass.query.builder.string.QueryRequestDTO;
-
+/**
+ * Contains the set of sql field paths, correspondent to to some alias
+ * For example: alias = "searchTerm", correspondent field paths: "sm.createdBy.name", "sm.operator", where "sm" is alias of some table
+ * This class encapsulates correspondence between alias and field paths, which helps later generate correspondent SQL part
+ * (see SearchField and OrderField classes, which use this class to later generate correspondent SQL part)
+ */
 public class FieldResolver {
 
 	private Set<String> fieldResolvers = new LinkedHashSet<String>();
 
-	public FieldResolver(QueryRequestDTO queryRequest, String... fieldResolvers) {
-		addResolvers(queryRequest, fieldResolvers);
+	public FieldResolver(String... fieldResolvers) {
+		addResolvers(fieldResolvers);
 	}
 
 	public boolean isEmpty() {
@@ -37,9 +40,13 @@ public class FieldResolver {
 		return fieldResolvers;
 	}
 
-	public void addResolvers(QueryRequestDTO queryRequest, String... resolvers) {
+	public String[] getResolversArray() {
+		return fieldResolvers.toArray(new String[0]);
+	}
+
+	public void addResolvers(String... resolvers) {
 		for (String resolver : resolvers) {
-			fieldResolvers.add(QueryParamProcessor.parseField(resolver, queryRequest));
+			fieldResolvers.add(resolver);
 		}
 	}
 

@@ -9,6 +9,9 @@ import org.apache.commons.lang3.StringUtils;
 import skyglass.query.QueryOrderUtil;
 import skyglass.query.QuerySearchUtil;
 import skyglass.query.builder.OrderField;
+import skyglass.query.builder.QueryRequestDTO;
+import skyglass.query.builder.SearchBuilder;
+import skyglass.query.builder.SearchType;
 
 public class QueryProcessor {
 
@@ -64,8 +67,8 @@ public class QueryProcessor {
 		return QuerySearchUtil.applySearch(queryRequest, searchType, translatable, nativeQuery, searchFields);
 	}
 
-	public static String applySearch(boolean nativeQuery, SearchField... searchFields) {
-		return QuerySearchUtil.applySearch(nativeQuery, searchFields);
+	public static String applySearch(boolean nativeQuery, SearchBuilder searchBuilder) {
+		return QuerySearchUtil.applySearch(nativeQuery, searchBuilder);
 	}
 
 }

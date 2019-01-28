@@ -11,8 +11,12 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import javax.persistence.Query;
+
 import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.lang3.StringUtils;
+
+import skyglass.query.builder.QueryRequestDTO;
 
 public class NativeQueryUtil {
 
@@ -181,6 +185,19 @@ public class NativeQueryUtil {
 		}
 
 		return resultList;
+	}
+
+	public static void setPaging(QueryRequestDTO queryRequest, Query query) {
+		if (queryRequest != null) {
+			if (queryRequest.getPageNumber() > 0 && queryRequest.getRowsPerPage() > 0) {
+				query.setParameter("offset", (queryRequest.getPageNumber() - 1) * queryRequest.getRowsPerPage());
+				query.setParameter("limit", queryRequest.getRowsPerPage());
+			}
+			if (queryRequest.getOffset() >= 0 && queryRequest.getLimit() > 0) {
+				query.setParameter("offset", queryRequest.getOffset());
+				query.setParameter("limit", queryRequest.getLimit());
+			}
+		}
 	}
 
 }

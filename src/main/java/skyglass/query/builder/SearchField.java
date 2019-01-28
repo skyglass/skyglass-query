@@ -1,7 +1,10 @@
-package skyglass.query.builder.string;
+package skyglass.query.builder;
 
-import skyglass.query.builder.FieldResolver;
-
+/**
+ * This class contains information on how to build correspondent LIKE part in WHERE clause
+ * (See QuerySearchUtil class, which converts the list of SearchField classes to correspondent LIKE part in WHERE clause)
+ * 
+ */
 public class SearchField {
 
 	private FieldResolver fieldResolver;
@@ -52,10 +55,6 @@ public class SearchField {
 
 	public boolean isIgnoreCase() {
 		return SearchType.isIgnoreCase(searchType);
-	}
-
-	public boolean isStartsWith() {
-		return SearchType.isStartsWith(searchType);
 	}
 
 	public String getLang() {

@@ -13,6 +13,8 @@ import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
+import skyglass.query.builder.QueryRequestDTO;
+
 public class QueryParamProcessor {
 
 	private static final String NATIVE_CHAR = "?";
@@ -83,7 +85,7 @@ public class QueryParamProcessor {
 	}
 
 	public static String parseField(String field, QueryRequestDTO queryRequest) {
-		String language = queryRequest == null || StringUtils.isBlank(queryRequest.getLang()) ? QueryRequestDTO.DEFAULT_LANGUAGE_CODE : queryRequest.getLang();
+		String language = queryRequest == null || StringUtils.isBlank(queryRequest.getLang()) ? QueryRequestDTO.DEFAULT_LANGUAGE : queryRequest.getLang();
 		return field.replace("{lang}", language);
 	}
 

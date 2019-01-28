@@ -12,6 +12,7 @@ import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.collections.CollectionUtils;
 
 import skyglass.query.EnumUtil;
+import skyglass.query.builder.QueryResult;
 import skyglass.query.builder.string.QueryStringBuilder;
 import skyglass.query.builder.string.SelectField;
 

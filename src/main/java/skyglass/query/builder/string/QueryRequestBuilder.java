@@ -1,6 +1,7 @@
 package skyglass.query.builder.string;
 
 import skyglass.query.builder.OrderType;
+import skyglass.query.builder.QueryRequestDTO;
 
 public class QueryRequestBuilder {
 

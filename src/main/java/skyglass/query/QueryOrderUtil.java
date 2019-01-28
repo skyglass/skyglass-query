@@ -1,6 +1,5 @@
 package skyglass.query;
 
-import java.util.Collection;
 import java.util.List;
 
 import org.apache.commons.collections.CollectionUtils;
@@ -38,7 +37,11 @@ public class QueryOrderUtil {
 
 	private static String applyMultipleOrder(OrderField orderField) {
 		StringBuilder sb = new StringBuilder();
-		sb.append(concat(0, orderField.getOrderField().getResolvers()));
+		if (orderField.isString()) {
+			sb.append(QueryFunctions.lowerCoalesce(orderField.getOrderField().getResolversArray()));
+		} else {
+			sb.append(QueryFunctions.coalesce(orderField.getOrderField().getResolversArray()));
+		}
 		sb.append(orderField.isDescending() ? " DESC" : " ASC");
 		return sb.toString();
 	}
@@ -52,50 +55,14 @@ public class QueryOrderUtil {
 			} else {
 				sb.append(", ");
 			}
-			sb.append("LOWER(");
-			sb.append(fieldResolver);
-			sb.append(")");
+			if (orderField.isString()) {
+				sb.append(QueryFunctions.lower(fieldResolver));
+			} else {
+				sb.append(fieldResolver);
+			}
 			sb.append(orderField.isDescending() ? " DESC" : " ASC");
 		}
 		return sb.toString();
-	}
-
-	private static String concat(int i, Collection<String> fieldResolvers) {
-		String expression = coalesce(getFieldResolver(i, fieldResolvers));
-		if (i < fieldResolvers.size() - 1) {
-			return concat(expression, concat(i + 1, fieldResolvers));
-		} else {
-			return expression;
-		}
-	}
-
-	private static String coalesce(String concat) {
-		StringBuilder sb = new StringBuilder();
-		sb.append("COALESCE(LOWER(");
-		sb.append(concat);
-		sb.append("))");
-		return sb.toString();
-	}
-
-	private static String concat(String concat1, String concat2) {
-		StringBuilder sb = new StringBuilder();
-		sb.append("CONCAT(");
-		sb.append(concat1);
-		sb.append(", ");
-		sb.append(concat2);
-		sb.append(")");
-		return sb.toString();
-	}
-
-	private static String getFieldResolver(int i, Collection<String> fieldResolvers) {
-		int j = 0;
-		for (String fieldResolver : fieldResolvers) {
-			if (j == i) {
-				return fieldResolver;
-			}
-			j++;
-		}
-		return null;
 	}
 
 }

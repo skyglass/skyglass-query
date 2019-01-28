@@ -1,5 +1,7 @@
 package skyglass.query.builder.string;
 
+import skyglass.query.builder.SearchType;
+
 public class SearchParameter {
 
 	private String paramName;

@@ -15,6 +15,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import skyglass.query.builder.QueryResult;
 import skyglass.query.builder.string.JpaQueryResultProvider;
 import skyglass.query.builder.string.NativeQueryResultProvider;
 import skyglass.query.builder.string.QueryStringBuilder;
