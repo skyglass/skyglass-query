@@ -2,6 +2,8 @@ package skyglass.query.builder;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Contains the set of sql field paths, correspondent to to some alias
@@ -42,6 +44,20 @@ public class FieldResolver {
 
 	public String[] getResolversArray() {
 		return fieldResolvers.toArray(new String[0]);
+	}
+
+	public Set<String> getResolvers(Function<String, String> f) {
+		if (f == null) {
+			return getResolvers();
+		}
+		return getResolvers().stream().map(f).collect(Collectors.toSet());
+	}
+
+	public String[] getResolversArray(Function<String, String> f) {
+		if (f == null) {
+			return getResolversArray();
+		}
+		return getResolvers().stream().map(f).collect(Collectors.toList()).toArray(new String[0]);
 	}
 
 	public void addResolvers(String... resolvers) {

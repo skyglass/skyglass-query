@@ -41,6 +41,8 @@ public class QueryComposer {
 
 	private Map<String, FieldItem> fieldMap = new LinkedHashMap<>();
 
+	private Map<String, FieldItem> fieldPathMap = new LinkedHashMap<>();
+
 	private Map<String, Set<String>> aliasResolverMap = new HashMap<>();
 
 	private Map<String, FieldItem> orderFieldMap = new LinkedHashMap<>();
@@ -125,6 +127,10 @@ public class QueryComposer {
 		}
 	}
 
+	private String normalizePath(String path) {
+		return normalizePaths(path)[0];
+	}
+
 	private String[] normalizePaths(String... paths) {
 		String[] result = new String[paths.length];
 		int i = 0;
@@ -188,7 +194,7 @@ public class QueryComposer {
 	}
 
 	private void addOrderFieldResolver(String path) {
-		addFieldResolver(null, path, true);
+		addOrderFieldResolver(null, path);
 	}
 
 	private void addOrderFieldResolver(String alias, String path) {
@@ -217,6 +223,7 @@ public class QueryComposer {
 			fieldItem = new FieldItem(alias, innerAlias, path);
 			fieldItems.add(fieldItem);
 			fieldMap.put(alias, fieldItem);
+			fieldPathMap.put(path, fieldItem);
 		}
 		if (orderField) {
 			orderFieldMap.put(alias, fieldItem);
@@ -330,7 +337,7 @@ public class QueryComposer {
 	}
 
 	private String getOrderByPart() {
-		return " ORDER BY " + QueryOrderUtil.applyOrder(orderBuilder.getOrderFields());
+		return " ORDER BY " + QueryOrderUtil.applyOrder(orderBuilder.getOrderFields(), p -> resolvePath(p));
 	}
 
 	private String getBasicOrderByPart() {
@@ -339,6 +346,10 @@ public class QueryComposer {
 
 	private String getPagedPart() {
 		return QueryRequestUtil.isPaged(queryRequest) ? " LIMIT ?limit OFFSET ?offset" : "";
+	}
+
+	private String resolvePath(String path) {
+		return applyComposer ? COMPOSER_PREFIX + "." + fieldPathMap.get(path).getAlias() : path;
 	}
 
 }
