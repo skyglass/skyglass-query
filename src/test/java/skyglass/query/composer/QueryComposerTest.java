@@ -10,6 +10,7 @@ import skyglass.query.QueryFunctions;
 import skyglass.query.QueryOrderUtil;
 import skyglass.query.QueryRequestUtil;
 import skyglass.query.QuerySearchUtil;
+import skyglass.query.QueryTranslationUtil;
 import skyglass.query.builder.FieldType;
 import skyglass.query.builder.OrderBuilder;
 import skyglass.query.builder.OrderType;
@@ -38,7 +39,9 @@ public class QueryComposerTest {
 			}
 		}
 
-		queryComposer.addSelect("sm.UUID, sm.createdAt, sm.planetId, sm.from, sm.destination, sm.currentPosition, sm.operator, user.name AS createdBy, bparam.value AS bparamValue, sm.direction");
+		queryComposer.addSelect("sm.UUID, sm.createdAt, sm.planetId, sm.from, sm.destination, sm.currentPosition, sm.operator, user.name AS createdBy, bparam.value AS bparamValue, "
+				+ QueryFunctions.ordinalToString(Direction.values(), "sm.direction") + " AS direction, "
+				+ getPlanetInfoSelectPart(languageCode));
 		queryComposer.add("FROM SPACEMISSION sm ");
 		queryComposer.addConditional("JOIN PLANET pl ON sm.PLANET_UUID = pl.uuid ", "planetId");
 		queryComposer.addConditional("JOIN TranslatedField trName ON trName.UUID = pl.nameI18n_UUID ", "planetName");
@@ -46,7 +49,7 @@ public class QueryComposerTest {
 		queryComposer.addConditional("LEFT JOIN TranslatedField trDescription ON trDescription.UUID = pl.descriptionI18n_UUID ", "planetDescription");
 		queryComposer.addConditional("LEFT JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID ", "bparamValue");
 		queryComposer.add("WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate");
-		queryComposer.addSearch("planetId", "from", "destination", "operator", "createdBy", "bparamValue", "direction", "planetName", "planetDescription", "localPlanetName",
+		queryComposer.addSearch("sm.planetId", "sm.from", "sm.destination", "sm.operator", "user.name", "bparam.value", "direction", "planetName", "planetDescription", "localPlanetName",
 				"localPlanetDescription");
 		queryComposer.setDistinct();
 
@@ -58,6 +61,7 @@ public class QueryComposerTest {
 		queryComposer.bindOrder("currentPosition", "sm.currentPosition");
 		queryComposer.bindOrder("operator", "sm.operator");
 		queryComposer.bindOrder("createdBy", "user.name");
+		queryComposer.bindOrder("direction", "direction");
 
 		String fromBasicQueryStr = "SELECT sm.UUID, sm.createdAt, sm.planetId, sm.from, sm.destination, sm.currentPosition, sm.operator, user.name AS createdBy, bparam.value AS bparamValue, sm.direction, "
 				+ "sm.planetName, sm.planetDescription, sm.localPlanetName, sm.localPlanetDescription FROM SPACEMISSION sm "
@@ -74,7 +78,7 @@ public class QueryComposerTest {
 		String queryStr = null;
 		String countQueryStr = null;
 
-		String selectOuterQueryCompositeStr = "SELECT tab.UUID, tab.createdAt, tab.planetId, tab.from, tab.destination, tab.currentPosition, tab.operator, tab.createdBy ";
+		String selectOuterQueryCompositeStr = "SELECT tab.UUID, tab.createdAt, tab.planetId, tab.from, tab.destination, tab.currentPosition, tab.operator, tab.createdBy, tab.direction ";
 		String selectInnerQueryCompositeStr = "SELECT tab.UUID, tab.createdAt, tab.planetId, tab.from, tab.destination, tab.currentPosition, tab.operator, tab.createdBy, tab.bparamValue, tab.direction, tab.planetName, tab.planetDescription, tab.localPlanetName, tab.localPlanetDescription ";
 
 		String fromQueryStr = "FROM ( "
@@ -143,6 +147,14 @@ public class QueryComposerTest {
 		orderBuilder.bindOrder("operator", "sm.operator");
 		orderBuilder.bindOrder("createdBy", "user.name");
 		return " ORDER BY " + QueryOrderUtil.applyOrder(orderBuilder.getOrderFields());
+	}
+
+	private String getPlanetInfoSelectPart(String languageCode) {
+		return QueryTranslationUtil.getTranslatedField(languageCode, "trName") + " AS planetName, "
+				+ QueryTranslationUtil.getTranslatedField(languageCode, "trDescription") + " AS planetDescription, "
+				+ QueryTranslationUtil.getTranslatedField(languageCode, "trLocalName") + " AS localPlanetName, "
+				+ QueryTranslationUtil.getTranslatedField(languageCode, "trLocalDescription") + " AS localPlanetDescription ";
+
 	}
 
 }

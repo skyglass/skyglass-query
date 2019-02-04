@@ -1,7 +1,5 @@
 package skyglass.query;
 
-import java.util.Collection;
-
 import org.apache.commons.lang3.StringUtils;
 
 public class QueryFunctions {
@@ -37,11 +35,11 @@ public class QueryFunctions {
 		return StringUtils.isNotBlank(queryStr1) ? (queryStr1 + " AND " + queryStr2) : queryStr2;
 	}
 
-	public static <T extends Enum<T>> String ordinalToString(Collection<Enum<T>> enumValues, String path) {
+	public static <T extends Enum<T>> String ordinalToString(Enum<T>[] enumValues, String path) {
 		return String.format(getEnumString(enumValues), path);
 	}
 
-	private static <T extends Enum<T>> String getEnumString(Collection<Enum<T>> enumValues) {
+	private static <T extends Enum<T>> String getEnumString(Enum<T>[] enumValues) {
 		String result = "CASE %s";
 		for (Enum<T> value : enumValues) {
 			result += " WHEN " + value.ordinal() + " THEN '" + value.toString() + "'";
