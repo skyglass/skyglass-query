@@ -247,6 +247,10 @@ public class QueryComposer {
 		}
 	}
 
+	public void addSelect(String alias, String path) {
+		addFieldResolver(alias, path, false);
+	}
+
 	public void init() {
 		String fromBasicQueryStr = "";
 		List<String> parts = resolveInnerFrom();
