@@ -91,7 +91,7 @@ public class QuerySearchUtil {
 		return builder.toString();
 	}
 
-	public static String getSearchTerm(SearchField searchField, boolean nativeQuery, boolean searchAllTranslations) {
+	private static String getSearchTerm(SearchField searchField, boolean nativeQuery, boolean searchAllTranslations) {
 		StringBuilder builder = new StringBuilder();
 		builder.append("( ");
 		String parameterChar = nativeQuery ? "?" : ":";

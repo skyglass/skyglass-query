@@ -9,6 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.apache.commons.collections.CollectionUtils;
@@ -47,7 +48,9 @@ public class QueryComposer {
 
 	private Map<String, FieldItem> orderFieldMap = new LinkedHashMap<>();
 
-	private List<String> searchParts = new ArrayList<>();
+	private List<Supplier<String>> searchPartSuppliers = new ArrayList<>();
+
+	private List<Runnable> orderBuilderRunners = new ArrayList<>();
 
 	private OrderBuilder orderBuilder;
 
@@ -119,32 +122,18 @@ public class QueryComposer {
 				: queryRequest.getSearchTerms();
 		for (int i = 0; i < searchTerms.size(); i++) {
 			String searchTermField = SearchBuilder.SEARCH_TERM_FIELD + Integer.toString(i);
-			SearchBuilder searchBuilder = new SearchBuilder(queryRequest, searchTermField, false, normalizePaths(paths));
-			searchParts.add(QuerySearchUtil.applySearch(true, searchBuilder));
+			searchPartSuppliers.add(() -> {
+				String[] resolvedPaths = new String[paths.length];
+				for (int j = 0; j < paths.length; j++) {
+					resolvedPaths[j] = resolvePath(paths[j]);
+				}
+				SearchBuilder searchBuilder = new SearchBuilder(queryRequest, searchTermField, false, resolvedPaths);
+				return QuerySearchUtil.applySearch(true, searchBuilder);
+			});
 		}
 		for (String path : paths) {
 			addFieldResolver(path);
 		}
-	}
-
-	private String normalizePath(String path) {
-		return normalizePaths(path)[0];
-	}
-
-	private String[] normalizePaths(String... paths) {
-		String[] result = new String[paths.length];
-		int i = 0;
-		for (String path : paths) {
-			String toAdd = null;
-			if (path.split("\\.").length == 1) {
-				toAdd = COMPOSER_PREFIX + "." + path;
-			} else {
-				toAdd = path;
-			}
-			result[i] = toAdd;
-			i++;
-		}
-		return result;
 	}
 
 	public void addAliasResolver(String alias, String... paths) {
@@ -164,33 +153,75 @@ public class QueryComposer {
 	}
 
 	public void setDefaultOrder(OrderType orderType, FieldType fieldType, String path) {
-		orderBuilder.setDefaultOrder(orderType, fieldType, path);
-		addOrderFieldResolver(path);
+		addDefaultOrderRunner(orderType, fieldType, path);
 	}
 
 	public void setDefaultOrder(OrderType orderType, String path) {
-		orderBuilder.setDefaultOrder(orderType, path);
-		addOrderFieldResolver(path);
+		addDefaultOrderRunner(orderType, path);
 	}
 
 	public void setDefaultOrder(OrderType orderType, FieldType fieldType, String alias, String path) {
-		orderBuilder.setDefaultOrder(orderType, fieldType, path);
-		addOrderFieldResolver(alias, path);
+		addDefaultOrderRunner(orderType, fieldType, alias, path);
 	}
 
 	public void setDefaultOrder(OrderType orderType, String alias, String path) {
-		orderBuilder.setDefaultOrder(orderType, path);
-		addOrderFieldResolver(alias, path);
+		addDefaultOrderRunner(orderType, alias, path);
 	}
 
 	public void bindOrder(String name, FieldType fieldType, String path) {
-		orderBuilder.bindOrder(name, fieldType, path);
-		addOrderFieldResolver(name, path);
+		addBindOrderRunner(name, fieldType, path);
 	}
 
 	public void bindOrder(String name, String path) {
-		orderBuilder.bindOrder(name, path);
-		addOrderFieldResolver(name, path);
+		addBindOrderRunner(name, path);
+	}
+
+	private void addDefaultOrderRunner(OrderType orderType, FieldType fieldType, String path) {
+		orderBuilderRunners.add(() -> {
+			String resolvedPath = resolvePath(path);
+			orderBuilder.setDefaultOrder(orderType, fieldType, resolvedPath);
+			addOrderFieldResolver(resolvedPath);
+		});
+	}
+
+	private void addDefaultOrderRunner(OrderType orderType, String path) {
+		orderBuilderRunners.add(() -> {
+			String resolvedPath = resolvePath(path);
+			orderBuilder.setDefaultOrder(orderType, resolvedPath);
+			addOrderFieldResolver(resolvedPath);
+		});
+	}
+
+	private void addDefaultOrderRunner(OrderType orderType, FieldType fieldType, String alias, String path) {
+		orderBuilderRunners.add(() -> {
+			String resolvedPath = resolvePath(path);
+			orderBuilder.setDefaultOrder(orderType, fieldType, resolvedPath);
+			addOrderFieldResolver(alias, resolvedPath);
+		});
+	}
+
+	private void addDefaultOrderRunner(OrderType orderType, String alias, String path) {
+		orderBuilderRunners.add(() -> {
+			String resolvedPath = resolvePath(path);
+			orderBuilder.setDefaultOrder(orderType, resolvedPath);
+			addOrderFieldResolver(alias, resolvedPath);
+		});
+	}
+
+	private void addBindOrderRunner(String name, FieldType fieldType, String path) {
+		orderBuilderRunners.add(() -> {
+			String resolvedPath = resolvePath(path);
+			orderBuilder.bindOrder(name, fieldType, resolvedPath);
+			addOrderFieldResolver(name, resolvedPath);
+		});
+	}
+
+	private void addBindOrderRunner(String name, String path) {
+		orderBuilderRunners.add(() -> {
+			String resolvedPath = resolvePath(path);
+			orderBuilder.bindOrder(name, resolvedPath);
+			addOrderFieldResolver(name, resolvedPath);
+		});
 	}
 
 	private void addOrderFieldResolver(String path) {
@@ -334,17 +365,23 @@ public class QueryComposer {
 
 	private String getSearchPart() {
 		String result = null;
-		for (String searchPart : searchParts) {
-			result = QueryFunctions.and(result, searchPart);
+		for (Supplier<String> searchPartSupplier : searchPartSuppliers) {
+			result = QueryFunctions.and(result, searchPartSupplier.get());
 		}
 		return result == null ? "" : " WHERE " + result;
 	}
 
 	private String getOrderByPart() {
-		return " ORDER BY " + QueryOrderUtil.applyOrder(orderBuilder.getOrderFields(), p -> resolvePath(p));
+		for (Runnable orderBuilderRunner : orderBuilderRunners) {
+			orderBuilderRunner.run();
+		}
+		return " ORDER BY " + QueryOrderUtil.applyOrder(orderBuilder.getOrderFields());
 	}
 
 	private String getBasicOrderByPart() {
+		for (Runnable orderBuilderRunner : orderBuilderRunners) {
+			orderBuilderRunner.run();
+		}
 		return " ORDER BY " + QueryOrderUtil.applyOrder(orderBuilder.getOrderFields());
 	}
 
@@ -353,7 +390,7 @@ public class QueryComposer {
 	}
 
 	private String resolvePath(String path) {
-		return applyComposer ? COMPOSER_PREFIX + "." + fieldPathMap.get(path).getAlias() : path;
+		return applyComposer ? (COMPOSER_PREFIX + "." + fieldPathMap.get(path).getAlias()) : path;
 	}
 
 }
