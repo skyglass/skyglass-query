@@ -46,6 +46,8 @@ public class QueryComposer {
 
 	private Map<String, Set<String>> aliasResolverMap = new HashMap<>();
 
+	private Map<String, FieldItem> selectFieldMap = new LinkedHashMap<>();
+
 	private Map<String, FieldItem> orderFieldMap = new LinkedHashMap<>();
 
 	private List<Supplier<String>> searchPartSuppliers = new ArrayList<>();
@@ -229,14 +231,18 @@ public class QueryComposer {
 	}
 
 	private void addOrderFieldResolver(String alias, String path) {
-		addFieldResolver(alias, path, true);
+		addFieldResolver(alias, path, true, false);
+	}
+
+	private void addSelectFieldResolver(String alias, String path) {
+		addFieldResolver(alias, path, false, true);
 	}
 
 	private void addFieldResolver(String path) {
-		addFieldResolver(null, path, false);
+		addFieldResolver(null, path, false, false);
 	}
 
-	private void addFieldResolver(String alias, String path, boolean orderField) {
+	private void addFieldResolver(String alias, String path, boolean orderField, boolean selectField) {
 		String[] pathParts = path.split("\\.");
 		String innerAlias = pathParts[pathParts.length - 1];
 		if (pathParts.length == 1 || pathParts[0].equals(COMPOSER_PREFIX)) {
@@ -245,10 +251,10 @@ public class QueryComposer {
 		if (alias == null) {
 			alias = innerAlias;
 		}
-		addFieldItem(alias, innerAlias, path, orderField);
+		addFieldItem(alias, innerAlias, path, orderField, selectField);
 	}
 
-	private void addFieldItem(String alias, String innerAlias, String path, boolean orderField) {
+	private void addFieldItem(String alias, String innerAlias, String path, boolean orderField, boolean selectField) {
 		FieldItem fieldItem = fieldMap.get(alias);
 		if (fieldItem == null) {
 			fieldItem = new FieldItem(alias, innerAlias, path);
@@ -258,6 +264,9 @@ public class QueryComposer {
 		}
 		if (orderField) {
 			orderFieldMap.put(alias, fieldItem);
+		}
+		if (selectField) {
+			selectFieldMap.put(alias, fieldItem);
 		}
 	}
 
@@ -274,15 +283,15 @@ public class QueryComposer {
 			if (subParts.length > 1) {
 				alias = subParts[1].trim();
 			}
-			addFieldResolver(alias, path, false);
+			addSelectFieldResolver(alias, path);
 		}
 	}
 
 	public void addSelect(String alias, String path) {
-		addFieldResolver(alias, path, false);
+		addSelectFieldResolver(alias, path);
 	}
 
-	public void init() {
+	public void init(QueryRequestDTO queryRequest) {
 		String fromBasicQueryStr = "";
 		List<String> parts = resolveInnerFrom();
 		for (String queryPart : parts) {
@@ -290,9 +299,10 @@ public class QueryComposer {
 		}
 
 		if (applyComposer) {
+			initOrderByPart();
 			//This query part selects column names, for which sorting is supported. All these columns should exist in entity table or in tables, which have one to one correspondence
 			//Therefore GROUP BY by all these columns guarantees uniquness of entity's tab.UUID and we won't have duplicates
-			String outerComposerSelect = "SELECT " + getOuterComposerFields();
+			String outerComposerSelect = "SELECT " + getOuterComposerFields(queryRequest);
 
 			//This query part selects column names, for which search is supported. Some of these columns might have one to many correspondence with entity table, when JOIN is applied
 			//Therefore this query might return duplicates. That's why we need to wrap this inner query, and apply GROUP BY, which will eliminate duplicates (see previous comment)
@@ -309,7 +319,7 @@ public class QueryComposer {
 			fromQueryStr += " ) tab"
 					+ getSearchPart()
 					+ " ) tab "
-					+ " GROUP BY " + getOuterComposerFields() + " ";
+					+ " GROUP BY " + getOuterComposerFields(queryRequest) + " ";
 
 			queryStr = outerComposerSelect + fromQueryStr + getOrderByPart() + getPagedPart();
 			countQueryStr = "SELECT DISTINCT COUNT(*) OVER () " + fromQueryStr;
@@ -324,15 +334,21 @@ public class QueryComposer {
 		return countQueryStr;
 	}
 
-	public String getQueryStr() {
-		init();
+	public String getQueryStr(QueryRequestDTO queryRequest) {
+		init(queryRequest);
 		return queryStr;
 	}
 
-	private String getOuterComposerFields() {
+	private String getOuterComposerFields(QueryRequestDTO queryRequest) {
 		String result = COMPOSER_PREFIX + "." + Constants.UUID;
-		for (FieldItem fieldItem : orderFieldMap.values()) {
+		for (FieldItem fieldItem : selectFieldMap.values()) {
 			if (!Constants.UUID.equals(fieldItem.getAlias())) {
+				result += ", " + COMPOSER_PREFIX + "." + fieldItem.getAlias();
+			}
+		}
+		if (StringUtils.isNotBlank(queryRequest.getOrderField())) {
+			FieldItem fieldItem = orderFieldMap.get(queryRequest.getOrderField());
+			if (fieldItem != null && !Constants.UUID.equals(fieldItem.getAlias()) && selectFieldMap.get(fieldItem.getAlias()) == null) {
 				result += ", " + COMPOSER_PREFIX + "." + fieldItem.getAlias();
 			}
 		}
@@ -372,10 +388,13 @@ public class QueryComposer {
 	}
 
 	private String getOrderByPart() {
+		return " ORDER BY " + QueryOrderUtil.applyOrder(orderBuilder.getOrderFields());
+	}
+
+	private void initOrderByPart() {
 		for (Runnable orderBuilderRunner : orderBuilderRunners) {
 			orderBuilderRunner.run();
 		}
-		return " ORDER BY " + QueryOrderUtil.applyOrder(orderBuilder.getOrderFields());
 	}
 
 	private String getBasicOrderByPart() {
@@ -390,7 +409,11 @@ public class QueryComposer {
 	}
 
 	private String resolvePath(String path) {
-		return applyComposer ? (COMPOSER_PREFIX + "." + fieldPathMap.get(path).getAlias()) : path;
+		FieldItem fieldItem = fieldPathMap.get(path);
+		if (fieldItem == null) {
+			fieldItem = fieldMap.get(path);
+		}
+		return applyComposer ? (COMPOSER_PREFIX + "." + fieldItem.getAlias()) : path;
 	}
 
 }
