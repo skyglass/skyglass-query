@@ -98,12 +98,13 @@ public class QueryComposerTest {
 		if (StringUtils.isBlank(queryRequest.getSearchTerm()) && StringUtils.isBlank(queryRequest.getOrderField())) {
 			fromBasicQueryStr = "SELECT sm.UUID FROM SPACEMISSION sm WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate";
 		} else {
-			fromBasicQueryStr = "SELECT sm.UUID, sm.createdAt, sm.planetId, sm.from, sm.destination, sm.currentPosition, sm.operator, user.name AS createdBy, bparam.value AS bparamValue, "
+			fromBasicQueryStr = "SELECT sm.UUID, sm.planetId, sm.from, sm.destination, sm.currentPosition, sm.operator, user.name AS createdBy, bparam.value AS bparamValue, "
 					+ "CASE sm.direction WHEN 0 THEN 'IN' WHEN 1 THEN 'OUT' WHEN 2 THEN 'NONE' END AS direction, "
 					+ "COALESCE(trName.en, trName.de, trName.cn, trName.jp, trName.es, trName.fr, trName.pt, trName.it) AS planetName, "
 					+ "COALESCE(trDescription.en, trDescription.de, trDescription.cn, trDescription.jp, trDescription.es, trDescription.fr, trDescription.pt, trDescription.it) AS planetDescription, "
 					+ "COALESCE(trLocalName.en, trLocalName.de, trLocalName.cn, trLocalName.jp, trLocalName.es, trLocalName.fr, trLocalName.pt, trLocalName.it) AS localPlanetName, "
-					+ "COALESCE(trLocalDescription.en, trLocalDescription.de, trLocalDescription.cn, trLocalDescription.jp, trLocalDescription.es, trLocalDescription.fr, trLocalDescription.pt, trLocalDescription.it) AS localPlanetDescription "
+					+ "COALESCE(trLocalDescription.en, trLocalDescription.de, trLocalDescription.cn, trLocalDescription.jp, trLocalDescription.es, trLocalDescription.fr, trLocalDescription.pt, trLocalDescription.it) AS localPlanetDescription, "
+					+ "sm.createdAt "
 					+ "FROM SPACEMISSION sm "
 					+ "JOIN PLANET pl ON sm.PLANET_UUID = pl.uuid "
 					+ "JOIN TranslatedField trName ON trName.UUID = pl.nameI18n_UUID "
@@ -119,7 +120,7 @@ public class QueryComposerTest {
 			String countQueryStr = null;
 
 			String selectOuterQueryCompositeStr = "SELECT tab.UUID, tab.createdAt ";
-			String selectInnerQueryCompositeStr = "SELECT tab.UUID, tab.createdAt, tab.planetId, tab.from, tab.destination, tab.currentPosition, tab.operator, tab.createdBy, tab.bparamValue, tab.direction, tab.planetName, tab.planetDescription, tab.localPlanetName, tab.localPlanetDescription ";
+			String selectInnerQueryCompositeStr = "SELECT tab.UUID, tab.createdAt ";
 
 			String fromQueryStr = "FROM ( "
 					+ selectInnerQueryCompositeStr

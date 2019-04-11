@@ -54,6 +54,8 @@ public class QueryComposer {
 
 	private List<Runnable> orderBuilderRunners = new ArrayList<>();
 
+	private List<Runnable> defaultOrderBuilderRunners = new ArrayList<>();
+
 	private OrderBuilder orderBuilder;
 
 	private String rootAlias;
@@ -179,50 +181,62 @@ public class QueryComposer {
 	}
 
 	private void addDefaultOrderRunner(OrderType orderType, FieldType fieldType, String path) {
-		orderBuilderRunners.add(() -> {
-			String resolvedPath = resolvePath(path);
-			orderBuilder.setDefaultOrder(orderType, fieldType, resolvedPath);
-			addOrderFieldResolver(resolvedPath);
+		defaultOrderBuilderRunners.add(() -> {
+			if (orderBuilder.shouldSetDefaultOrder()) {
+				String resolvedPath = resolvePath(path, path);
+				orderBuilder.setDefaultOrder(orderType, fieldType, resolvedPath);
+				addOrderFieldResolver(resolvedPath);
+			}
 		});
 	}
 
 	private void addDefaultOrderRunner(OrderType orderType, String path) {
-		orderBuilderRunners.add(() -> {
-			String resolvedPath = resolvePath(path);
-			orderBuilder.setDefaultOrder(orderType, resolvedPath);
-			addOrderFieldResolver(resolvedPath);
+		defaultOrderBuilderRunners.add(() -> {
+			if (orderBuilder.shouldSetDefaultOrder()) {
+				String resolvedPath = resolvePath(path, path);
+				orderBuilder.setDefaultOrder(orderType, resolvedPath);
+				addOrderFieldResolver(resolvedPath);
+			}
 		});
 	}
 
 	private void addDefaultOrderRunner(OrderType orderType, FieldType fieldType, String alias, String path) {
-		orderBuilderRunners.add(() -> {
-			String resolvedPath = resolvePath(path);
-			orderBuilder.setDefaultOrder(orderType, fieldType, resolvedPath);
-			addOrderFieldResolver(alias, resolvedPath);
+		defaultOrderBuilderRunners.add(() -> {
+			if (orderBuilder.shouldSetDefaultOrder()) {
+				String resolvedPath = resolvePath(alias, path);
+				orderBuilder.setDefaultOrder(orderType, fieldType, resolvedPath);
+				addOrderFieldResolver(alias, resolvedPath);
+			}
 		});
 	}
 
 	private void addDefaultOrderRunner(OrderType orderType, String alias, String path) {
-		orderBuilderRunners.add(() -> {
-			String resolvedPath = resolvePath(path);
-			orderBuilder.setDefaultOrder(orderType, resolvedPath);
-			addOrderFieldResolver(alias, resolvedPath);
+		defaultOrderBuilderRunners.add(() -> {
+			if (orderBuilder.shouldSetDefaultOrder()) {
+				String resolvedPath = resolvePath(alias, path);
+				orderBuilder.setDefaultOrder(orderType, resolvedPath);
+				addOrderFieldResolver(alias, resolvedPath);
+			}
 		});
 	}
 
 	private void addBindOrderRunner(String name, FieldType fieldType, String path) {
 		orderBuilderRunners.add(() -> {
-			String resolvedPath = resolvePath(path);
-			orderBuilder.bindOrder(name, fieldType, resolvedPath);
-			addOrderFieldResolver(name, resolvedPath);
+			if (orderBuilder.shouldBindOrder(name)) {
+				String resolvedPath = resolvePath(name, path);
+				orderBuilder.bindOrder(name, fieldType, resolvedPath);
+				addOrderFieldResolver(name, resolvedPath);
+			}
 		});
 	}
 
 	private void addBindOrderRunner(String name, String path) {
 		orderBuilderRunners.add(() -> {
-			String resolvedPath = resolvePath(path);
-			orderBuilder.bindOrder(name, resolvedPath);
-			addOrderFieldResolver(name, resolvedPath);
+			if (orderBuilder.shouldBindOrder(name)) {
+				String resolvedPath = resolvePath(name, path);
+				orderBuilder.bindOrder(name, resolvedPath);
+				addOrderFieldResolver(name, resolvedPath);
+			}
 		});
 	}
 
@@ -306,7 +320,7 @@ public class QueryComposer {
 
 			//This query part selects column names, for which search is supported. Some of these columns might have one to many correspondence with entity table, when JOIN is applied
 			//Therefore this query might return duplicates. That's why we need to wrap this inner query, and apply GROUP BY, which will eliminate duplicates (see previous comment)
-			String innerComposerSelect = "SELECT " + getInnerComposerFields();
+			String innerComposerSelect = outerComposerSelect;
 
 			//This query part selects column names, which will be used by outer query. 
 			String innerSelect = "SELECT " + getInnerFields();
@@ -341,13 +355,14 @@ public class QueryComposer {
 
 	private String getOuterComposerFields(QueryRequestDTO queryRequest) {
 		String result = COMPOSER_PREFIX + "." + Constants.UUID;
-		for (FieldItem fieldItem : selectFieldMap.values()) {
-			if (!Constants.UUID.equals(fieldItem.getAlias())) {
-				result += ", " + COMPOSER_PREFIX + "." + fieldItem.getAlias();
+		if (!applyComposer) {
+			for (FieldItem fieldItem : selectFieldMap.values()) {
+				if (!Constants.UUID.equals(fieldItem.getAlias())) {
+					result += ", " + COMPOSER_PREFIX + "." + fieldItem.getAlias();
+				}
 			}
 		}
-		if (StringUtils.isNotBlank(queryRequest.getOrderField())) {
-			FieldItem fieldItem = orderFieldMap.get(queryRequest.getOrderField());
+		for (FieldItem fieldItem : orderFieldMap.values()) {
 			if (fieldItem != null && !Constants.UUID.equals(fieldItem.getAlias()) && selectFieldMap.get(fieldItem.getAlias()) == null) {
 				result += ", " + COMPOSER_PREFIX + "." + fieldItem.getAlias();
 			}
@@ -395,10 +410,16 @@ public class QueryComposer {
 		for (Runnable orderBuilderRunner : orderBuilderRunners) {
 			orderBuilderRunner.run();
 		}
+		for (Runnable orderBuilderRunner : defaultOrderBuilderRunners) {
+			orderBuilderRunner.run();
+		}
 	}
 
 	private String getBasicOrderByPart() {
 		for (Runnable orderBuilderRunner : orderBuilderRunners) {
+			orderBuilderRunner.run();
+		}
+		for (Runnable orderBuilderRunner : defaultOrderBuilderRunners) {
 			orderBuilderRunner.run();
 		}
 		return " ORDER BY " + QueryOrderUtil.applyOrder(orderBuilder.getOrderFields());
@@ -414,6 +435,10 @@ public class QueryComposer {
 			fieldItem = fieldMap.get(path);
 		}
 		return applyComposer ? (COMPOSER_PREFIX + "." + fieldItem.getAlias()) : path;
+	}
+
+	private String resolvePath(String alias, String path) {
+		return applyComposer ? (COMPOSER_PREFIX + "." + alias) : path;
 	}
 
 }
