@@ -39,7 +39,7 @@ public class QueryComposerTest {
 		Assert.assertEquals(expectedResult, result);
 	}
 
-	//@Test
+	@Test
 	public void testQueryComposerWithoutOrderAndSearch() {
 
 		QueryRequestDTO queryRequest = MockQueryRequestDto.create("");
@@ -56,14 +56,9 @@ public class QueryComposerTest {
 		QueryComposer queryComposer = new QueryComposer(queryRequest, "sm", "SPACEMISSION");
 
 		String languageCode = QueryRequestUtil.getCurrentLanguageCode(queryRequest);
-		boolean applySearch = CollectionUtils.isNotEmpty(queryRequest.getSearchTerms());
-		boolean applyMaterialNameSort = "materialName".equals(queryRequest.getOrderField());
-		boolean applyComplexQuery = applySearch || applyMaterialNameSort;
 
-		if (applySearch) {
-			for (int i = 0; i < queryRequest.getSearchTerms().size(); i++) {
-				queryComposer.addParameter(SearchBuilder.SEARCH_TERM_FIELD + Integer.toString(i), "%" + queryRequest.getSearchTerms().get(i) + "%");
-			}
+		for (int i = 0; i < queryRequest.getSearchTerms().size(); i++) {
+			queryComposer.addParameter(SearchBuilder.SEARCH_TERM_FIELD + Integer.toString(i), "%" + queryRequest.getSearchTerms().get(i) + "%");
 		}
 
 		queryComposer.addSelect("sm.UUID, sm.planetId, sm.from, sm.destination, sm.currentPosition, sm.operator, user.name AS createdBy, bparam.value AS bparamValue, "
@@ -78,7 +73,7 @@ public class QueryComposerTest {
 		queryComposer.add("WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate");
 		queryComposer.addSearch("sm.planetId", "sm.from", "sm.destination", "sm.operator", "createdBy", "bparamValue", "direction", "planetName", "planetDescription", "localPlanetName",
 				"localPlanetDescription");
-		queryComposer.setDistinct();
+		//queryComposer.setDistinct();
 
 		queryComposer.setDefaultOrder(OrderType.Desc, FieldType.Date, "sm.createdAt");
 		queryComposer.bindOrder("createdAt", FieldType.Date, "sm.createdAt");
@@ -96,7 +91,9 @@ public class QueryComposerTest {
 	private String getExpectedResult(QueryRequestDTO queryRequest) {
 		String fromBasicQueryStr = null;
 		if (StringUtils.isBlank(queryRequest.getSearchTerm()) && StringUtils.isBlank(queryRequest.getOrderField())) {
-			fromBasicQueryStr = "SELECT sm.UUID FROM SPACEMISSION sm WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate";
+			fromBasicQueryStr = "SELECT sm.UUID FROM SPACEMISSION sm JOIN PLANET pl ON sm.PLANET_UUID = pl.uuid JOIN TranslatedField trName ON trName.UUID = pl.nameI18n_UUID "
+					+ "JOIN USER user ON sm.CREATEDBY_UUID = user.uuid LEFT JOIN TranslatedField trDescription ON trDescription.UUID = pl.descriptionI18n_UUID LEFT "
+					+ "JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate ORDER BY sm.createdAt DESC";
 		} else {
 			fromBasicQueryStr = "SELECT sm.UUID, sm.planetId, sm.from, sm.destination, sm.currentPosition, sm.operator, user.name AS createdBy, bparam.value AS bparamValue, "
 					+ "CASE sm.direction WHEN 0 THEN 'IN' WHEN 1 THEN 'OUT' WHEN 2 THEN 'NONE' END AS direction, "

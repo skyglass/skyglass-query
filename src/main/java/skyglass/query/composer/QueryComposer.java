@@ -135,8 +135,12 @@ public class QueryComposer {
 				return QuerySearchUtil.applySearch(true, searchBuilder);
 			});
 		}
+		boolean applyComposerOriginal = applyComposer;
 		for (String path : paths) {
-			addFieldResolver(path);
+			addFieldResolver(path, path);
+		}
+		if (!applyComposerOriginal && !applySearch()) {
+			applyComposer = false;
 		}
 	}
 
@@ -185,7 +189,7 @@ public class QueryComposer {
 			if (orderBuilder.shouldSetDefaultOrder()) {
 				String resolvedPath = resolvePath(path, path);
 				orderBuilder.setDefaultOrder(orderType, fieldType, resolvedPath);
-				addOrderFieldResolver(resolvedPath);
+				addOrderFieldResolver(resolvedPath, path);
 			}
 		});
 	}
@@ -195,7 +199,7 @@ public class QueryComposer {
 			if (orderBuilder.shouldSetDefaultOrder()) {
 				String resolvedPath = resolvePath(path, path);
 				orderBuilder.setDefaultOrder(orderType, resolvedPath);
-				addOrderFieldResolver(resolvedPath);
+				addOrderFieldResolver(resolvedPath, path);
 			}
 		});
 	}
@@ -205,7 +209,7 @@ public class QueryComposer {
 			if (orderBuilder.shouldSetDefaultOrder()) {
 				String resolvedPath = resolvePath(alias, path);
 				orderBuilder.setDefaultOrder(orderType, fieldType, resolvedPath);
-				addOrderFieldResolver(alias, resolvedPath);
+				addOrderFieldResolver(alias, resolvedPath, path);
 			}
 		});
 	}
@@ -215,7 +219,7 @@ public class QueryComposer {
 			if (orderBuilder.shouldSetDefaultOrder()) {
 				String resolvedPath = resolvePath(alias, path);
 				orderBuilder.setDefaultOrder(orderType, resolvedPath);
-				addOrderFieldResolver(alias, resolvedPath);
+				addOrderFieldResolver(alias, resolvedPath, path);
 			}
 		});
 	}
@@ -225,7 +229,7 @@ public class QueryComposer {
 			if (orderBuilder.shouldBindOrder(name)) {
 				String resolvedPath = resolvePath(name, path);
 				orderBuilder.bindOrder(name, fieldType, resolvedPath);
-				addOrderFieldResolver(name, resolvedPath);
+				addOrderFieldResolver(name, resolvedPath, path);
 			}
 		});
 	}
@@ -235,28 +239,28 @@ public class QueryComposer {
 			if (orderBuilder.shouldBindOrder(name)) {
 				String resolvedPath = resolvePath(name, path);
 				orderBuilder.bindOrder(name, resolvedPath);
-				addOrderFieldResolver(name, resolvedPath);
+				addOrderFieldResolver(name, resolvedPath, path);
 			}
 		});
 	}
 
-	private void addOrderFieldResolver(String path) {
-		addOrderFieldResolver(null, path);
+	private void addOrderFieldResolver(String path, String innerPath) {
+		addOrderFieldResolver(null, path, innerPath);
 	}
 
-	private void addOrderFieldResolver(String alias, String path) {
-		addFieldResolver(alias, path, true, false);
+	private void addOrderFieldResolver(String alias, String path, String innerPath) {
+		addFieldResolver(alias, path, innerPath, true, false);
 	}
 
-	private void addSelectFieldResolver(String alias, String path) {
-		addFieldResolver(alias, path, false, true);
+	private void addSelectFieldResolver(String alias, String path, String innerPath) {
+		addFieldResolver(alias, path, innerPath, false, true);
 	}
 
-	private void addFieldResolver(String path) {
-		addFieldResolver(null, path, false, false);
+	private void addFieldResolver(String path, String innerPath) {
+		addFieldResolver(null, path, innerPath, false, false);
 	}
 
-	private void addFieldResolver(String alias, String path, boolean orderField, boolean selectField) {
+	private void addFieldResolver(String alias, String path, String innerPath, boolean orderField, boolean selectField) {
 		String[] pathParts = path.split("\\.");
 		String innerAlias = pathParts[pathParts.length - 1];
 		if (pathParts.length == 1 || pathParts[0].equals(COMPOSER_PREFIX)) {
@@ -265,13 +269,13 @@ public class QueryComposer {
 		if (alias == null) {
 			alias = innerAlias;
 		}
-		addFieldItem(alias, innerAlias, path, orderField, selectField);
+		addFieldItem(alias, innerAlias, path, innerPath, orderField, selectField);
 	}
 
-	private void addFieldItem(String alias, String innerAlias, String path, boolean orderField, boolean selectField) {
+	private void addFieldItem(String alias, String innerAlias, String path, String innerPath, boolean orderField, boolean selectField) {
 		FieldItem fieldItem = fieldMap.get(alias);
 		if (fieldItem == null) {
-			fieldItem = new FieldItem(alias, innerAlias, path);
+			fieldItem = new FieldItem(alias, innerAlias, path, innerPath);
 			fieldItems.add(fieldItem);
 			fieldMap.put(alias, fieldItem);
 			fieldPathMap.put(path, fieldItem);
@@ -297,12 +301,12 @@ public class QueryComposer {
 			if (subParts.length > 1) {
 				alias = subParts[1].trim();
 			}
-			addSelectFieldResolver(alias, path);
+			addSelectFieldResolver(alias, path, path);
 		}
 	}
 
 	public void addSelect(String alias, String path) {
-		addSelectFieldResolver(alias, path);
+		addSelectFieldResolver(alias, path, path);
 	}
 
 	public void init(QueryRequestDTO queryRequest) {
@@ -339,7 +343,7 @@ public class QueryComposer {
 			countQueryStr = "SELECT DISTINCT COUNT(*) OVER () " + fromQueryStr;
 		} else {
 			String selectQueryStr = "SELECT " + rootAlias + "." + Constants.UUID;
-			queryStr = selectQueryStr + fromBasicQueryStr + getBasicOrderByPart() + getPagedPart();
+			queryStr = selectQueryStr + " " + fromBasicQueryStr + getBasicOrderByPart() + getPagedPart();
 			countQueryStr = "SELECT COUNT(*) " + fromBasicQueryStr;
 		}
 	}
@@ -384,6 +388,11 @@ public class QueryComposer {
 		String result = rootAlias + "." + Constants.UUID;
 		for (FieldItem fieldItem : fieldMap.values()) {
 			if (!Constants.UUID.equals(fieldItem.getAlias())) {
+				result += ", " + fieldItem.getInnerSelect(rootAlias);
+			}
+		}
+		for (FieldItem fieldItem : orderFieldMap.values()) {
+			if (fieldItem != null && !Constants.UUID.equals(fieldItem.getAlias()) && fieldMap.get(fieldItem.getAlias()) == null) {
 				result += ", " + fieldItem.getInnerSelect(rootAlias);
 			}
 		}
@@ -439,6 +448,10 @@ public class QueryComposer {
 
 	private String resolvePath(String alias, String path) {
 		return applyComposer ? (COMPOSER_PREFIX + "." + alias) : path;
+	}
+
+	private boolean applySearch() {
+		return CollectionUtils.isNotEmpty(queryRequest.getSearchTerms());
 	}
 
 }

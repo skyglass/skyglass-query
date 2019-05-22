@@ -2,30 +2,19 @@ package skyglass.query.composer;
 
 public class FieldItem {
 
-	private String path;
+	private String innerPath;
 
 	private String alias;
-
-	private String innerAlias;
 
 	private boolean addRootAlias;
 
 	private boolean useInnerAlias;
 
-	public FieldItem(String alias, String innerAlias, String path) {
+	public FieldItem(String alias, String innerAlias, String path, String innerPath) {
 		this.alias = alias;
-		this.innerAlias = innerAlias;
-		this.path = path;
+		this.innerPath = innerPath;
 		this.addRootAlias = path.equals(alias);
 		this.useInnerAlias = alias.equals(innerAlias);
-	}
-
-	public String getPath() {
-		return path;
-	}
-
-	public void setPath(String path) {
-		this.path = path;
 	}
 
 	public String getAlias() {
@@ -33,11 +22,11 @@ public class FieldItem {
 	}
 
 	public String getInnerSelect(String rootAlias) {
-		return getPath(rootAlias) + (useInnerAlias ? "" : " AS " + alias);
+		return getInnerPath(rootAlias) + (useInnerAlias ? "" : " AS " + alias);
 	}
 
-	private String getPath(String rootAlias) {
-		return addRootAlias ? (rootAlias + "." + path) : path;
+	private String getInnerPath(String rootAlias) {
+		return addRootAlias ? (rootAlias + "." + alias) : innerPath;
 	}
 
 }
