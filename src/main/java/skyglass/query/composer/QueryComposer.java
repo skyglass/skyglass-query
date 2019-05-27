@@ -28,11 +28,13 @@ import skyglass.query.builder.config.Constants;
 
 public class QueryComposer {
 
-	private final String COMPOSER_PREFIX = "tab";
+	private final String OUTER_QUERY_PREFIX = "tab";
 
 	private QueryRequestDTO queryRequest;
 
-	private boolean applyComposer;
+	private boolean applyOuterQuery;
+
+	private boolean applyOuterSearch;
 
 	private Map<String, Set<String>> queryMap = new LinkedHashMap<>();
 
@@ -76,7 +78,7 @@ public class QueryComposer {
 	}
 
 	public void setDistinct() {
-		this.applyComposer = true;
+		this.applyOuterQuery = true;
 	}
 
 	public void add(String queryPart) {
@@ -135,22 +137,27 @@ public class QueryComposer {
 				return QuerySearchUtil.applySearch(true, searchBuilder);
 			});
 		}
-		boolean applyComposerOriginal = applyComposer;
+		boolean applyOuterQueryOriginal = applyOuterQuery;
+		applyOuterQuery = false;
 		for (String path : paths) {
 			addFieldResolver(path, path);
 		}
-		if (!applyComposerOriginal && !applySearch()) {
-			applyComposer = false;
+		if (!applySearch()) {
+			applyOuterQuery = false;
+		} else if (applyOuterQuery) {
+			applyOuterSearch = true;
 		}
+		applyOuterQuery = applyOuterQuery || applyOuterQueryOriginal;
+
 	}
 
 	public void addAliasResolver(String alias, String... paths) {
 		for (String path : paths) {
 			String[] pathParts = path.split("\\.");
 			if (pathParts.length == 1) {
-				applyComposer = true;
-			} else if (pathParts[0].equals(COMPOSER_PREFIX)) {
-				applyComposer = true;
+				applyOuterQuery = true;
+			} else if (pathParts[0].equals(OUTER_QUERY_PREFIX)) {
+				applyOuterQuery = true;
 			}
 			aliasResolverMap.computeIfAbsent(alias, a -> new HashSet<>()).add(path);
 		}
@@ -263,8 +270,8 @@ public class QueryComposer {
 	private void addFieldResolver(String alias, String path, String innerPath, boolean orderField, boolean selectField) {
 		String[] pathParts = path.split("\\.");
 		String innerAlias = pathParts[pathParts.length - 1];
-		if (pathParts.length == 1 || pathParts[0].equals(COMPOSER_PREFIX)) {
-			applyComposer = true;
+		if (pathParts.length == 1 || pathParts[0].equals(OUTER_QUERY_PREFIX)) {
+			applyOuterQuery = true;
 		}
 		if (alias == null) {
 			alias = innerAlias;
@@ -316,7 +323,7 @@ public class QueryComposer {
 			fromBasicQueryStr += queryPart;
 		}
 
-		if (applyComposer) {
+		if (applyOuterQuery) {
 			initOrderByPart();
 			//This query part selects column names, for which sorting is supported. All these columns should exist in entity table or in tables, which have one to one correspondence
 			//Therefore GROUP BY by all these columns guarantees uniquness of entity's tab.UUID and we won't have duplicates
@@ -329,21 +336,30 @@ public class QueryComposer {
 			//This query part selects column names, which will be used by outer query. 
 			String innerSelect = "SELECT " + getInnerFields();
 
-			String fromQueryStr = " FROM ( "
-					+ innerComposerSelect
-					+ " FROM ( "
-					+ innerSelect + " " + fromBasicQueryStr;
+			String fromPart = null;
 
-			fromQueryStr += " ) tab"
-					+ getSearchPart()
-					+ " ) tab "
-					+ " GROUP BY " + getOuterComposerFields(queryRequest) + " ";
+			if (applyOuterSearch) {
+				fromPart = " FROM ( " + innerComposerSelect + " FROM ( ";
+			} else {
+				fromPart = " FROM ( ";
+			}
+
+			String fromQueryStr = fromPart + innerSelect + " " + fromBasicQueryStr;
+
+			String searchPart = null;
+			if (applyOuterSearch) {
+				searchPart = " ) tab" + getSearchPart() + " ) tab ";
+			} else {
+				searchPart = getSearchPart() + " ) tab ";
+			}
+
+			fromQueryStr += searchPart + "GROUP BY " + getOuterComposerFields(queryRequest) + " ";
 
 			queryStr = outerComposerSelect + fromQueryStr + getOrderByPart() + getPagedPart();
 			countQueryStr = "SELECT DISTINCT COUNT(*) OVER () " + fromQueryStr;
 		} else {
 			String selectQueryStr = "SELECT " + rootAlias + "." + Constants.UUID;
-			queryStr = selectQueryStr + " " + fromBasicQueryStr + getBasicOrderByPart() + getPagedPart();
+			queryStr = selectQueryStr + " " + fromBasicQueryStr + getSearchPart() + getBasicOrderByPart() + getPagedPart();
 			countQueryStr = "SELECT COUNT(*) " + fromBasicQueryStr;
 		}
 	}
@@ -357,28 +373,40 @@ public class QueryComposer {
 		return queryStr;
 	}
 
+	public void addSearchParameters() {
+		if (StringUtils.isNotBlank(queryRequest.getSearchTerm())) {
+			addParameter(SearchBuilder.SEARCH_TERM_FIELD + Integer.toString(1), "%" + queryRequest.getSearchTerm() + "%");
+		} else {
+			for (int i = 0; i < queryRequest.getSearchTerms().size(); i++) {
+				if (StringUtils.isNotBlank(queryRequest.getSearchTerms().get(i))) {
+					addParameter(SearchBuilder.SEARCH_TERM_FIELD + Integer.toString(i), "%" + queryRequest.getSearchTerms().get(i) + "%");
+				}
+			}
+		}
+	}
+
 	private String getOuterComposerFields(QueryRequestDTO queryRequest) {
-		String result = COMPOSER_PREFIX + "." + Constants.UUID;
-		if (!applyComposer) {
+		String result = OUTER_QUERY_PREFIX + "." + Constants.UUID;
+		if (!applyOuterQuery) {
 			for (FieldItem fieldItem : selectFieldMap.values()) {
 				if (!Constants.UUID.equals(fieldItem.getAlias())) {
-					result += ", " + COMPOSER_PREFIX + "." + fieldItem.getAlias();
+					result += ", " + OUTER_QUERY_PREFIX + "." + fieldItem.getAlias();
 				}
 			}
 		}
 		for (FieldItem fieldItem : orderFieldMap.values()) {
 			if (fieldItem != null && !Constants.UUID.equals(fieldItem.getAlias()) && selectFieldMap.get(fieldItem.getAlias()) == null) {
-				result += ", " + COMPOSER_PREFIX + "." + fieldItem.getAlias();
+				result += ", " + OUTER_QUERY_PREFIX + "." + fieldItem.getAlias();
 			}
 		}
 		return result;
 	}
 
 	private String getInnerComposerFields() {
-		String result = COMPOSER_PREFIX + "." + Constants.UUID;
+		String result = OUTER_QUERY_PREFIX + "." + Constants.UUID;
 		for (FieldItem fieldItem : fieldMap.values()) {
 			if (!Constants.UUID.equals(fieldItem.getAlias())) {
-				result += ", " + COMPOSER_PREFIX + "." + fieldItem.getAlias();
+				result += ", " + OUTER_QUERY_PREFIX + "." + fieldItem.getAlias();
 			}
 		}
 		return result;
@@ -425,12 +453,7 @@ public class QueryComposer {
 	}
 
 	private String getBasicOrderByPart() {
-		for (Runnable orderBuilderRunner : orderBuilderRunners) {
-			orderBuilderRunner.run();
-		}
-		for (Runnable orderBuilderRunner : defaultOrderBuilderRunners) {
-			orderBuilderRunner.run();
-		}
+		initOrderByPart();
 		return " ORDER BY " + QueryOrderUtil.applyOrder(orderBuilder.getOrderFields());
 	}
 
@@ -443,15 +466,24 @@ public class QueryComposer {
 		if (fieldItem == null) {
 			fieldItem = fieldMap.get(path);
 		}
-		return applyComposer ? (COMPOSER_PREFIX + "." + fieldItem.getAlias()) : path;
+		return applyOuterQuery ? (OUTER_QUERY_PREFIX + "." + fieldItem.getAlias()) : path;
 	}
 
 	private String resolvePath(String alias, String path) {
-		return applyComposer ? (COMPOSER_PREFIX + "." + alias) : path;
+		return applyOuterQuery ? (OUTER_QUERY_PREFIX + "." + alias) : path;
 	}
 
 	private boolean applySearch() {
-		return CollectionUtils.isNotEmpty(queryRequest.getSearchTerms());
+		if (StringUtils.isNotBlank(queryRequest.getSearchTerm())) {
+			return true;
+		} else {
+			for (int i = 0; i < queryRequest.getSearchTerms().size(); i++) {
+				if (StringUtils.isNotBlank(queryRequest.getSearchTerms().get(i))) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 }
