@@ -54,6 +54,8 @@ public class QueryComposer {
 
 	private List<Supplier<String>> searchPartSuppliers = new ArrayList<>();
 
+	private List<Runnable> searchBuilderRunners = new ArrayList<>();
+
 	private List<Runnable> orderBuilderRunners = new ArrayList<>();
 
 	private List<Runnable> defaultOrderBuilderRunners = new ArrayList<>();
@@ -121,42 +123,13 @@ public class QueryComposer {
 	}
 
 	public void addSearch(String... paths) {
-		List<String> searchTerms = CollectionUtils.isEmpty(queryRequest.getSearchTerms())
-				? (StringUtils.isBlank(queryRequest.getSearchTerm())
-						? Collections.emptyList()
-						: Collections.singletonList(queryRequest.getSearchTerm()))
-				: queryRequest.getSearchTerms();
-		for (int i = 0; i < searchTerms.size(); i++) {
-			String searchTermField = SearchBuilder.SEARCH_TERM_FIELD + Integer.toString(i);
-			searchPartSuppliers.add(() -> {
-				String[] resolvedPaths = new String[paths.length];
-				for (int j = 0; j < paths.length; j++) {
-					resolvedPaths[j] = resolvePath(paths[j]);
-				}
-				SearchBuilder searchBuilder = new SearchBuilder(queryRequest, searchTermField, false, resolvedPaths);
-				return QuerySearchUtil.applySearch(true, searchBuilder);
-			});
-		}
-		boolean applyOuterQueryOriginal = applyOuterQuery;
-		applyOuterQuery = false;
-		for (String path : paths) {
-			addFieldResolver(path, path);
-		}
-		if (!applySearch()) {
-			applyOuterQuery = false;
-		} else if (applyOuterQuery) {
-			applyOuterSearch = true;
-		}
-		applyOuterQuery = applyOuterQuery || applyOuterQueryOriginal;
-
+		addSearchRunner(paths);
 	}
 
 	public void addAliasResolver(String alias, String... paths) {
 		for (String path : paths) {
 			String[] pathParts = path.split("\\.");
-			if (pathParts.length == 1) {
-				applyOuterQuery = true;
-			} else if (pathParts[0].equals(OUTER_QUERY_PREFIX)) {
+			if (pathParts.length == 1 || pathParts[0].equals(OUTER_QUERY_PREFIX)) {
 				applyOuterQuery = true;
 			}
 			aliasResolverMap.computeIfAbsent(alias, a -> new HashSet<>()).add(path);
@@ -231,6 +204,43 @@ public class QueryComposer {
 		});
 	}
 
+	private void addSearchRunner(String... paths) {
+		searchBuilderRunners.add(() -> {
+			doAddSearch(paths);
+		});
+	}
+
+	public void doAddSearch(String... paths) {
+		List<String> searchTerms = CollectionUtils.isEmpty(queryRequest.getSearchTerms())
+				? (StringUtils.isBlank(queryRequest.getSearchTerm())
+						? Collections.emptyList()
+						: Collections.singletonList(queryRequest.getSearchTerm()))
+				: queryRequest.getSearchTerms();
+		for (int i = 0; i < searchTerms.size(); i++) {
+			String searchTermField = SearchBuilder.SEARCH_TERM_FIELD + Integer.toString(i);
+			searchPartSuppliers.add(() -> {
+				String[] resolvedPaths = new String[paths.length];
+				for (int j = 0; j < paths.length; j++) {
+					resolvedPaths[j] = resolvePath(paths[j]);
+				}
+				SearchBuilder searchBuilder = new SearchBuilder(queryRequest, searchTermField, false, resolvedPaths);
+				return QuerySearchUtil.applySearch(true, searchBuilder);
+			});
+		}
+		boolean applyOuterQueryOriginal = applyOuterQuery;
+		applyOuterQuery = false;
+		for (String path : paths) {
+			addFieldResolver(path, path);
+		}
+		if (!shouldApplySearch()) {
+			applyOuterQuery = false;
+		} else if (applyOuterQuery) {
+			applyOuterSearch = true;
+		}
+		applyOuterQuery = applyOuterQuery || applyOuterQueryOriginal;
+
+	}
+
 	private void addBindOrderRunner(String name, FieldType fieldType, String path) {
 		orderBuilderRunners.add(() -> {
 			if (orderBuilder.shouldBindOrder(name)) {
@@ -270,11 +280,13 @@ public class QueryComposer {
 	private void addFieldResolver(String alias, String path, String innerPath, boolean orderField, boolean selectField) {
 		String[] pathParts = path.split("\\.");
 		String innerAlias = pathParts[pathParts.length - 1];
-		if (pathParts.length == 1 || pathParts[0].equals(OUTER_QUERY_PREFIX)) {
-			applyOuterQuery = true;
-		}
-		if (alias == null) {
+		if (alias == null || alias.equals(path)) {
 			alias = innerAlias;
+		}
+		if (pathParts[0].equals(OUTER_QUERY_PREFIX)) {
+			applyOuterQuery = true;
+		} else if (pathParts.length == 1 && aliasResolverMap.get(alias) == null) {
+			applyOuterQuery = true;
 		}
 		addFieldItem(alias, innerAlias, path, innerPath, orderField, selectField);
 	}
@@ -323,8 +335,9 @@ public class QueryComposer {
 			fromBasicQueryStr += queryPart;
 		}
 
+		initSearchPart();
+		initOrderByPart();
 		if (applyOuterQuery) {
-			initOrderByPart();
 			//This query part selects column names, for which sorting is supported. All these columns should exist in entity table or in tables, which have one to one correspondence
 			//Therefore GROUP BY by all these columns guarantees uniquness of entity's tab.UUID and we won't have duplicates
 			String outerComposerSelect = "SELECT " + getOuterComposerFields(queryRequest);
@@ -443,6 +456,12 @@ public class QueryComposer {
 		return " ORDER BY " + QueryOrderUtil.applyOrder(orderBuilder.getOrderFields());
 	}
 
+	private void initSearchPart() {
+		for (Runnable searchBuilderRunner : searchBuilderRunners) {
+			searchBuilderRunner.run();
+		}
+	}
+
 	private void initOrderByPart() {
 		for (Runnable orderBuilderRunner : orderBuilderRunners) {
 			orderBuilderRunner.run();
@@ -453,7 +472,6 @@ public class QueryComposer {
 	}
 
 	private String getBasicOrderByPart() {
-		initOrderByPart();
 		return " ORDER BY " + QueryOrderUtil.applyOrder(orderBuilder.getOrderFields());
 	}
 
@@ -470,10 +488,22 @@ public class QueryComposer {
 	}
 
 	private String resolvePath(String alias, String path) {
+		if (alias == null || alias.equals(path)) {
+			String[] pathParts = path.split("\\.");
+			String innerAlias = pathParts[pathParts.length - 1];
+			alias = innerAlias;
+			if (pathParts.length == 1 || pathParts[0].equals(OUTER_QUERY_PREFIX)) {
+				applyOuterQuery = true;
+			}
+		}
 		return applyOuterQuery ? (OUTER_QUERY_PREFIX + "." + alias) : path;
 	}
 
-	private boolean applySearch() {
+	private boolean shouldApplySearch() {
+		return shouldApplySearch(queryRequest);
+	}
+
+	public static boolean shouldApplySearch(QueryRequestDTO queryRequest) {
 		if (StringUtils.isNotBlank(queryRequest.getSearchTerm())) {
 			return true;
 		} else {

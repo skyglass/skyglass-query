@@ -3,7 +3,7 @@ package skyglass.query.composer;
 import java.util.Arrays;
 import java.util.function.Consumer;
 
-import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -70,6 +70,8 @@ public class QueryComposerTest {
 		expectedResult += " WHERE " + searchPart + " ORDER BY sm.createdAt DESC";
 
 		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"));
+		queryComposer.addAliasResolver("createdBy", "user.name");
+		queryComposer.addAliasResolver("bparamValue", "bparam.value");
 		String result = queryComposer.getQueryStr(queryRequest);
 		Assert.assertEquals(expectedResult, result);
 	}
@@ -80,15 +82,7 @@ public class QueryComposerTest {
 		QueryRequestDTO queryRequest = MockQueryRequestDto.create("");
 		queryRequest.setSearchTerm("test1");
 
-		String expectedResult = "SELECT sm.UUID FROM SPACEMISSION sm JOIN PLANET pl ON sm.PLANET_UUID = pl.uuid JOIN TranslatedField trName ON trName.UUID = pl.nameI18n_UUID "
-				+ "JOIN USER user ON sm.CREATEDBY_UUID = user.uuid LEFT JOIN TranslatedField trDescription ON trDescription.UUID = pl.descriptionI18n_UUID LEFT "
-				+ "JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate";
-
-		String searchTermField = SearchBuilder.SEARCH_TERM_FIELD + "0";
-		SearchBuilder searchBuilder = new SearchBuilder(queryRequest, searchTermField, false, "createdBy", "bparamValue");
-		String searchPart = QuerySearchUtil.applySearch(true, searchBuilder);
-
-		expectedResult += " WHERE " + searchPart + " ORDER BY sm.createdAt DESC";
+		String expectedResult = getExpectedResult(queryRequest, "tab.createdBy", "tab.bparamValue");
 
 		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"));
 		queryComposer.setDistinct();
@@ -134,7 +128,7 @@ public class QueryComposerTest {
 		return queryComposer;
 	}
 
-	private String getExpectedResult(QueryRequestDTO queryRequest) {
+	private String getExpectedResult(QueryRequestDTO queryRequest, String... searchFields) {
 		String fromBasicQueryStr = "SELECT sm.UUID, sm.planetId, sm.from, sm.destination, sm.currentPosition, sm.operator, user.name AS createdBy, bparam.value AS bparamValue, "
 				+ "CASE sm.direction WHEN 0 THEN 'IN' WHEN 1 THEN 'OUT' WHEN 2 THEN 'NONE' END AS direction, "
 				+ "COALESCE(trName.en, trName.de, trName.cn, trName.jp, trName.es, trName.fr, trName.pt, trName.it) AS planetName, "
@@ -165,7 +159,7 @@ public class QueryComposerTest {
 				+ fromBasicQueryStr
 				+ whereQueryStr
 				+ ") tab"
-				+ getSearchPart(queryRequest)
+				+ getSearchPart(queryRequest, searchFields)
 				+ " ) tab "
 				+ "GROUP BY tab.UUID, tab.createdAt ";
 
@@ -179,15 +173,21 @@ public class QueryComposerTest {
 		return queryCompositeStr;
 	}
 
-	private String getSearchPart(QueryRequestDTO request) {
-		if (CollectionUtils.isEmpty(request.getSearchTerms())) {
+	private String getSearchPart(QueryRequestDTO request, String... searchFields) {
+		if (!QueryComposer.shouldApplySearch(request)) {
 			return "";
 		}
 		String searchPart = null;
-		for (int i = 0; i < request.getSearchTerms().size(); i++) {
+		int size = request.getSearchTerms().size() > 0 ? request.getSearchTerms().size() : StringUtils.isNotBlank(request.getSearchTerm()) ? 1 : 0;
+		for (int i = 0; i < size; i++) {
 			String searchTermField = SearchBuilder.SEARCH_TERM_FIELD + Integer.toString(i);
-			SearchBuilder searchBuilder = new SearchBuilder(request, searchTermField, false, "tab.planetId", "tab.from", "tab.destination", "tab.operator", "tab.createdBy",
-					"tab.bparamValue", "tab.direction", "tab.planetName", "tab.planetDescription", "tab.localPlanetName", "tab.localPlanetDescription");
+			SearchBuilder searchBuilder = null;
+			if (searchFields.length > 0) {
+				searchBuilder = new SearchBuilder(request, searchTermField, false, searchFields);
+			} else {
+				searchBuilder = new SearchBuilder(request, searchTermField, false, "tab.planetId", "tab.from", "tab.destination", "tab.operator", "tab.createdBy",
+						"tab.bparamValue", "tab.direction", "tab.planetName", "tab.planetDescription", "tab.localPlanetName", "tab.localPlanetDescription");
+			}
 			searchPart = QueryFunctions.and(searchPart, QuerySearchUtil.applySearch(true, searchBuilder));
 		}
 

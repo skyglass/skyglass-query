@@ -3,6 +3,7 @@ package skyglass.query;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -16,6 +17,7 @@ import javax.persistence.Query;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.lang3.StringUtils;
 
+import skyglass.data.common.model.IdObject;
 import skyglass.query.builder.QueryRequestDTO;
 
 public class NativeQueryUtil {
@@ -140,28 +142,53 @@ public class NativeQueryUtil {
 	public static <DTO> List<DTO> buildDtoListFromSelectFields(Supplier<DTO> dtoSupplier, Collection<Object[]> queryResult, String selectString) {
 		List<DTO> dtoList = new ArrayList<>();
 		for (Object[] result : queryResult) {
-			DTO dto = dtoSupplier.get();
-			int i = 0;
-			for (String selectAlias : parseSelect(selectString)) {
-				Object propValue = result[i];
-				if (propValue != null) {
-					try {
-						Field typeField = dto.getClass().getDeclaredField(selectAlias);
-						@SuppressWarnings("rawtypes")
-						Class typeClass = typeField.getType();
-						if (typeClass.isEnum()) {
-							propValue = EnumUtil.getEnumInstanceObject(propValue, typeClass);
-						}
-						PropertyUtils.setSimpleProperty(dto, selectAlias, propValue);
-					} catch (IllegalAccessException | NoSuchMethodException | InvocationTargetException | NoSuchFieldException ex) {
-						throw new IllegalArgumentException("Could not set value of the property " + selectAlias + " to " + propValue, ex);
-					}
-				}
-				i++;
-			}
-			dtoList.add(dto);
+			dtoList.add(buildDtoFromSelectFields(dtoSupplier, result, selectString));
 		}
 		return dtoList;
+	}
+
+	public static <DTO> DTO buildDtoFromSelectFields(Supplier<DTO> dtoSupplier, Object[] queryResult, String selectString) {
+		DTO dto = dtoSupplier.get();
+		int i = 0;
+		for (String selectAlias : parseSelect(selectString)) {
+			Object propValue = queryResult[i];
+			if (propValue != null) {
+				if (selectAlias.equalsIgnoreCase("uuid") && (dto instanceof IdObject)) {
+					IdObject idObject = (IdObject) dto;
+					idObject.setUuid(propValue.toString());
+				} else {
+					try {
+						Field typeField = getDeclaredField(dto.getClass(), selectAlias);
+						if (typeField != null) {
+							@SuppressWarnings("rawtypes")
+							Class typeClass = typeField.getType();
+							if (typeClass.isEnum()) {
+								propValue = EnumUtil.getEnumInstanceObject(propValue, typeClass);
+							}
+							if (propValue instanceof BigInteger) {
+								propValue = ((BigInteger) propValue).intValue();
+							}
+							PropertyUtils.setSimpleProperty(dto, selectAlias, propValue);
+						}
+					} catch (IllegalAccessException | NoSuchMethodException | InvocationTargetException ex) {
+						//ignore;
+					}
+				}
+			}
+			i++;
+		}
+		return dto;
+	}
+
+	private static Field getDeclaredField(Class<?> type, String name) {
+		try {
+			return type.getDeclaredField(name);
+		} catch (NoSuchFieldException ex) {
+			if (type.getSuperclass() != null) {
+				return getDeclaredField(type.getSuperclass(), name);
+			}
+			return null;
+		}
 	}
 
 	private static List<String> parseSelect(String selectString) {
