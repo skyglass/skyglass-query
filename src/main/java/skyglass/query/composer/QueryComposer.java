@@ -38,7 +38,7 @@ public class QueryComposer {
 
 	private Map<String, Set<String>> queryMap = new LinkedHashMap<>();
 
-	private Collection<String> queryParts = new ArrayList<>();
+	private Collection<QueryPart> queryParts = new ArrayList<>();
 
 	private List<FieldItem> fieldItems = new ArrayList<>();
 
@@ -84,42 +84,63 @@ public class QueryComposer {
 	}
 
 	public void add(String queryPart) {
-		queryParts.add(queryPart);
+		add(queryPart, false);
+	}
+
+	public void addDistinct(String queryPart) {
+		add(queryPart, true);
+	}
+
+	public void add(String queryPart, boolean distinct) {
+		queryParts.add(new QueryPart(queryPart, distinct));
 		queryMap.computeIfAbsent(queryPart, a -> new HashSet<>()).add(Constants.UUID);
 	}
 
 	public void addConditional(String queryPart, String... aliases) {
-		queryParts.add(queryPart);
+		addConditional(queryPart, false, aliases);
+	}
+
+	public void addDistinctConditional(String queryPart, String... aliases) {
+		addConditional(queryPart, true, aliases);
+	}
+
+	public void addConditional(String queryPart, boolean distinct, String... aliases) {
+		queryParts.add(new QueryPart(queryPart, distinct));
 		for (String alias : aliases) {
 			queryMap.computeIfAbsent(queryPart, a -> new HashSet<>()).add(alias);
 		}
 	}
 
-	private boolean shouldBeAdded(String queryPart) {
-		Collection<String> aliases = queryMap.get(queryPart);
+	private boolean shouldBeAdded(QueryPart queryPart) {
+		Collection<String> aliases = queryMap.get(queryPart.getQueryPart());
 		if (CollectionUtils.isEmpty(aliases)) {
 			return false;
 		}
 		boolean result = aliases.contains(Constants.UUID);
-		if (result) {
-			return true;
-		}
-		for (String alias : fieldMap.keySet()) {
-			result = aliases.contains(alias);
-			if (result) {
-				return true;
-			}
-			Set<String> aliasResolvers = aliasResolverMap.get(alias);
-			if (!CollectionUtils.isEmpty(aliasResolvers)) {
-				for (String aliasResolver : aliasResolvers) {
-					result = aliases.contains(aliasResolver);
-					if (result) {
-						return true;
+		if (!result) {
+			for (String alias : fieldMap.keySet()) {
+				result = aliases.contains(alias);
+				if (result) {
+					break;
+				}
+				Set<String> aliasResolvers = aliasResolverMap.get(alias);
+				if (!CollectionUtils.isEmpty(aliasResolvers)) {
+					for (String aliasResolver : aliasResolvers) {
+						result = aliases.contains(aliasResolver);
+						if (result) {
+							break;
+						}
 					}
+				}
+				if (result) {
+					break;
 				}
 			}
 		}
-		return false;
+		if (result && queryPart.isDistinct()) {
+			this.setDistinct();
+		}
+		return result;
 	}
 
 	public void addSearch(String... paths) {
@@ -140,66 +161,131 @@ public class QueryComposer {
 		queryParameters.put(name, value);
 	}
 
-	public void setDefaultOrder(OrderType orderType, FieldType fieldType, String path) {
+	public void setDefaultOrder(OrderType orderType, FieldType fieldType, String... path) {
 		addDefaultOrderRunner(orderType, fieldType, path);
 	}
 
-	public void setDefaultOrder(OrderType orderType, String path) {
+	public void setDefaultOrder(OrderType orderType, String... path) {
 		addDefaultOrderRunner(orderType, path);
 	}
 
-	public void setDefaultOrder(OrderType orderType, FieldType fieldType, String alias, String path) {
-		addDefaultOrderRunner(orderType, fieldType, alias, path);
+	public void setDefaultOrder(String alias, OrderType orderType, FieldType fieldType, String... path) {
+		addDefaultOrderRunner(orderType, fieldType, alias, false, path);
 	}
 
-	public void setDefaultOrder(OrderType orderType, String alias, String path) {
-		addDefaultOrderRunner(orderType, alias, path);
+	public void setDefaultOrder(String alias, OrderType orderType, String... path) {
+		addDefaultOrderRunner(orderType, null, alias, false, path);
 	}
 
-	public void bindOrder(String name, FieldType fieldType, String path) {
-		addBindOrderRunner(name, fieldType, path);
+	public void bindOrder(String name, FieldType fieldType, String... path) {
+		addBindOrderRunner(name, fieldType, false, path);
 	}
 
-	public void bindOrder(String name, String path) {
-		addBindOrderRunner(name, path);
+	public void bindOrder(String name, String... path) {
+		addBindOrderRunner(name, null, false, path);
 	}
 
-	private void addDefaultOrderRunner(OrderType orderType, FieldType fieldType, String path) {
+	private void addDefaultOrderRunner(OrderType orderType, String... path) {
+		addDefaultOrderRunner(orderType, null, null, false, path);
+	}
+
+	private void addDefaultOrderRunner(OrderType orderType, FieldType fieldType, String... path) {
+		addDefaultOrderRunner(orderType, fieldType, null, false, path);
+	}
+
+	public void setDefaultTranslatableOrder(OrderType orderType, FieldType fieldType, String... path) {
+		addDefaultTranslatableOrderRunner(orderType, fieldType, path);
+	}
+
+	public void setDefaultTranslatableOrder(OrderType orderType, String... path) {
+		addDefaultTranslatableOrderRunner(orderType, path);
+	}
+
+	public void setDefaultTranslatableOrder(String alias, OrderType orderType, FieldType fieldType, String... path) {
+		addDefaultOrderRunner(orderType, fieldType, alias, true, path);
+	}
+
+	public void setDefaultTranslatableOrder(String alias, OrderType orderType, String... path) {
+		addDefaultOrderRunner(orderType, null, alias, true, path);
+	}
+
+	public void bindTranslatableOrder(String name, FieldType fieldType, String... path) {
+		addBindOrderRunner(name, fieldType, true, path);
+	}
+
+	public void bindTranslatableOrder(String name, String... path) {
+		addBindOrderRunner(name, null, true, path);
+	}
+
+	private void addDefaultTranslatableOrderRunner(OrderType orderType, String... path) {
+		addDefaultOrderRunner(orderType, null, null, true, path);
+	}
+
+	private void addDefaultTranslatableOrderRunner(OrderType orderType, FieldType fieldType, String... path) {
+		addDefaultOrderRunner(orderType, fieldType, null, true, path);
+	}
+
+	private void addDefaultOrderRunner(OrderType orderType, FieldType fieldType, String alias, boolean translatable, String... paths) {
+		if (alias == null) {
+			alias = paths.length > 0 ? paths[0] : null;
+		}
+		final String finalAlias = alias;
+		final boolean useAlias = alias != null;
 		defaultOrderBuilderRunners.add(() -> {
 			if (orderBuilder.shouldSetDefaultOrder()) {
-				String resolvedPath = resolvePath(path, path);
-				orderBuilder.setDefaultOrder(orderType, fieldType, resolvedPath);
-				addOrderFieldResolver(resolvedPath, path);
+				String[] resolvedPaths = new String[paths.length];
+				for (int i = 0; i < paths.length; i++) {
+					resolvedPaths[i] = resolvePath(finalAlias, paths[i]);
+				}
+				if (fieldType == null) {
+					if (translatable) {
+						orderBuilder.setDefaultTranslatableOrder(orderType, resolvedPaths);
+					} else {
+						orderBuilder.setDefaultOrder(orderType, resolvedPaths);
+					}
+				} else {
+					if (translatable) {
+						orderBuilder.setDefaultTranslatableOrder(orderType, resolvedPaths);
+					} else {
+						orderBuilder.setDefaultOrder(orderType, fieldType, resolvedPaths);
+					}
+				}
+				if (useAlias) {
+					for (int i = 0; i < paths.length; i++) {
+						addOrderFieldResolver(finalAlias, resolvedPaths[i], paths[i]);
+					}
+				} else {
+					for (int i = 0; i < paths.length; i++) {
+						addOrderFieldResolver(resolvedPaths[i], paths[i]);
+					}
+				}
 			}
 		});
 	}
 
-	private void addDefaultOrderRunner(OrderType orderType, String path) {
-		defaultOrderBuilderRunners.add(() -> {
-			if (orderBuilder.shouldSetDefaultOrder()) {
-				String resolvedPath = resolvePath(path, path);
-				orderBuilder.setDefaultOrder(orderType, resolvedPath);
-				addOrderFieldResolver(resolvedPath, path);
-			}
-		});
-	}
-
-	private void addDefaultOrderRunner(OrderType orderType, FieldType fieldType, String alias, String path) {
-		defaultOrderBuilderRunners.add(() -> {
-			if (orderBuilder.shouldSetDefaultOrder()) {
-				String resolvedPath = resolvePath(alias, path);
-				orderBuilder.setDefaultOrder(orderType, fieldType, resolvedPath);
-				addOrderFieldResolver(alias, resolvedPath, path);
-			}
-		});
-	}
-
-	private void addDefaultOrderRunner(OrderType orderType, String alias, String path) {
-		defaultOrderBuilderRunners.add(() -> {
-			if (orderBuilder.shouldSetDefaultOrder()) {
-				String resolvedPath = resolvePath(alias, path);
-				orderBuilder.setDefaultOrder(orderType, resolvedPath);
-				addOrderFieldResolver(alias, resolvedPath, path);
+	private void addBindOrderRunner(String name, FieldType fieldType, boolean translatable, String... paths) {
+		orderBuilderRunners.add(() -> {
+			if (orderBuilder.shouldBindOrder(name)) {
+				String[] resolvedPaths = new String[paths.length];
+				for (int i = 0; i < paths.length; i++) {
+					resolvedPaths[i] = resolvePath(name, paths[i]);
+				}
+				if (fieldType == null) {
+					if (translatable) {
+						orderBuilder.bindTranslatableOrder(name, resolvedPaths);
+					} else {
+						orderBuilder.bindOrder(name, resolvedPaths);
+					}
+				} else {
+					if (translatable) {
+						orderBuilder.bindTranslatableOrder(name, resolvedPaths);
+					} else {
+						orderBuilder.bindOrder(name, fieldType, resolvedPaths);
+					}
+				}
+				for (int i = 0; i < paths.length; i++) {
+					addOrderFieldResolver(name, resolvedPaths[i], paths[i]);
+				}
 			}
 		});
 	}
@@ -239,26 +325,6 @@ public class QueryComposer {
 		}
 		applyOuterQuery = applyOuterQuery || applyOuterQueryOriginal;
 
-	}
-
-	private void addBindOrderRunner(String name, FieldType fieldType, String path) {
-		orderBuilderRunners.add(() -> {
-			if (orderBuilder.shouldBindOrder(name)) {
-				String resolvedPath = resolvePath(name, path);
-				orderBuilder.bindOrder(name, fieldType, resolvedPath);
-				addOrderFieldResolver(name, resolvedPath, path);
-			}
-		});
-	}
-
-	private void addBindOrderRunner(String name, String path) {
-		orderBuilderRunners.add(() -> {
-			if (orderBuilder.shouldBindOrder(name)) {
-				String resolvedPath = resolvePath(name, path);
-				orderBuilder.bindOrder(name, resolvedPath);
-				addOrderFieldResolver(name, resolvedPath, path);
-			}
-		});
 	}
 
 	private void addOrderFieldResolver(String path, String innerPath) {
@@ -441,7 +507,7 @@ public class QueryComposer {
 	}
 
 	private List<String> resolveInnerFrom() {
-		return queryParts.stream().filter(s -> shouldBeAdded(s)).collect(Collectors.toList());
+		return queryParts.stream().filter(s -> shouldBeAdded(s)).map(s -> s.getQueryPart()).collect(Collectors.toList());
 	}
 
 	private String getSearchPart() {

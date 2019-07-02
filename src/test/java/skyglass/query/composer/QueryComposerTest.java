@@ -21,8 +21,6 @@ import skyglass.query.builder.string.MockQueryRequestDto;
 
 public class QueryComposerTest {
 
-	//TODO: create test with search which requires only basic parameters, but set to distinct. Therefore it should be wrapped in the outer query, but only once
-
 	@Test
 	public void testQueryComposerOrderAndSearch() {
 
@@ -90,7 +88,44 @@ public class QueryComposerTest {
 		Assert.assertEquals(expectedResult, result);
 	}
 
-	private QueryComposer createQueryComposer(QueryRequestDTO queryRequest, Consumer<QueryComposer> searchConsumer) {
+	@Test
+	public void testQueryComposerWithDistinctTranslatableOrderWithoutWrappedQuery() {
+
+		QueryRequestDTO queryRequest = MockQueryRequestDto.create("");
+		queryRequest.setSearchTerm("test1");
+
+		String expectedResult = "SELECT sm.UUID FROM SPACEMISSION sm JOIN PLANET pl ON sm.PLANET_UUID = pl.uuid JOIN TranslatedField trName ON trName.UUID = pl.nameI18n_UUID "
+				+ "JOIN USER user ON sm.CREATEDBY_UUID = user.uuid LEFT JOIN TranslatedField trDescription ON trDescription.UUID = pl.descriptionI18n_UUID LEFT "
+				+ "JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate";
+
+		String searchTermField = SearchBuilder.SEARCH_TERM_FIELD + "0";
+		SearchBuilder searchBuilder = new SearchBuilder(queryRequest, searchTermField, false, "createdBy", "bparamValue");
+		String searchPart = QuerySearchUtil.applySearch(true, searchBuilder);
+
+		expectedResult += " WHERE " + searchPart + " ORDER BY sm.createdAt DESC";
+
+		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"));
+		queryComposer.addAliasResolver("createdBy", "user.name");
+		queryComposer.addAliasResolver("bparamValue", "bparam.value");
+		String result = queryComposer.getQueryStr(queryRequest);
+		Assert.assertEquals(expectedResult, result);
+	}
+
+	@Test
+	public void testQueryComposerWithDistinctTranslatableOrderWithWrappedQuery() {
+
+		QueryRequestDTO queryRequest = MockQueryRequestDto.create("");
+		queryRequest.setSearchTerm("test1");
+
+		String expectedResult = getExpectedResult(queryRequest, "tab.createdBy", "tab.bparamValue");
+
+		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"));
+		queryComposer.setDistinct();
+		String result = queryComposer.getQueryStr(queryRequest);
+		Assert.assertEquals(expectedResult, result);
+	}
+
+	private QueryComposer createQueryComposer(QueryRequestDTO queryRequest, Consumer<QueryComposer> searchConsumer, boolean translatable, boolean distinctConditional) {
 		QueryComposer queryComposer = new QueryComposer(queryRequest, "sm", "SPACEMISSION");
 
 		String languageCode = QueryRequestUtil.getCurrentLanguageCode(queryRequest);
@@ -101,6 +136,7 @@ public class QueryComposerTest {
 				+ QueryFunctions.ordinalToString(Direction.values(), "sm.direction") + " AS direction");
 		addPlanetInfoSelectPart(queryComposer, languageCode);
 		queryComposer.add("FROM SPACEMISSION sm ");
+
 		queryComposer.addConditional("JOIN PLANET pl ON sm.PLANET_UUID = pl.uuid ", "planetId");
 		queryComposer.addConditional("JOIN TranslatedField trName ON trName.UUID = pl.nameI18n_UUID ", "planetName");
 		queryComposer.addConditional("JOIN USER user ON sm.CREATEDBY_UUID = user.uuid ", "createdBy");
@@ -118,12 +154,17 @@ public class QueryComposerTest {
 		queryComposer.setDefaultOrder(OrderType.Desc, FieldType.Date, "sm.createdAt");
 		queryComposer.bindOrder("createdAt", FieldType.Date, "sm.createdAt");
 		queryComposer.bindOrder("planetId", "sm.planetId");
+		queryComposer.bindTranslatableOrder("planetId", "sm.planetId");
 		queryComposer.bindOrder("from", "sm.from");
 		queryComposer.bindOrder("destination", "sm.destination");
 		queryComposer.bindOrder("currentPosition", "sm.currentPosition");
 		queryComposer.bindOrder("operator", "sm.operator");
 		queryComposer.bindOrder("createdBy", "user.name");
 		queryComposer.bindOrder("direction", "direction");
+
+		if (translatable) {
+			queryComposer.bindTranslatableOrder("planetName", "trName", "trLocalName");
+		}
 
 		return queryComposer;
 	}
