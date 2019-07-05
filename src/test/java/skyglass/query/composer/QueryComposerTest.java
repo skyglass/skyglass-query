@@ -31,7 +31,7 @@ public class QueryComposerTest {
 
 		String expectedResult = getExpectedResult(queryRequest);
 
-		QueryComposer queryComposer = createQueryComposer(queryRequest, null);
+		QueryComposer queryComposer = createQueryComposer(queryRequest, null, false, false);
 		String result = queryComposer.getQueryStr(queryRequest);
 		Assert.assertEquals(expectedResult, result);
 	}
@@ -43,10 +43,11 @@ public class QueryComposerTest {
 		queryRequest.setSearchTerm("");
 
 		String expectedResult = "SELECT sm.UUID FROM SPACEMISSION sm JOIN PLANET pl ON sm.PLANET_UUID = pl.uuid JOIN TranslatedField trName ON trName.UUID = pl.nameI18n_UUID "
-				+ "JOIN USER user ON sm.CREATEDBY_UUID = user.uuid LEFT JOIN TranslatedField trDescription ON trDescription.UUID = pl.descriptionI18n_UUID LEFT "
-				+ "JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate ORDER BY sm.createdAt DESC";
+				+ "JOIN USER user ON sm.CREATEDBY_UUID = user.uuid LEFT JOIN TranslatedField trDescription ON trDescription.UUID = pl.descriptionI18n_UUID "
+				+ "LEFT JOIN PLANETINFO pi ON pi.planet_UUID = pl.UUID LEFT JOIN TranslatedField trLocalName ON trLocalName.UUID = pi.nameI18n_UUID "
+				+ "LEFT JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate ORDER BY sm.createdAt DESC";
 
-		QueryComposer queryComposer = createQueryComposer(queryRequest, null);
+		QueryComposer queryComposer = createQueryComposer(queryRequest, null, false, false);
 		String result = queryComposer.getQueryStr(queryRequest);
 		Assert.assertEquals(expectedResult, result);
 	}
@@ -58,8 +59,9 @@ public class QueryComposerTest {
 		queryRequest.setSearchTerm("test1");
 
 		String expectedResult = "SELECT sm.UUID FROM SPACEMISSION sm JOIN PLANET pl ON sm.PLANET_UUID = pl.uuid JOIN TranslatedField trName ON trName.UUID = pl.nameI18n_UUID "
-				+ "JOIN USER user ON sm.CREATEDBY_UUID = user.uuid LEFT JOIN TranslatedField trDescription ON trDescription.UUID = pl.descriptionI18n_UUID LEFT "
-				+ "JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate";
+				+ "JOIN USER user ON sm.CREATEDBY_UUID = user.uuid LEFT JOIN TranslatedField trDescription ON trDescription.UUID = pl.descriptionI18n_UUID "
+				+ "LEFT JOIN PLANETINFO pi ON pi.planet_UUID = pl.UUID LEFT JOIN TranslatedField trLocalName ON trLocalName.UUID = pi.nameI18n_UUID "
+				+ "LEFT JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate";
 
 		String searchTermField = SearchBuilder.SEARCH_TERM_FIELD + "0";
 		SearchBuilder searchBuilder = new SearchBuilder(queryRequest, searchTermField, false, "createdBy", "bparamValue");
@@ -67,7 +69,7 @@ public class QueryComposerTest {
 
 		expectedResult += " WHERE " + searchPart + " ORDER BY sm.createdAt DESC";
 
-		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"));
+		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"), false, false);
 		queryComposer.addAliasResolver("createdBy", "user.name");
 		queryComposer.addAliasResolver("bparamValue", "bparam.value");
 		String result = queryComposer.getQueryStr(queryRequest);
@@ -75,28 +77,44 @@ public class QueryComposerTest {
 	}
 
 	@Test
-	public void testQueryComposerWithDistinctBasicSearch() {
+	public void testQueryComposerWithGlobalDistinctSearch() {
 
 		QueryRequestDTO queryRequest = MockQueryRequestDto.create("");
 		queryRequest.setSearchTerm("test1");
 
 		String expectedResult = getExpectedResult(queryRequest, "tab.createdBy", "tab.bparamValue");
 
-		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"));
+		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"), false, false);
 		queryComposer.setDistinct();
 		String result = queryComposer.getQueryStr(queryRequest);
 		Assert.assertEquals(expectedResult, result);
 	}
 
 	@Test
-	public void testQueryComposerWithDistinctTranslatableOrderWithoutWrappedQuery() {
+	public void testQueryComposerWithDistinctSearch() {
+
+		QueryRequestDTO queryRequest = MockQueryRequestDto.create("");
+		queryRequest.setSearchTerm("test1");
+
+		String expectedResult = getExpectedResult(queryRequest, "tab.createdBy", "tab.bparamValue");
+
+		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"), false, false);
+		queryComposer.addAliasResolver("createdBy", "user.name");
+		queryComposer.addAliasResolver("bparamValue", "bparam.value");
+		String result = queryComposer.getQueryStr(queryRequest);
+		Assert.assertEquals(expectedResult, result);
+	}
+
+	@Test
+	public void testQueryComposerWithTranslatableOrder() {
 
 		QueryRequestDTO queryRequest = MockQueryRequestDto.create("");
 		queryRequest.setSearchTerm("test1");
 
 		String expectedResult = "SELECT sm.UUID FROM SPACEMISSION sm JOIN PLANET pl ON sm.PLANET_UUID = pl.uuid JOIN TranslatedField trName ON trName.UUID = pl.nameI18n_UUID "
-				+ "JOIN USER user ON sm.CREATEDBY_UUID = user.uuid LEFT JOIN TranslatedField trDescription ON trDescription.UUID = pl.descriptionI18n_UUID LEFT "
-				+ "JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate";
+				+ "JOIN USER user ON sm.CREATEDBY_UUID = user.uuid LEFT JOIN TranslatedField trDescription ON trDescription.UUID = pl.descriptionI18n_UUID "
+				+ "LEFT JOIN PLANETINFO pi ON pi.planet_UUID = pl.UUID LEFT JOIN TranslatedField trLocalName ON trLocalName.UUID = pi.nameI18n_UUID "
+				+ "LEFT JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate";
 
 		String searchTermField = SearchBuilder.SEARCH_TERM_FIELD + "0";
 		SearchBuilder searchBuilder = new SearchBuilder(queryRequest, searchTermField, false, "createdBy", "bparamValue");
@@ -104,7 +122,7 @@ public class QueryComposerTest {
 
 		expectedResult += " WHERE " + searchPart + " ORDER BY sm.createdAt DESC";
 
-		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"));
+		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"), false, false);
 		queryComposer.addAliasResolver("createdBy", "user.name");
 		queryComposer.addAliasResolver("bparamValue", "bparam.value");
 		String result = queryComposer.getQueryStr(queryRequest);
@@ -112,20 +130,69 @@ public class QueryComposerTest {
 	}
 
 	@Test
-	public void testQueryComposerWithDistinctTranslatableOrderWithWrappedQuery() {
+	public void testQueryComposerWithDistinctTranslatableOrder() {
 
 		QueryRequestDTO queryRequest = MockQueryRequestDto.create("");
 		queryRequest.setSearchTerm("test1");
 
 		String expectedResult = getExpectedResult(queryRequest, "tab.createdBy", "tab.bparamValue");
 
-		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"));
-		queryComposer.setDistinct();
+		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"), false, false);
 		String result = queryComposer.getQueryStr(queryRequest);
 		Assert.assertEquals(expectedResult, result);
 	}
 
-	private QueryComposer createQueryComposer(QueryRequestDTO queryRequest, Consumer<QueryComposer> searchConsumer, boolean translatable, boolean distinctConditional) {
+	@Test
+	public void testQueryComposerWithOrderByFormulaField() {
+
+		QueryRequestDTO queryRequest = MockQueryRequestDto.create("");
+		queryRequest.setSearchTerm("test1");
+
+		String expectedResult = getExpectedResult(queryRequest, "tab.createdBy", "tab.bparamValue");
+
+		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"), false, false);
+		String result = queryComposer.getQueryStr(queryRequest);
+		Assert.assertEquals(expectedResult, result);
+	}
+
+	@Test
+	public void testQueryComposerWithOrderByDistinctField() {
+
+		QueryRequestDTO queryRequest = MockQueryRequestDto.create("");
+		queryRequest.setSearchTerm("test1");
+
+		String expectedResult = getExpectedResult(queryRequest, "tab.createdBy", "tab.bparamValue");
+
+		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"), false, false);
+		String result = queryComposer.getQueryStr(queryRequest);
+		Assert.assertEquals(expectedResult, result);
+	}
+
+	@Test
+	public void testQueryComposerWithOrderWithoutWrappingQuery() {
+
+		QueryRequestDTO queryRequest = MockQueryRequestDto.create("");
+		queryRequest.setSearchTerm("test1");
+
+		String expectedResult = "SELECT sm.UUID FROM SPACEMISSION sm JOIN PLANET pl ON sm.PLANET_UUID = pl.uuid JOIN TranslatedField trName ON trName.UUID = pl.nameI18n_UUID "
+				+ "JOIN USER user ON sm.CREATEDBY_UUID = user.uuid LEFT JOIN TranslatedField trDescription ON trDescription.UUID = pl.descriptionI18n_UUID "
+				+ "LEFT JOIN PLANETINFO pi ON pi.planet_UUID = pl.UUID LEFT JOIN TranslatedField trLocalName ON trLocalName.UUID = pi.nameI18n_UUID "
+				+ "LEFT JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate";
+
+		String searchTermField = SearchBuilder.SEARCH_TERM_FIELD + "0";
+		SearchBuilder searchBuilder = new SearchBuilder(queryRequest, searchTermField, false, "createdBy", "bparamValue");
+		String searchPart = QuerySearchUtil.applySearch(true, searchBuilder);
+
+		expectedResult += " WHERE " + searchPart + " ORDER BY sm.createdAt DESC";
+
+		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"), false, false);
+		queryComposer.addAliasResolver("createdBy", "user.name");
+		queryComposer.addAliasResolver("bparamValue", "bparam.value");
+		String result = queryComposer.getQueryStr(queryRequest);
+		Assert.assertEquals(expectedResult, result);
+	}
+
+	private QueryComposer createQueryComposer(QueryRequestDTO queryRequest, Consumer<QueryComposer> searchConsumer, boolean distinctSearch, boolean distinctOrder) {
 		QueryComposer queryComposer = new QueryComposer(queryRequest, "sm", "SPACEMISSION");
 
 		String languageCode = QueryRequestUtil.getCurrentLanguageCode(queryRequest);
@@ -141,7 +208,9 @@ public class QueryComposerTest {
 		queryComposer.addConditional("JOIN TranslatedField trName ON trName.UUID = pl.nameI18n_UUID ", "planetName");
 		queryComposer.addConditional("JOIN USER user ON sm.CREATEDBY_UUID = user.uuid ", "createdBy");
 		queryComposer.addConditional("LEFT JOIN TranslatedField trDescription ON trDescription.UUID = pl.descriptionI18n_UUID ", "planetDescription");
-		queryComposer.addConditional("LEFT JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID ", "bparamValue");
+		queryComposer.addConditional("LEFT JOIN PLANETINFO pi ON pi.planet_UUID = pl.UUID ", "localPlanetName");
+		queryComposer.addConditional("LEFT JOIN TranslatedField trLocalName ON trLocalName.UUID = pi.nameI18n_UUID ", "localPlanetName");
+		queryComposer.addConditional("LEFT JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID ", distinctSearch, "bparamValue");
 		queryComposer.add("WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate");
 		if (searchConsumer == null) {
 			queryComposer.addSearch("sm.planetId", "sm.from", "sm.destination", "sm.operator", "createdBy", "bparamValue", "direction", "planetName", "planetDescription", "localPlanetName",
@@ -154,17 +223,16 @@ public class QueryComposerTest {
 		queryComposer.setDefaultOrder(OrderType.Desc, FieldType.Date, "sm.createdAt");
 		queryComposer.bindOrder("createdAt", FieldType.Date, "sm.createdAt");
 		queryComposer.bindOrder("planetId", "sm.planetId");
-		queryComposer.bindTranslatableOrder("planetId", "sm.planetId");
+		if (distinctOrder) {
+			queryComposer.bindOrder("planetName", "COALESCE(tab.planetName, tab.localPlanetName)");
+		}
+		queryComposer.bindTranslatableOrder("planetDescription", "trDescription");
 		queryComposer.bindOrder("from", "sm.from");
 		queryComposer.bindOrder("destination", "sm.destination");
 		queryComposer.bindOrder("currentPosition", "sm.currentPosition");
 		queryComposer.bindOrder("operator", "sm.operator");
 		queryComposer.bindOrder("createdBy", "user.name");
 		queryComposer.bindOrder("direction", "direction");
-
-		if (translatable) {
-			queryComposer.bindTranslatableOrder("planetName", "trName", "trLocalName");
-		}
 
 		return queryComposer;
 	}
@@ -182,6 +250,8 @@ public class QueryComposerTest {
 				+ "JOIN TranslatedField trName ON trName.UUID = pl.nameI18n_UUID "
 				+ "JOIN USER user ON sm.CREATEDBY_UUID = user.uuid "
 				+ "LEFT JOIN TranslatedField trDescription ON trDescription.UUID = pl.descriptionI18n_UUID "
+				+ "LEFT JOIN PLANETINFO pi ON pi.planet_UUID = pl.UUID "
+				+ "LEFT JOIN TranslatedField trLocalName ON trLocalName.UUID = pi.nameI18n_UUID "
 				+ "LEFT JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID ";
 
 		String whereQueryStr = "WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate ";
@@ -250,6 +320,7 @@ public class QueryComposerTest {
 		orderBuilder.bindOrder("operator", "tab.operator");
 		orderBuilder.bindOrder("createdBy", "tab.createdBy");
 		orderBuilder.bindOrder("planetName", "COALESCE(tab.planetName, tab.localPlanetName)");
+		orderBuilder.bindTranslatableOrder("planetDescription", "trDescription");
 		return " ORDER BY " + QueryOrderUtil.applyOrder(orderBuilder.getOrderFields());
 	}
 

@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 
 import skyglass.query.QueryFunctions;
 import skyglass.query.QueryOrderUtil;
@@ -51,6 +52,8 @@ public class QueryComposer {
 	private Map<String, FieldItem> selectFieldMap = new LinkedHashMap<>();
 
 	private Map<String, FieldItem> orderFieldMap = new LinkedHashMap<>();
+
+	private Map<String, FieldItem> searchFieldMap = new LinkedHashMap<>();
 
 	private List<Supplier<String>> searchPartSuppliers = new ArrayList<>();
 
@@ -227,7 +230,7 @@ public class QueryComposer {
 
 	private void addDefaultOrderRunner(OrderType orderType, FieldType fieldType, String alias, boolean translatable, String... paths) {
 		if (alias == null) {
-			alias = paths.length > 0 ? paths[0] : null;
+			alias = paths.length > 0 ? adaptAlias(alias, paths[0]).getKey() : null;
 		}
 		final String finalAlias = alias;
 		final boolean useAlias = alias != null;
@@ -316,7 +319,7 @@ public class QueryComposer {
 		boolean applyOuterQueryOriginal = applyOuterQuery;
 		applyOuterQuery = false;
 		for (String path : paths) {
-			addFieldResolver(path, path);
+			addSearchFieldResolver(path, path);
 		}
 		if (!shouldApplySearch()) {
 			applyOuterQuery = false;
@@ -332,18 +335,23 @@ public class QueryComposer {
 	}
 
 	private void addOrderFieldResolver(String alias, String path, String innerPath) {
-		addFieldResolver(alias, path, innerPath, true, false);
+		addFieldResolver(alias, path, innerPath, true, false, false);
 	}
 
 	private void addSelectFieldResolver(String alias, String path, String innerPath) {
-		addFieldResolver(alias, path, innerPath, false, true);
+		addFieldResolver(alias, path, innerPath, false, true, false);
 	}
 
-	private void addFieldResolver(String path, String innerPath) {
-		addFieldResolver(null, path, innerPath, false, false);
+	private void addSearchFieldResolver(String path, String innerPath) {
+		addFieldResolver(null, path, innerPath, false, false, true);
 	}
 
-	private void addFieldResolver(String alias, String path, String innerPath, boolean orderField, boolean selectField) {
+	private void addFieldResolver(String alias, String path, String innerPath, boolean orderField, boolean selectField, boolean searchField) {
+		Pair<String, String> aliasPair = adaptAlias(alias, path);
+		addFieldItem(aliasPair.getKey(), aliasPair.getValue(), path, innerPath, orderField, selectField, searchField);
+	}
+
+	private Pair<String, String> adaptAlias(String alias, String path) {
 		String[] pathParts = path.split("\\.");
 		String innerAlias = pathParts[pathParts.length - 1];
 		if (alias == null || alias.equals(path)) {
@@ -354,10 +362,10 @@ public class QueryComposer {
 		} else if (pathParts.length == 1 && aliasResolverMap.get(alias) == null) {
 			applyOuterQuery = true;
 		}
-		addFieldItem(alias, innerAlias, path, innerPath, orderField, selectField);
+		return Pair.of(alias, innerAlias);
 	}
 
-	private void addFieldItem(String alias, String innerAlias, String path, String innerPath, boolean orderField, boolean selectField) {
+	private void addFieldItem(String alias, String innerAlias, String path, String innerPath, boolean orderField, boolean selectField, boolean searchField) {
 		FieldItem fieldItem = fieldMap.get(alias);
 		if (fieldItem == null) {
 			fieldItem = new FieldItem(alias, innerAlias, path, innerPath);
@@ -370,6 +378,9 @@ public class QueryComposer {
 		}
 		if (selectField) {
 			selectFieldMap.put(alias, fieldItem);
+		}
+		if (searchField) {
+			searchFieldMap.put(alias, fieldItem);
 		}
 	}
 
@@ -404,24 +415,14 @@ public class QueryComposer {
 		initSearchPart();
 		initOrderByPart();
 		if (applyOuterQuery) {
-			//This query part selects column names, for which sorting is supported. All these columns should exist in entity table or in tables, which have one to one correspondence
-			//Therefore GROUP BY by all these columns guarantees uniquness of entity's tab.UUID and we won't have duplicates
-			String outerComposerSelect = "SELECT " + getOuterComposerFields(queryRequest);
-
-			//This query part selects column names, for which search is supported. Some of these columns might have one to many correspondence with entity table, when JOIN is applied
-			//Therefore this query might return duplicates. That's why we need to wrap this inner query, and apply GROUP BY, which will eliminate duplicates (see previous comment)
-			String innerComposerSelect = outerComposerSelect;
+			//This query part returns select fields + column names, for which sorting is supported. Select and Sorting columns should exist in entity table or in tables, which have one to one correspondence
+			//Therefore GROUP BY by all these columns guarantees uniquness of entity's tab.UUID and we shouldn't have duplicates when grouping by select and sorting columns (unless we return tabular native query result)
+			String outerComposerSelect = "SELECT " + getOuterSelectFields();
 
 			//This query part selects column names, which will be used by outer query. 
 			String innerSelect = "SELECT " + getInnerFields();
 
-			String fromPart = null;
-
-			if (applyOuterSearch) {
-				fromPart = " FROM ( " + innerComposerSelect + " FROM ( ";
-			} else {
-				fromPart = " FROM ( ";
-			}
+			String fromPart = " FROM ( ";
 
 			String fromQueryStr = fromPart + innerSelect + " " + fromBasicQueryStr;
 
@@ -432,14 +433,14 @@ public class QueryComposer {
 				searchPart = getSearchPart() + " ) tab ";
 			}
 
-			fromQueryStr += searchPart + "GROUP BY " + getOuterComposerFields(queryRequest) + " ";
+			fromQueryStr += searchPart + "GROUP BY " + getOuterSelectFields();
 
-			queryStr = outerComposerSelect + fromQueryStr + getOrderByPart() + getPagedPart();
+			queryStr = outerComposerSelect + fromQueryStr + " " + getOrderByPart() + getPagedPart();
 			countQueryStr = "SELECT DISTINCT COUNT(*) OVER () " + fromQueryStr;
 		} else {
 			String selectQueryStr = "SELECT " + rootAlias + "." + Constants.UUID;
 			queryStr = selectQueryStr + " " + fromBasicQueryStr + getSearchPart() + getBasicOrderByPart() + getPagedPart();
-			countQueryStr = "SELECT COUNT(*) " + fromBasicQueryStr;
+			countQueryStr = "SELECT COUNT(*) " + fromBasicQueryStr + getSearchPart();
 		}
 	}
 
@@ -464,13 +465,11 @@ public class QueryComposer {
 		}
 	}
 
-	private String getOuterComposerFields(QueryRequestDTO queryRequest) {
+	private String getOuterSelectFields() {
 		String result = OUTER_QUERY_PREFIX + "." + Constants.UUID;
-		if (!applyOuterQuery) {
-			for (FieldItem fieldItem : selectFieldMap.values()) {
-				if (!Constants.UUID.equals(fieldItem.getAlias())) {
-					result += ", " + OUTER_QUERY_PREFIX + "." + fieldItem.getAlias();
-				}
+		for (FieldItem fieldItem : selectFieldMap.values()) {
+			if (!Constants.UUID.equals(fieldItem.getAlias())) {
+				result += ", " + OUTER_QUERY_PREFIX + "." + fieldItem.getAlias();
 			}
 		}
 		for (FieldItem fieldItem : orderFieldMap.values()) {
@@ -481,28 +480,28 @@ public class QueryComposer {
 		return result;
 	}
 
-	private String getInnerComposerFields() {
-		String result = OUTER_QUERY_PREFIX + "." + Constants.UUID;
-		for (FieldItem fieldItem : fieldMap.values()) {
-			if (!Constants.UUID.equals(fieldItem.getAlias())) {
-				result += ", " + OUTER_QUERY_PREFIX + "." + fieldItem.getAlias();
-			}
-		}
-		return result;
-	}
-
 	private String getInnerFields() {
 		String result = rootAlias + "." + Constants.UUID;
-		for (FieldItem fieldItem : fieldMap.values()) {
+
+		for (FieldItem fieldItem : selectFieldMap.values()) {
 			if (!Constants.UUID.equals(fieldItem.getAlias())) {
 				result += ", " + fieldItem.getInnerSelect(rootAlias);
 			}
 		}
 		for (FieldItem fieldItem : orderFieldMap.values()) {
-			if (fieldItem != null && !Constants.UUID.equals(fieldItem.getAlias()) && fieldMap.get(fieldItem.getAlias()) == null) {
+			if (fieldItem != null && !Constants.UUID.equals(fieldItem.getAlias()) && selectFieldMap.get(fieldItem.getAlias()) == null) {
 				result += ", " + fieldItem.getInnerSelect(rootAlias);
 			}
 		}
+
+		if (applyOuterSearch) {
+			for (FieldItem fieldItem : searchFieldMap.values()) {
+				if (!Constants.UUID.equals(fieldItem.getAlias()) && selectFieldMap.get(fieldItem.getAlias()) == null && orderFieldMap.get(fieldItem.getAlias()) == null) {
+					result += ", " + fieldItem.getInnerSelect(rootAlias);
+				}
+			}
+		}
+
 		return result;
 	}
 
