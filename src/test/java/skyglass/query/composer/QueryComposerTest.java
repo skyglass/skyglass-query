@@ -5,6 +5,7 @@ import java.util.function.Consumer;
 
 import org.apache.commons.lang3.StringUtils;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import skyglass.query.QueryFunctions;
@@ -20,6 +21,56 @@ import skyglass.query.builder.SearchBuilder;
 import skyglass.query.builder.string.MockQueryRequestDto;
 
 public class QueryComposerTest {
+
+	@Test
+	@Ignore
+	public void testQueryComposer1() {
+
+		QueryRequestDTO queryRequest = MockQueryRequestDto.create("");
+		queryRequest.setOrderField("createdAt");
+		queryRequest.setOrderType(OrderType.Desc);
+		queryRequest.setSearchTerms(Arrays.asList(new String[] { "test1" }));
+
+		String expectedResult = "SELECT tab.uuid from (select DISTINCT sm.uuid, sm.createdat from SpaceMission sm JOIN BuildParameter bp on bp.stockmovement_uuid = sm.uuid WHERE LOWER(TRIM(bp.name)) LIKE '%test1%' ORDER BY sm.uuid, sm.createdat desc) tab";
+
+		QueryComposer queryComposer = new QueryComposer(queryRequest, "sm", "SPACEMISSION");
+
+		String languageCode = QueryRequestUtil.getCurrentLanguageCode(queryRequest);
+
+		queryComposer.addSearchParameters();
+
+		queryComposer.addSelect("sm.UUID, sm.planetId, sm.from, sm.destination, sm.currentPosition, sm.operator, user.name AS createdBy, bparam.value AS bparamValue, "
+				+ QueryFunctions.ordinalToString(Direction.values(), "sm.direction") + " AS direction");
+		addPlanetInfoSelectPart(queryComposer, languageCode);
+		queryComposer.add("FROM SPACEMISSION sm ");
+
+		queryComposer.addConditional("JOIN PLANET pl ON sm.PLANET_UUID = pl.uuid ", "planetId");
+		queryComposer.addConditional("JOIN TranslatedField trName ON trName.UUID = pl.nameI18n_UUID ", "planetName");
+		queryComposer.addConditional("JOIN USER user ON sm.CREATEDBY_UUID = user.uuid ", "createdBy");
+		queryComposer.addConditional("LEFT JOIN TranslatedField trDescription ON trDescription.UUID = pl.descriptionI18n_UUID ", "planetDescription");
+		queryComposer.addConditional("LEFT JOIN PLANETINFO pi ON pi.planet_UUID = pl.UUID ", "localPlanetName");
+		queryComposer.addConditional("LEFT JOIN TranslatedField trLocalName ON trLocalName.UUID = pi.nameI18n_UUID ", "localPlanetName");
+		queryComposer.addConditional("LEFT JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID ", true, "bparamValue");
+		queryComposer.add("WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate");
+		queryComposer.addSearch("sm.planetId", "sm.from", "sm.destination", "sm.operator", "createdBy", "bparamValue", "direction", "planetName", "planetDescription", "localPlanetName",
+				"localPlanetDescription");
+		//queryComposer.setDistinct();
+
+		queryComposer.setDefaultOrder(OrderType.Desc, FieldType.Date, "sm.createdAt");
+		queryComposer.bindOrder("createdAt", FieldType.Date, "sm.createdAt");
+		queryComposer.bindOrder("planetId", "sm.planetId");
+		queryComposer.bindOrder("planetName", "COALESCE(tab.planetName, tab.localPlanetName)");
+		queryComposer.bindTranslatableOrder("planetDescription", "trDescription");
+		queryComposer.bindOrder("from", "sm.from");
+		queryComposer.bindOrder("destination", "sm.destination");
+		queryComposer.bindOrder("currentPosition", "sm.currentPosition");
+		queryComposer.bindOrder("operator", "sm.operator");
+		queryComposer.bindOrder("createdBy", "user.name");
+		queryComposer.bindOrder("direction", "direction");
+
+		String result = queryComposer.getQueryStr(queryRequest);
+		Assert.assertEquals(expectedResult, result);
+	}
 
 	@Test
 	public void testQueryComposerOrderAndSearch() {
@@ -219,19 +270,31 @@ public class QueryComposerTest {
 			searchConsumer.accept(queryComposer);
 		}
 		//queryComposer.setDistinct();
+		queryComposer.addAliasResolver("createdBy", "user.name");
+		queryComposer.addAliasResolver("bparamValue", "bparam.value");
+		queryComposer.addAliasResolver("planetName", "COALESCE(trName.en, trName.de, trName.cn, trName.jp, trName.es, trName.fr, trName.pt, trName.it)");
+		queryComposer.addAliasResolver("planetDescription",
+				"COALESCE(trDescription.en, trDescription.de, trDescription.cn, trDescription.jp, trDescription.es, trDescription.fr, trDescription.pt, trDescription.it)");
+		queryComposer.addAliasResolver("localPlanetName", "COALESCE(trLocalName.en, trLocalName.de, trLocalName.cn, trLocalName.jp, trLocalName.es, trLocalName.fr, trLocalName.pt, trLocalName.it)");
+		queryComposer.addAliasResolver("localPlanetDescription",
+				"COALESCE(trLocalDescription.en, trLocalDescription.de, trLocalDescription.cn, trLocalDescription.jp, trLocalDescription.es, trLocalDescription.fr, trLocalDescription.pt, trLocalDescription.it)");
+		queryComposer.addAliasResolver("direction",
+				"CASE sm.direction WHEN 0 THEN 'IN' WHEN 1 THEN 'OUT' WHEN 2 THEN 'NONE' END");
+		queryComposer.addAliasResolver("finalPlanetName",
+				"COALESCE(COALESCE(trName.en, trName.de, trName.cn, trName.jp, trName.es, trName.fr, trName.pt, trName.it), COALESCE(trLocalName.en, trLocalName.de, trLocalName.cn, trLocalName.jp, trLocalName.es, trLocalName.fr, trLocalName.pt, trLocalName.it))");
 
 		queryComposer.setDefaultOrder(OrderType.Desc, FieldType.Date, "sm.createdAt");
 		queryComposer.bindOrder("createdAt", FieldType.Date, "sm.createdAt");
 		queryComposer.bindOrder("planetId", "sm.planetId");
 		if (distinctOrder) {
-			queryComposer.bindOrder("planetName", "COALESCE(tab.planetName, tab.localPlanetName)");
+			queryComposer.bindOrder("planetName", "finalPlanetName");
 		}
 		queryComposer.bindTranslatableOrder("planetDescription", "trDescription");
 		queryComposer.bindOrder("from", "sm.from");
 		queryComposer.bindOrder("destination", "sm.destination");
 		queryComposer.bindOrder("currentPosition", "sm.currentPosition");
 		queryComposer.bindOrder("operator", "sm.operator");
-		queryComposer.bindOrder("createdBy", "user.name");
+		queryComposer.bindOrder("createdBy", "createdBy");
 		queryComposer.bindOrder("direction", "direction");
 
 		return queryComposer;
@@ -261,20 +324,14 @@ public class QueryComposerTest {
 		String queryStr = null;
 		String countQueryStr = null;
 
-		String selectOuterQueryCompositeStr = "SELECT tab.UUID, tab.createdAt ";
+		String selectOuterQueryCompositeStr = "SELECT tab.UUID, tab.planetId, tab.from, tab.destination, tab.currentPosition, tab.operator, tab.createdBy, tab.bparamValue, tab.direction, tab.planetName, tab.planetDescription, tab.localPlanetName, tab.localPlanetDescription, tab.createdAt ";
 		String selectInnerQueryCompositeStr = "SELECT tab.UUID, tab.createdAt ";
 
-		String fromQueryStr = "FROM ( "
-				+ selectInnerQueryCompositeStr
-				+ "FROM ( "
-				+ fromBasicQueryStr
+		String fromQueryStr = fromBasicQueryStr
 				+ whereQueryStr
-				+ ") tab"
-				+ getSearchPart(queryRequest, searchFields)
-				+ " ) tab "
-				+ "GROUP BY tab.UUID, tab.createdAt ";
+				+ getSearchPart(queryRequest, searchFields);
 
-		queryCompositeStr = selectOuterQueryCompositeStr + fromQueryStr + getOrderByPart(queryRequest) + getPagedPart(queryRequest);
+		queryCompositeStr = fromQueryStr + getOrderByPart(queryRequest) + getPagedPart(queryRequest);
 		countQueryCompositeStr = "SELECT DISTINCT COUNT(*) OVER () " + fromQueryStr;
 
 		String selectQueryStr = "SELECT sm.UUID ";
@@ -296,13 +353,13 @@ public class QueryComposerTest {
 			if (searchFields.length > 0) {
 				searchBuilder = new SearchBuilder(request, searchTermField, false, searchFields);
 			} else {
-				searchBuilder = new SearchBuilder(request, searchTermField, false, "tab.planetId", "tab.from", "tab.destination", "tab.operator", "tab.createdBy",
-						"tab.bparamValue", "tab.direction", "tab.planetName", "tab.planetDescription", "tab.localPlanetName", "tab.localPlanetDescription");
+				searchBuilder = new SearchBuilder(request, searchTermField, false, "sm.planetId", "sm.from", "sm.destination", "sm.operator", "sm.createdBy",
+						"bparamValue", "sm.direction", "planetName", "planetDescription", "localPlanetName", "localPlanetDescription");
 			}
 			searchPart = QueryFunctions.and(searchPart, QuerySearchUtil.applySearch(true, searchBuilder));
 		}
 
-		return searchPart == null ? "" : (" WHERE " + searchPart);
+		return searchPart == null ? "" : ("AND " + searchPart);
 	}
 
 	private String getPagedPart(QueryRequestDTO request) {

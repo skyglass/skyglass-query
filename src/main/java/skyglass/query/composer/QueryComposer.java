@@ -53,9 +53,9 @@ public class QueryComposer {
 
 	private Map<String, FieldItem> orderFieldMap = new LinkedHashMap<>();
 
-	private Map<String, FieldItem> searchFieldMap = new LinkedHashMap<>();
-
 	private List<Supplier<String>> searchPartSuppliers = new ArrayList<>();
+
+	private List<Runnable> searchPartInitRunners = new ArrayList<>();
 
 	private List<Runnable> searchBuilderRunners = new ArrayList<>();
 
@@ -305,14 +305,21 @@ public class QueryComposer {
 						? Collections.emptyList()
 						: Collections.singletonList(queryRequest.getSearchTerm()))
 				: queryRequest.getSearchTerms();
+		searchPartInitRunners.add(() -> {
+			for (int j = 0; j < paths.length; j++) {
+				analyzeSearchPath(paths[j]);
+			}
+		});
 		for (int i = 0; i < searchTerms.size(); i++) {
 			String searchTermField = SearchBuilder.SEARCH_TERM_FIELD + Integer.toString(i);
 			searchPartSuppliers.add(() -> {
-				String[] resolvedPaths = new String[paths.length];
+				List<String> resolvedPathList = new ArrayList<>();
 				for (int j = 0; j < paths.length; j++) {
-					resolvedPaths[j] = resolvePath(paths[j]);
+					for (String resolvedSearchPath : resolveSearchPaths(paths[j])) {
+						resolvedPathList.add(resolvedSearchPath);
+					}
 				}
-				SearchBuilder searchBuilder = new SearchBuilder(queryRequest, searchTermField, false, resolvedPaths);
+				SearchBuilder searchBuilder = new SearchBuilder(queryRequest, searchTermField, false, resolvedPathList.toArray(new String[0]));
 				return QuerySearchUtil.applySearch(true, searchBuilder);
 			});
 		}
@@ -324,7 +331,7 @@ public class QueryComposer {
 		if (!shouldApplySearch()) {
 			applyOuterQuery = false;
 		} else if (applyOuterQuery) {
-			applyOuterSearch = true;
+			//applyOuterSearch = true;
 		}
 		applyOuterQuery = applyOuterQuery || applyOuterQueryOriginal;
 
@@ -335,20 +342,20 @@ public class QueryComposer {
 	}
 
 	private void addOrderFieldResolver(String alias, String path, String innerPath) {
-		addFieldResolver(alias, path, innerPath, true, false, false);
+		addFieldResolver(alias, path, innerPath, true, false);
 	}
 
 	private void addSelectFieldResolver(String alias, String path, String innerPath) {
-		addFieldResolver(alias, path, innerPath, false, true, false);
+		addFieldResolver(alias, path, innerPath, false, true);
 	}
 
 	private void addSearchFieldResolver(String path, String innerPath) {
-		addFieldResolver(null, path, innerPath, false, false, true);
+		addFieldResolver(null, path, innerPath, false, false);
 	}
 
-	private void addFieldResolver(String alias, String path, String innerPath, boolean orderField, boolean selectField, boolean searchField) {
+	private void addFieldResolver(String alias, String path, String innerPath, boolean orderField, boolean selectField) {
 		Pair<String, String> aliasPair = adaptAlias(alias, path);
-		addFieldItem(aliasPair.getKey(), aliasPair.getValue(), path, innerPath, orderField, selectField, searchField);
+		addFieldItem(aliasPair.getKey(), aliasPair.getValue(), path, innerPath, orderField, selectField);
 	}
 
 	private Pair<String, String> adaptAlias(String alias, String path) {
@@ -365,7 +372,7 @@ public class QueryComposer {
 		return Pair.of(alias, innerAlias);
 	}
 
-	private void addFieldItem(String alias, String innerAlias, String path, String innerPath, boolean orderField, boolean selectField, boolean searchField) {
+	private void addFieldItem(String alias, String innerAlias, String path, String innerPath, boolean orderField, boolean selectField) {
 		FieldItem fieldItem = fieldMap.get(alias);
 		if (fieldItem == null) {
 			fieldItem = new FieldItem(alias, innerAlias, path, innerPath);
@@ -378,9 +385,6 @@ public class QueryComposer {
 		}
 		if (selectField) {
 			selectFieldMap.put(alias, fieldItem);
-		}
-		if (searchField) {
-			searchFieldMap.put(alias, fieldItem);
 		}
 	}
 
@@ -428,19 +432,19 @@ public class QueryComposer {
 
 			String searchPart = null;
 			if (applyOuterSearch) {
-				searchPart = " ) tab" + getSearchPart() + " ) tab ";
+				searchPart = " ) tab" + getSearchPart(fromBasicQueryStr) + " GROUP BY " + getOuterSelectFields() + " ) tab ";
 			} else {
-				searchPart = getSearchPart() + " ) tab ";
+				searchPart = getSearchPart(fromBasicQueryStr) + "GROUP BY " + innerSelect + " ) tab ";
 			}
 
-			fromQueryStr += searchPart + "GROUP BY " + getOuterSelectFields();
+			fromQueryStr += searchPart;
 
 			queryStr = outerComposerSelect + fromQueryStr + " " + getOrderByPart() + getPagedPart();
 			countQueryStr = "SELECT DISTINCT COUNT(*) OVER () " + fromQueryStr;
 		} else {
 			String selectQueryStr = "SELECT " + rootAlias + "." + Constants.UUID;
-			queryStr = selectQueryStr + " " + fromBasicQueryStr + getSearchPart() + getBasicOrderByPart() + getPagedPart();
-			countQueryStr = "SELECT COUNT(*) " + fromBasicQueryStr + getSearchPart();
+			queryStr = selectQueryStr + " " + fromBasicQueryStr + getSearchPart(fromBasicQueryStr) + getBasicOrderByPart() + getPagedPart();
+			countQueryStr = "SELECT COUNT(*) " + fromBasicQueryStr + getSearchPart(fromBasicQueryStr);
 		}
 	}
 
@@ -495,7 +499,7 @@ public class QueryComposer {
 		}
 
 		if (applyOuterSearch) {
-			for (FieldItem fieldItem : searchFieldMap.values()) {
+			for (FieldItem fieldItem : fieldMap.values()) {
 				if (!Constants.UUID.equals(fieldItem.getAlias()) && selectFieldMap.get(fieldItem.getAlias()) == null && orderFieldMap.get(fieldItem.getAlias()) == null) {
 					result += ", " + fieldItem.getInnerSelect(rootAlias);
 				}
@@ -509,12 +513,15 @@ public class QueryComposer {
 		return queryParts.stream().filter(s -> shouldBeAdded(s)).map(s -> s.getQueryPart()).collect(Collectors.toList());
 	}
 
-	private String getSearchPart() {
+	private String getSearchPart(String fromBasicQueryStr) {
 		String result = null;
+		for (Runnable searchPartInitRunner : searchPartInitRunners) {
+			searchPartInitRunner.run();
+		}
 		for (Supplier<String> searchPartSupplier : searchPartSuppliers) {
 			result = QueryFunctions.and(result, searchPartSupplier.get());
 		}
-		return result == null ? "" : " WHERE " + result;
+		return result == null ? "" : ((StringUtils.isNotBlank(fromBasicQueryStr) && fromBasicQueryStr.contains(" WHERE ") ? " AND " : " WHERE ") + result);
 	}
 
 	private String getOrderByPart() {
@@ -544,12 +551,45 @@ public class QueryComposer {
 		return QueryRequestUtil.isPaged(queryRequest) ? " LIMIT ?limit OFFSET ?offset" : "";
 	}
 
-	private String resolvePath(String path) {
+	private void analyzeSearchPath(String path) {
+		String[] pathParts = path.split("\\.");
+		if (pathParts[0].equals(OUTER_QUERY_PREFIX) || (pathParts.length == 1 && aliasResolverMap.get(path) == null)) {
+			applyOuterSearch = true;
+		}
+	}
+
+	private String[] resolveSearchPaths(String path) {
+		String[] result = null;
+		String singleResult = null;
 		FieldItem fieldItem = fieldPathMap.get(path);
 		if (fieldItem == null) {
 			fieldItem = fieldMap.get(path);
 		}
-		return applyOuterQuery ? (OUTER_QUERY_PREFIX + "." + fieldItem.getAlias()) : path;
+		String outerQueryResult = OUTER_QUERY_PREFIX + "." + fieldItem.getAlias();
+		String[] pathParts = path.split("\\.");
+		if (pathParts[0].equals(OUTER_QUERY_PREFIX) || (pathParts.length == 1 && aliasResolverMap.get(path) == null)) {
+			applyOuterSearch = true;
+		}
+		if (applyOuterSearch) {
+			singleResult = outerQueryResult;
+		} else {
+			if (pathParts.length == 1 && aliasResolverMap.get(path) != null) {
+				result = new String[aliasResolverMap.get(path).size()];
+				int i = 0;
+				for (String resolved : aliasResolverMap.get(path)) {
+					result[i] = resolved;
+					i++;
+				}
+			} else {
+				singleResult = path;
+			}
+		}
+		if (singleResult != null) {
+			return new String[] { singleResult };
+		} else {
+			return result == null ? new String[0] : result;
+		}
+
 	}
 
 	private String resolvePath(String alias, String path) {
@@ -557,7 +597,9 @@ public class QueryComposer {
 			String[] pathParts = path.split("\\.");
 			String innerAlias = pathParts[pathParts.length - 1];
 			alias = innerAlias;
-			if (pathParts.length == 1 || pathParts[0].equals(OUTER_QUERY_PREFIX)) {
+			if (pathParts[0].equals(OUTER_QUERY_PREFIX)) {
+				applyOuterQuery = true;
+			} else if (pathParts.length == 1 && aliasResolverMap.get(alias) == null) {
 				applyOuterQuery = true;
 			}
 		}
