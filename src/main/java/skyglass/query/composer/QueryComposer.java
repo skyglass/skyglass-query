@@ -47,7 +47,7 @@ public class QueryComposer {
 
 	private Map<String, FieldItem> fieldPathMap = new LinkedHashMap<>();
 
-	private Map<String, Set<String>> aliasResolverMap = new HashMap<>();
+	private Map<String, String> aliasResolverMap = new HashMap<>();
 
 	private Map<String, FieldItem> selectFieldMap = new LinkedHashMap<>();
 
@@ -62,6 +62,10 @@ public class QueryComposer {
 	private List<Runnable> orderBuilderRunners = new ArrayList<>();
 
 	private List<Runnable> defaultOrderBuilderRunners = new ArrayList<>();
+
+	private List<Runnable> selectBuilderRunners = new ArrayList<>();
+
+	private List<Runnable> conditionalBuilderRunners = new ArrayList<>();
 
 	private OrderBuilder orderBuilder;
 
@@ -100,14 +104,32 @@ public class QueryComposer {
 	}
 
 	public void addConditional(String queryPart, String... aliases) {
-		addConditional(queryPart, false, aliases);
+		conditionalBuilderRunners.add(() -> {
+			doAddConditional(queryPart, aliases);
+		});
 	}
 
 	public void addDistinctConditional(String queryPart, String... aliases) {
-		addConditional(queryPart, true, aliases);
+		conditionalBuilderRunners.add(() -> {
+			doAddDistinctConditional(queryPart, aliases);
+		});
 	}
 
 	public void addConditional(String queryPart, boolean distinct, String... aliases) {
+		conditionalBuilderRunners.add(() -> {
+			doAddConditional(queryPart, distinct, aliases);
+		});
+	}
+
+	private void doAddConditional(String queryPart, String... aliases) {
+		doAddConditional(queryPart, false, aliases);
+	}
+
+	private void doAddDistinctConditional(String queryPart, String... aliases) {
+		doAddConditional(queryPart, true, aliases);
+	}
+
+	private void doAddConditional(String queryPart, boolean distinct, String... aliases) {
 		queryParts.add(new QueryPart(queryPart, distinct));
 		for (String alias : aliases) {
 			queryMap.computeIfAbsent(queryPart, a -> new HashSet<>()).add(alias);
@@ -126,14 +148,9 @@ public class QueryComposer {
 				if (result) {
 					break;
 				}
-				Set<String> aliasResolvers = aliasResolverMap.get(alias);
-				if (!CollectionUtils.isEmpty(aliasResolvers)) {
-					for (String aliasResolver : aliasResolvers) {
-						result = aliases.contains(aliasResolver);
-						if (result) {
-							break;
-						}
-					}
+				String aliasResolver = aliasResolverMap.get(alias);
+				if (StringUtils.isNotBlank(aliasResolver)) {
+					result = aliases.contains(aliasResolver);
 				}
 				if (result) {
 					break;
@@ -150,14 +167,12 @@ public class QueryComposer {
 		addSearchRunner(paths);
 	}
 
-	public void addAliasResolver(String alias, String... paths) {
-		for (String path : paths) {
-			String[] pathParts = path.split("\\.");
-			if (pathParts.length == 1 || pathParts[0].equals(OUTER_QUERY_PREFIX)) {
-				applyOuterQuery = true;
-			}
-			aliasResolverMap.computeIfAbsent(alias, a -> new HashSet<>()).add(path);
+	public void addAliasResolver(String alias, String path) {
+		String[] pathParts = path.split("\\.");
+		if (pathParts.length == 1 || pathParts[0].equals(OUTER_QUERY_PREFIX)) {
+			applyOuterQuery = true;
 		}
+		aliasResolverMap.put(alias, path);
 	}
 
 	public void addParameter(String name, String value) {
@@ -315,9 +330,8 @@ public class QueryComposer {
 			searchPartSuppliers.add(() -> {
 				List<String> resolvedPathList = new ArrayList<>();
 				for (int j = 0; j < paths.length; j++) {
-					for (String resolvedSearchPath : resolveSearchPaths(paths[j])) {
-						resolvedPathList.add(resolvedSearchPath);
-					}
+					String resolvedSearchPath = resolveSearchPath(paths[j]);
+					resolvedPathList.add(resolvedSearchPath);
 				}
 				SearchBuilder searchBuilder = new SearchBuilder(queryRequest, searchTermField, false, resolvedPathList.toArray(new String[0]));
 				return QuerySearchUtil.applySearch(true, searchBuilder);
@@ -389,6 +403,18 @@ public class QueryComposer {
 	}
 
 	public void addSelect(String selectString) {
+		selectBuilderRunners.add(() -> {
+			doAddSelect(selectString);
+		});
+	}
+
+	public void addSelect(String alias, String path) {
+		selectBuilderRunners.add(() -> {
+			doAddSelect(alias, path);
+		});
+	}
+
+	private void doAddSelect(String selectString) {
 		if (StringUtils.isEmpty(selectString)) {
 			return;
 		}
@@ -400,12 +426,18 @@ public class QueryComposer {
 			String alias = null;
 			if (subParts.length > 1) {
 				alias = subParts[1].trim();
+			} else if (!path.contains(".")) {
+				String tryPath = aliasResolverMap.get(path);
+				if (tryPath != null) {
+					addSelectFieldResolver(path, tryPath, tryPath);
+					continue;
+				}
 			}
 			addSelectFieldResolver(alias, path, path);
 		}
 	}
 
-	public void addSelect(String alias, String path) {
+	private void doAddSelect(String alias, String path) {
 		addSelectFieldResolver(alias, path, path);
 	}
 
@@ -416,15 +448,19 @@ public class QueryComposer {
 			fromBasicQueryStr += queryPart;
 		}
 
+		initSelectPart();
+		initConditionalPart();
 		initSearchPart();
 		initOrderByPart();
+		String innerFields = getInnerFields();
+		String innerSelect = "SELECT " + innerFields;
 		if (applyOuterQuery) {
 			//This query part returns select fields + column names, for which sorting is supported. Select and Sorting columns should exist in entity table or in tables, which have one to one correspondence
 			//Therefore GROUP BY by all these columns guarantees uniquness of entity's tab.UUID and we shouldn't have duplicates when grouping by select and sorting columns (unless we return tabular native query result)
-			String outerComposerSelect = "SELECT " + getOuterSelectFields();
+			String outerSelectFields = getOuterSelectFields();
+			String outerComposerSelect = "SELECT " + outerSelectFields;
 
 			//This query part selects column names, which will be used by outer query. 
-			String innerSelect = "SELECT " + getInnerFields();
 
 			String fromPart = " FROM ( ";
 
@@ -432,9 +468,9 @@ public class QueryComposer {
 
 			String searchPart = null;
 			if (applyOuterSearch) {
-				searchPart = " ) tab" + getSearchPart(fromBasicQueryStr) + " GROUP BY " + getOuterSelectFields() + " ) tab ";
+				searchPart = " ) tab" + getSearchPart(fromBasicQueryStr) + " GROUP BY " + outerSelectFields + " ) tab ";
 			} else {
-				searchPart = getSearchPart(fromBasicQueryStr) + "GROUP BY " + innerSelect + " ) tab ";
+				searchPart = getSearchPart(fromBasicQueryStr) + "GROUP BY " + innerFields + " ) tab ";
 			}
 
 			fromQueryStr += searchPart;
@@ -442,8 +478,7 @@ public class QueryComposer {
 			queryStr = outerComposerSelect + fromQueryStr + " " + getOrderByPart() + getPagedPart();
 			countQueryStr = "SELECT DISTINCT COUNT(*) OVER () " + fromQueryStr;
 		} else {
-			String selectQueryStr = "SELECT " + rootAlias + "." + Constants.UUID;
-			queryStr = selectQueryStr + " " + fromBasicQueryStr + getSearchPart(fromBasicQueryStr) + getBasicOrderByPart() + getPagedPart();
+			queryStr = innerSelect + " " + fromBasicQueryStr + getSearchPart(fromBasicQueryStr) + getBasicOrderByPart() + getPagedPart();
 			countQueryStr = "SELECT COUNT(*) " + fromBasicQueryStr + getSearchPart(fromBasicQueryStr);
 		}
 	}
@@ -528,6 +563,18 @@ public class QueryComposer {
 		return " ORDER BY " + QueryOrderUtil.applyOrder(orderBuilder.getOrderFields());
 	}
 
+	private void initSelectPart() {
+		for (Runnable selectBuilderRunner : selectBuilderRunners) {
+			selectBuilderRunner.run();
+		}
+	}
+
+	private void initConditionalPart() {
+		for (Runnable conditionalBuilderRunner : conditionalBuilderRunners) {
+			conditionalBuilderRunner.run();
+		}
+	}
+
 	private void initSearchPart() {
 		for (Runnable searchBuilderRunner : searchBuilderRunners) {
 			searchBuilderRunner.run();
@@ -558,9 +605,8 @@ public class QueryComposer {
 		}
 	}
 
-	private String[] resolveSearchPaths(String path) {
-		String[] result = null;
-		String singleResult = null;
+	private String resolveSearchPath(String path) {
+		String result = null;
 		FieldItem fieldItem = fieldPathMap.get(path);
 		if (fieldItem == null) {
 			fieldItem = fieldMap.get(path);
@@ -571,24 +617,15 @@ public class QueryComposer {
 			applyOuterSearch = true;
 		}
 		if (applyOuterSearch) {
-			singleResult = outerQueryResult;
+			result = outerQueryResult;
 		} else {
 			if (pathParts.length == 1 && aliasResolverMap.get(path) != null) {
-				result = new String[aliasResolverMap.get(path).size()];
-				int i = 0;
-				for (String resolved : aliasResolverMap.get(path)) {
-					result[i] = resolved;
-					i++;
-				}
+				result = aliasResolverMap.get(path);
 			} else {
-				singleResult = path;
+				result = path;
 			}
 		}
-		if (singleResult != null) {
-			return new String[] { singleResult };
-		} else {
-			return result == null ? new String[0] : result;
-		}
+		return result;
 
 	}
 

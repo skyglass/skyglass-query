@@ -251,7 +251,7 @@ public class QueryComposerTest {
 		queryComposer.addSearchParameters();
 
 		queryComposer.addSelect("sm.UUID, sm.planetId, sm.from, sm.destination, sm.currentPosition, sm.operator, user.name AS createdBy, bparam.value AS bparamValue, "
-				+ QueryFunctions.ordinalToString(Direction.values(), "sm.direction") + " AS direction");
+				+ QueryFunctions.ordinalToString(Direction.values(), "sm.direction") + " AS direction, finalPlanetName, finalPlanetDescription");
 		addPlanetInfoSelectPart(queryComposer, languageCode);
 		queryComposer.add("FROM SPACEMISSION sm ");
 
@@ -272,16 +272,15 @@ public class QueryComposerTest {
 		//queryComposer.setDistinct();
 		queryComposer.addAliasResolver("createdBy", "user.name");
 		queryComposer.addAliasResolver("bparamValue", "bparam.value");
-		queryComposer.addAliasResolver("planetName", "COALESCE(trName.en, trName.de, trName.cn, trName.jp, trName.es, trName.fr, trName.pt, trName.it)");
-		queryComposer.addAliasResolver("planetDescription",
-				"COALESCE(trDescription.en, trDescription.de, trDescription.cn, trDescription.jp, trDescription.es, trDescription.fr, trDescription.pt, trDescription.it)");
-		queryComposer.addAliasResolver("localPlanetName", "COALESCE(trLocalName.en, trLocalName.de, trLocalName.cn, trLocalName.jp, trLocalName.es, trLocalName.fr, trLocalName.pt, trLocalName.it)");
-		queryComposer.addAliasResolver("localPlanetDescription",
-				"COALESCE(trLocalDescription.en, trLocalDescription.de, trLocalDescription.cn, trLocalDescription.jp, trLocalDescription.es, trLocalDescription.fr, trLocalDescription.pt, trLocalDescription.it)");
-		queryComposer.addAliasResolver("direction",
-				"CASE sm.direction WHEN 0 THEN 'IN' WHEN 1 THEN 'OUT' WHEN 2 THEN 'NONE' END");
+		queryComposer.addAliasResolver("planetName", QueryTranslationUtil.coalesce("trName"));
+		queryComposer.addAliasResolver("planetDescription", QueryTranslationUtil.coalesce("trDescription"));
+		queryComposer.addAliasResolver("localPlanetName", QueryTranslationUtil.coalesce("trLocalName"));
+		queryComposer.addAliasResolver("localPlanetDescription", QueryTranslationUtil.coalesce("trLocalDescription"));
+		queryComposer.addAliasResolver("direction", QueryFunctions.ordinalToString(Direction.values(), "sm.direction"));
 		queryComposer.addAliasResolver("finalPlanetName",
-				"COALESCE(COALESCE(trName.en, trName.de, trName.cn, trName.jp, trName.es, trName.fr, trName.pt, trName.it), COALESCE(trLocalName.en, trLocalName.de, trLocalName.cn, trLocalName.jp, trLocalName.es, trLocalName.fr, trLocalName.pt, trLocalName.it))");
+				QueryFunctions.coalesce(QueryTranslationUtil.coalesce("trName"), QueryTranslationUtil.coalesce("trLocalName")));
+		queryComposer.addAliasResolver("finalPlanetDescription",
+				QueryFunctions.coalesce(QueryTranslationUtil.coalesce("trDescription"), QueryTranslationUtil.coalesce("trLocalDescription")));
 
 		queryComposer.setDefaultOrder(OrderType.Desc, FieldType.Date, "sm.createdAt");
 		queryComposer.bindOrder("createdAt", FieldType.Date, "sm.createdAt");
@@ -302,11 +301,13 @@ public class QueryComposerTest {
 
 	private String getExpectedResult(QueryRequestDTO queryRequest, String... searchFields) {
 		String fromBasicQueryStr = "SELECT sm.UUID, sm.planetId, sm.from, sm.destination, sm.currentPosition, sm.operator, user.name AS createdBy, bparam.value AS bparamValue, "
-				+ "CASE sm.direction WHEN 0 THEN 'IN' WHEN 1 THEN 'OUT' WHEN 2 THEN 'NONE' END AS direction, "
-				+ "COALESCE(trName.en, trName.de, trName.cn, trName.jp, trName.es, trName.fr, trName.pt, trName.it) AS planetName, "
-				+ "COALESCE(trDescription.en, trDescription.de, trDescription.cn, trDescription.jp, trDescription.es, trDescription.fr, trDescription.pt, trDescription.it) AS planetDescription, "
-				+ "COALESCE(trLocalName.en, trLocalName.de, trLocalName.cn, trLocalName.jp, trLocalName.es, trLocalName.fr, trLocalName.pt, trLocalName.it) AS localPlanetName, "
-				+ "COALESCE(trLocalDescription.en, trLocalDescription.de, trLocalDescription.cn, trLocalDescription.jp, trLocalDescription.es, trLocalDescription.fr, trLocalDescription.pt, trLocalDescription.it) AS localPlanetDescription, "
+				+ QueryFunctions.ordinalToString(Direction.values(), "sm.direction") + " AS direction, "
+				+ QueryFunctions.coalesce(QueryTranslationUtil.coalesce("trName"), QueryTranslationUtil.coalesce("trLocalName")) + " AS finalPlanetName, "
+				+ QueryFunctions.coalesce(QueryTranslationUtil.coalesce("trDescription"), QueryTranslationUtil.coalesce("trLocalDescription")) + " AS finalPlanetDescription, "
+				+ QueryTranslationUtil.coalesce("trName") + " AS planetName, "
+				+ QueryTranslationUtil.coalesce("trDescription") + " AS planetDescription, "
+				+ QueryTranslationUtil.coalesce("trLocalName") + " AS localPlanetName, "
+				+ QueryTranslationUtil.coalesce("trLocalDescription") + " AS localPlanetDescription, "
 				+ "sm.createdAt "
 				+ "FROM SPACEMISSION sm "
 				+ "JOIN PLANET pl ON sm.PLANET_UUID = pl.uuid "
@@ -331,7 +332,7 @@ public class QueryComposerTest {
 				+ whereQueryStr
 				+ getSearchPart(queryRequest, searchFields);
 
-		queryCompositeStr = fromQueryStr + getOrderByPart(queryRequest) + getPagedPart(queryRequest);
+		queryCompositeStr = fromQueryStr + getBasicOrderByPart(queryRequest) + getPagedPart(queryRequest);
 		countQueryCompositeStr = "SELECT DISTINCT COUNT(*) OVER () " + fromQueryStr;
 
 		String selectQueryStr = "SELECT sm.UUID ";
@@ -353,8 +354,12 @@ public class QueryComposerTest {
 			if (searchFields.length > 0) {
 				searchBuilder = new SearchBuilder(request, searchTermField, false, searchFields);
 			} else {
-				searchBuilder = new SearchBuilder(request, searchTermField, false, "sm.planetId", "sm.from", "sm.destination", "sm.operator", "sm.createdBy",
-						"bparamValue", "sm.direction", "planetName", "planetDescription", "localPlanetName", "localPlanetDescription");
+				searchBuilder = new SearchBuilder(request, searchTermField, false, "sm.planetId", "sm.from", "sm.destination", "sm.operator", "user.name",
+						"bparam.value", QueryFunctions.ordinalToString(Direction.values(), "sm.direction"),
+						QueryTranslationUtil.coalesce("trName"),
+						QueryTranslationUtil.coalesce("trDescription"),
+						QueryTranslationUtil.coalesce("trLocalName"),
+						QueryTranslationUtil.coalesce("trLocalDescription"));
 			}
 			searchPart = QueryFunctions.and(searchPart, QuerySearchUtil.applySearch(true, searchBuilder));
 		}

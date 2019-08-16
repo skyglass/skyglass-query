@@ -1,6 +1,10 @@
 
 package skyglass.query;
 
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import org.apache.commons.lang3.StringUtils;
 
 import skyglass.query.builder.config.Language;
@@ -10,6 +14,8 @@ import skyglass.query.builder.config.Language;
  * @author skliarm
  */
 public class QueryTranslationUtil {
+
+	public static final List<String> LANGUAGES = Stream.of(Language.values()).map(e -> e.getLanguageCode()).collect(Collectors.toList());
 
 	public static String getNativeSearchLikeTerm(String fieldName, String parameterName) {
 		return getSearchTerm(fieldName, parameterName, true);
@@ -67,6 +73,16 @@ public class QueryTranslationUtil {
 
 	private static String getDefaultLang() {
 		return Language.DEFAULT.getLanguageCode();
+	}
+
+	public static String coalesce(String field) {
+		String[] result = new String[Language.values().length];
+		int j = 0;
+		for (Language lang : Language.values()) {
+			result[j] = field + "." + lang.getLanguageCode();
+			j++;
+		}
+		return QueryFunctions.coalesce(result);
 	}
 
 }
