@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.commons.collections.CollectionUtils;
@@ -28,6 +30,8 @@ import skyglass.query.builder.SearchBuilder;
 import skyglass.query.builder.config.Constants;
 
 public class QueryComposer {
+
+	private static final Pattern ALIAS_REGEX_PATTERN = Pattern.compile("^(\\$\\{)*$(\\})");
 
 	private final String OUTER_QUERY_PREFIX = "tab";
 
@@ -65,7 +69,7 @@ public class QueryComposer {
 
 	private List<Runnable> selectBuilderRunners = new ArrayList<>();
 
-	private List<Runnable> conditionalBuilderRunners = new ArrayList<>();
+	private List<Runnable> queryPartBuilderRunners = new ArrayList<>();
 
 	private OrderBuilder orderBuilder;
 
@@ -99,26 +103,32 @@ public class QueryComposer {
 	}
 
 	public void add(String queryPart, boolean distinct) {
-		queryParts.add(new QueryPart(queryPart, distinct));
-		queryMap.computeIfAbsent(queryPart, a -> new HashSet<>()).add(Constants.UUID);
+		queryPartBuilderRunners.add(() -> {
+			doAdd(queryPart, distinct);
+		});
 	}
 
 	public void addConditional(String queryPart, String... aliases) {
-		conditionalBuilderRunners.add(() -> {
+		queryPartBuilderRunners.add(() -> {
 			doAddConditional(queryPart, aliases);
 		});
 	}
 
 	public void addDistinctConditional(String queryPart, String... aliases) {
-		conditionalBuilderRunners.add(() -> {
+		queryPartBuilderRunners.add(() -> {
 			doAddDistinctConditional(queryPart, aliases);
 		});
 	}
 
 	public void addConditional(String queryPart, boolean distinct, String... aliases) {
-		conditionalBuilderRunners.add(() -> {
+		queryPartBuilderRunners.add(() -> {
 			doAddConditional(queryPart, distinct, aliases);
 		});
+	}
+
+	private void doAdd(String queryPart, boolean distinct) {
+		queryParts.add(new QueryPart(queryPart, distinct));
+		queryMap.computeIfAbsent(queryPart, a -> new HashSet<>()).add(Constants.UUID);
 	}
 
 	private void doAddConditional(String queryPart, String... aliases) {
@@ -173,6 +183,10 @@ public class QueryComposer {
 			applyOuterQuery = true;
 		}
 		aliasResolverMap.put(alias, path);
+	}
+
+	private String resolveAliasPath(String path) {
+		return null;
 	}
 
 	public void addParameter(String name, String value) {
@@ -442,16 +456,17 @@ public class QueryComposer {
 	}
 
 	public void init(QueryRequestDTO queryRequest) {
+		initSelectPart();
+		initConditionalPart();
+		initSearchPart();
+		initOrderByPart();
+
 		String fromBasicQueryStr = "";
 		List<String> parts = resolveInnerFrom();
 		for (String queryPart : parts) {
 			fromBasicQueryStr += queryPart;
 		}
 
-		initSelectPart();
-		initConditionalPart();
-		initSearchPart();
-		initOrderByPart();
 		String innerFields = getInnerFields();
 		String innerSelect = "SELECT " + innerFields;
 		if (applyOuterQuery) {
@@ -570,7 +585,7 @@ public class QueryComposer {
 	}
 
 	private void initConditionalPart() {
-		for (Runnable conditionalBuilderRunner : conditionalBuilderRunners) {
+		for (Runnable conditionalBuilderRunner : queryPartBuilderRunners) {
 			conditionalBuilderRunner.run();
 		}
 	}
@@ -658,6 +673,20 @@ public class QueryComposer {
 			}
 		}
 		return false;
+	}
+
+	public static void main(String[] args) {
+		String test = "{test}";
+		Matcher m = ALIAS_REGEX_PATTERN.matcher(test);
+		List<String> matches = new ArrayList<String>();
+		while (m.find()) {
+			matches.add(m.group(1));
+		}
+
+		System.out.println("start");
+		for (String match : matches) {
+			System.out.println(match);
+		}
 	}
 
 }

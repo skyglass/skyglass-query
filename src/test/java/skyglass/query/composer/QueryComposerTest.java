@@ -278,9 +278,9 @@ public class QueryComposerTest {
 		queryComposer.addAliasResolver("localPlanetDescription", QueryTranslationUtil.coalesce("trLocalDescription"));
 		queryComposer.addAliasResolver("direction", QueryFunctions.ordinalToString(Direction.values(), "sm.direction"));
 		queryComposer.addAliasResolver("finalPlanetName",
-				QueryFunctions.coalesce(QueryTranslationUtil.coalesce("trName"), QueryTranslationUtil.coalesce("trLocalName")));
+				QueryFunctions.coalesce("${planetName}", "${localPlanetName}"));
 		queryComposer.addAliasResolver("finalPlanetDescription",
-				QueryFunctions.coalesce(QueryTranslationUtil.coalesce("trDescription"), QueryTranslationUtil.coalesce("trLocalDescription")));
+				QueryFunctions.coalesce("${planetDescription}", "${localPlanetDescription}"));
 
 		queryComposer.setDefaultOrder(OrderType.Desc, FieldType.Date, "sm.createdAt");
 		queryComposer.bindOrder("createdAt", FieldType.Date, "sm.createdAt");
