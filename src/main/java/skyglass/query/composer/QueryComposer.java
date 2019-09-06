@@ -178,15 +178,26 @@ public class QueryComposer {
 	}
 
 	public void addAliasResolver(String alias, String path) {
-		String[] pathParts = path.split("\\.");
-		if (pathParts.length == 1 || pathParts[0].equals(OUTER_QUERY_PREFIX)) {
-			applyOuterQuery = true;
-		}
-		aliasResolverMap.put(alias, path);
+		aliasResolverMap.put(alias, resolveAliasPath(path));
 	}
 
 	private String resolveAliasPath(String path) {
-		return null;
+		StringBuilder output = new StringBuilder();
+		Pattern pattern = Pattern.compile("\\$\\{(.*?)\\}");
+		Matcher matcher = pattern.matcher(path);
+		int lastStart = 0;
+		while (matcher.find()) {
+			String subString = path.substring(lastStart, matcher.start());
+			String varName = matcher.group(1);
+			String replacement = aliasResolverMap.get(varName);
+			if (StringUtils.isBlank(replacement)) {
+				replacement = "";
+			}
+			output.append(subString).append(replacement);
+			lastStart = matcher.end();
+		}
+		output.append(path.substring(lastStart));
+		return output.toString();
 	}
 
 	public void addParameter(String name, String value) {
@@ -673,20 +684,6 @@ public class QueryComposer {
 			}
 		}
 		return false;
-	}
-
-	public static void main(String[] args) {
-		String test = "{test}";
-		Matcher m = ALIAS_REGEX_PATTERN.matcher(test);
-		List<String> matches = new ArrayList<String>();
-		while (m.find()) {
-			matches.add(m.group(1));
-		}
-
-		System.out.println("start");
-		for (String match : matches) {
-			System.out.println(match);
-		}
 	}
 
 }
