@@ -553,13 +553,14 @@ public class QueryComposer {
 				result += ", " + fieldItem.getInnerSelect(rootAlias);
 			}
 		}
-		for (FieldItem fieldItem : orderFieldMap.values()) {
-			if (fieldItem != null && !Constants.UUID.equals(fieldItem.getAlias()) && selectFieldMap.get(fieldItem.getAlias()) == null) {
-				result += ", " + fieldItem.getInnerSelect(rootAlias);
-			}
-		}
 
 		if (applyOuterSearch) {
+			for (FieldItem fieldItem : orderFieldMap.values()) {
+				if (fieldItem != null && !Constants.UUID.equals(fieldItem.getAlias()) && selectFieldMap.get(fieldItem.getAlias()) == null) {
+					result += ", " + fieldItem.getInnerSelect(rootAlias);
+				}
+			}
+
 			for (FieldItem fieldItem : fieldMap.values()) {
 				if (!Constants.UUID.equals(fieldItem.getAlias()) && selectFieldMap.get(fieldItem.getAlias()) == null && orderFieldMap.get(fieldItem.getAlias()) == null) {
 					result += ", " + fieldItem.getInnerSelect(rootAlias);
