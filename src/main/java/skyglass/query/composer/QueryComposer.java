@@ -496,7 +496,7 @@ public class QueryComposer {
 			if (applyOuterSearch) {
 				searchPart = " ) tab" + getSearchPart(fromBasicQueryStr) + " GROUP BY " + outerSelectFields + " ) tab ";
 			} else {
-				searchPart = getSearchPart(fromBasicQueryStr) + "GROUP BY " + innerFields + " ) tab ";
+				searchPart = getSearchPart(fromBasicQueryStr) + " GROUP BY " + innerFields + " ) tab ";
 			}
 
 			fromQueryStr += searchPart;
@@ -657,8 +657,8 @@ public class QueryComposer {
 	}
 
 	private String resolvePath(String alias, String path) {
+		String[] pathParts = path.split("\\.");
 		if (alias == null || alias.equals(path)) {
-			String[] pathParts = path.split("\\.");
 			String innerAlias = pathParts[pathParts.length - 1];
 			alias = innerAlias;
 			if (pathParts[0].equals(OUTER_QUERY_PREFIX)) {
@@ -666,6 +666,9 @@ public class QueryComposer {
 			} else if (pathParts.length == 1 && aliasResolverMap.get(alias) == null) {
 				applyOuterQuery = true;
 			}
+		}
+		if (pathParts.length == 1 && aliasResolverMap.get(alias) != null) {
+			path = aliasResolverMap.get(path);
 		}
 		return applyOuterQuery ? (OUTER_QUERY_PREFIX + "." + alias) : path;
 	}
