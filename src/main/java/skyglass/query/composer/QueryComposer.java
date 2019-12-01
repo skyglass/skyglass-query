@@ -151,7 +151,7 @@ public class QueryComposer {
 		if (CollectionUtils.isEmpty(aliases)) {
 			return false;
 		}
-		boolean result = aliases.contains(Constants.UUID);
+		boolean result = aliases.contains(Constants.UUID) || aliases.contains(Constants.UUID.toLowerCase());
 		if (!result) {
 			for (String alias : fieldMap.keySet()) {
 				result = aliases.contains(alias);
@@ -490,22 +490,23 @@ public class QueryComposer {
 
 			String fromPart = " FROM ( ";
 
-			String fromQueryStr = fromPart + innerSelect + " " + fromBasicQueryStr;
+			String fromQueryStr = fromPart + innerSelect + " " + fromBasicQueryStr + " ";
 
 			String searchPart = null;
 			if (applyOuterSearch) {
-				searchPart = " ) tab" + getSearchPart(fromBasicQueryStr) + " GROUP BY " + outerSelectFields + " ) tab ";
+				searchPart = " ) tab " + getSearchPart(fromBasicQueryStr) + " GROUP BY " + outerSelectFields + " ) tab";
 			} else {
-				searchPart = getSearchPart(fromBasicQueryStr) + " GROUP BY " + innerFields + " ) tab ";
+				searchPart = getSearchPart(fromBasicQueryStr) + " GROUP BY " + innerFields + " ) tab";
 			}
 
 			fromQueryStr += searchPart;
 
-			queryStr = outerComposerSelect + fromQueryStr + " " + getOrderByPart() + getPagedPart();
+			queryStr = outerComposerSelect + fromQueryStr + getOrderByPart() + getPagedPart();
 			countQueryStr = "SELECT DISTINCT COUNT(*) OVER () " + fromQueryStr;
 		} else {
-			queryStr = innerSelect + " " + fromBasicQueryStr + getSearchPart(fromBasicQueryStr) + getBasicOrderByPart() + getPagedPart();
-			countQueryStr = "SELECT COUNT(*) " + fromBasicQueryStr + getSearchPart(fromBasicQueryStr);
+			String searchPart = getSearchPart(fromBasicQueryStr);
+			queryStr = innerSelect + " " + fromBasicQueryStr + " " + searchPart + getBasicOrderByPart(searchPart) + getPagedPart();
+			countQueryStr = "SELECT COUNT(*) " + fromBasicQueryStr + " " + getSearchPart(fromBasicQueryStr);
 		}
 	}
 
@@ -533,12 +534,7 @@ public class QueryComposer {
 	private String getOuterSelectFields() {
 		String result = OUTER_QUERY_PREFIX + "." + Constants.UUID;
 		for (FieldItem fieldItem : selectFieldMap.values()) {
-			if (!Constants.UUID.equals(fieldItem.getAlias())) {
-				result += ", " + OUTER_QUERY_PREFIX + "." + fieldItem.getAlias();
-			}
-		}
-		for (FieldItem fieldItem : orderFieldMap.values()) {
-			if (fieldItem != null && !Constants.UUID.equals(fieldItem.getAlias()) && selectFieldMap.get(fieldItem.getAlias()) == null) {
+			if (!Constants.UUID.equalsIgnoreCase(fieldItem.getAlias())) {
 				result += ", " + OUTER_QUERY_PREFIX + "." + fieldItem.getAlias();
 			}
 		}
@@ -549,20 +545,22 @@ public class QueryComposer {
 		String result = rootAlias + "." + Constants.UUID;
 
 		for (FieldItem fieldItem : selectFieldMap.values()) {
-			if (!Constants.UUID.equals(fieldItem.getAlias())) {
+			if (!Constants.UUID.equalsIgnoreCase(fieldItem.getAlias())) {
 				result += ", " + fieldItem.getInnerSelect(rootAlias);
+			}
+		}
+		
+		if (applyOuterSearch || applyOuterQuery) {
+			for (FieldItem fieldItem : orderFieldMap.values()) {
+				if (fieldItem != null && !Constants.UUID.equalsIgnoreCase(fieldItem.getAlias()) && selectFieldMap.get(fieldItem.getAlias()) == null) {
+					result += ", " + fieldItem.getInnerSelect(rootAlias);
+				}
 			}
 		}
 
 		if (applyOuterSearch) {
-			for (FieldItem fieldItem : orderFieldMap.values()) {
-				if (fieldItem != null && !Constants.UUID.equals(fieldItem.getAlias()) && selectFieldMap.get(fieldItem.getAlias()) == null) {
-					result += ", " + fieldItem.getInnerSelect(rootAlias);
-				}
-			}
-
 			for (FieldItem fieldItem : fieldMap.values()) {
-				if (!Constants.UUID.equals(fieldItem.getAlias()) && selectFieldMap.get(fieldItem.getAlias()) == null && orderFieldMap.get(fieldItem.getAlias()) == null) {
+				if (!Constants.UUID.equalsIgnoreCase(fieldItem.getAlias()) && selectFieldMap.get(fieldItem.getAlias()) == null && orderFieldMap.get(fieldItem.getAlias()) == null) {
 					result += ", " + fieldItem.getInnerSelect(rootAlias);
 				}
 			}
@@ -583,7 +581,7 @@ public class QueryComposer {
 		for (Supplier<String> searchPartSupplier : searchPartSuppliers) {
 			result = QueryFunctions.and(result, searchPartSupplier.get());
 		}
-		return result == null ? "" : ((StringUtils.isNotBlank(fromBasicQueryStr) && fromBasicQueryStr.contains(" WHERE ") ? " AND " : " WHERE ") + result);
+		return result == null ? "" : ((StringUtils.isNotBlank(fromBasicQueryStr) && fromBasicQueryStr.contains(" WHERE ") ? "AND " : "WHERE ") + result);
 	}
 
 	private String getOrderByPart() {
@@ -617,8 +615,9 @@ public class QueryComposer {
 		}
 	}
 
-	private String getBasicOrderByPart() {
-		return " ORDER BY " + QueryOrderUtil.applyOrder(orderBuilder.getOrderFields());
+	private String getBasicOrderByPart(String searchPart) {
+		return (searchPart.length() == 0 || searchPart.substring(searchPart.length() - 1).equals(" ") ? "" : " ") 
+				+ "ORDER BY " + QueryOrderUtil.applyOrder(orderBuilder.getOrderFields());
 	}
 
 	private String getPagedPart() {
