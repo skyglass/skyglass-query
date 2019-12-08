@@ -35,10 +35,6 @@ public class OrderBuilder {
 		return (alias.equals(queryRequest.getOrderField()));
 	}
 
-	public OrderBuilder bindTranslatableOrder(String alias, String... orderFields) {
-		return bindOrder(alias, FieldType.String, QueryTranslationUtil.getTranslatedFields(getCurrentLang(), orderFields));
-	}
-
 	public OrderBuilder addOrder(OrderType orderType, String... orderFields) {
 		return addOrder(orderType, FieldType.String, orderFields);
 	}
@@ -57,14 +53,6 @@ public class OrderBuilder {
 		this.orderFields.clear();
 		addOrder(orderType, fieldType, orderFields);
 		return this;
-	}
-
-	public OrderBuilder setDefaultTranslatableOrder(OrderType orderType, String... orderFields) {
-		return setDefaultOrder(orderType, FieldType.String, QueryTranslationUtil.getTranslatedFields(getCurrentLang(), orderFields));
-	}
-
-	public OrderBuilder setDefaultTranslatableOrders(OrderType orderType, String... orderFields) {
-		return setDefaultOrders(orderType, FieldType.String, QueryTranslationUtil.getTranslatedFields(getCurrentLang(), orderFields));
 	}
 
 	public OrderBuilder setDefaultOrder(OrderType orderType, String... orderFields) {

@@ -7,22 +7,22 @@ public class FieldItem {
 	private String alias;
 
 	private boolean addRootAlias;
-
-	private boolean useInnerAlias;
+	
+	private boolean useAsAlias;
 
 	public FieldItem(String alias, String innerAlias, String path, String innerPath) {
 		this.alias = alias;
 		this.innerPath = innerPath;
-		this.addRootAlias = path.equals(alias);
-		this.useInnerAlias = alias.equals(innerAlias);
+		this.addRootAlias = innerPath.equals(alias);
+		this.useAsAlias = !alias.equals(innerAlias) || !path.equals(innerPath);
 	}
 
 	public String getAlias() {
 		return alias;
 	}
 
-	public String getInnerSelect(String rootAlias) {
-		return getInnerPath(rootAlias) + (useInnerAlias ? "" : " AS " + alias);
+	public String getInnerPath(String rootAlias, boolean groupBy) {
+		return getInnerPath(rootAlias) + (!groupBy && useAsAlias ? " AS " + alias : "");
 	}
 
 	private String getInnerPath(String rootAlias) {

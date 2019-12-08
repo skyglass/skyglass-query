@@ -74,15 +74,13 @@ public class QueryTranslationUtil {
 	private static String getDefaultLang() {
 		return Language.DEFAULT.getLanguageCode();
 	}
-
+	
 	public static String coalesce(String field) {
-		String[] result = new String[Language.values().length];
-		int j = 0;
-		for (Language lang : Language.values()) {
-			result[j] = field + "." + lang.getLanguageCode();
-			j++;
-		}
-		return QueryFunctions.coalesce(result);
+		return coalesce(null, field);
+	}
+
+	public static String coalesce(String currentLang, String field) {
+		return QueryFunctions.coalesce(getTranslatedFields(currentLang, field));
 	}
 
 }

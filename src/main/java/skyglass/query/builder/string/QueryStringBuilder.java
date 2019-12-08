@@ -284,11 +284,6 @@ public class QueryStringBuilder {
 		return this;
 	}
 
-	public QueryStringBuilder bindTranslatableOrder(String alias, String... orderFields) {
-		getOrderBuilder().bindTranslatableOrder(alias, orderFields);
-		return this;
-	}
-
 	public QueryStringBuilder addOrder(OrderType orderType, String... orderFields) {
 		getOrderBuilder().addOrder(orderType, orderFields);
 		return this;
@@ -306,16 +301,6 @@ public class QueryStringBuilder {
 
 	public QueryStringBuilder setDefaultOrders(OrderType orderType, String... orderFields) {
 		getOrderBuilder().setDefaultOrders(orderType, orderFields);
-		return this;
-	}
-
-	public QueryStringBuilder setDefaultTranslatableOrder(OrderType orderType, String... orderFields) {
-		getOrderBuilder().setDefaultTranslatableOrder(orderType, orderFields);
-		return this;
-	}
-
-	public QueryStringBuilder setDefaultTranslatableOrders(OrderType orderType, String... orderFields) {
-		getOrderBuilder().setDefaultTranslatableOrders(orderType, orderFields);
 		return this;
 	}
 

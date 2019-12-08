@@ -213,62 +213,30 @@ public class QueryComposer {
 	}
 
 	public void setDefaultOrder(String alias, OrderType orderType, FieldType fieldType, String... path) {
-		addDefaultOrderRunner(orderType, fieldType, alias, false, path);
+		addDefaultOrderRunner(orderType, fieldType, alias, path);
 	}
 
 	public void setDefaultOrder(String alias, OrderType orderType, String... path) {
-		addDefaultOrderRunner(orderType, null, alias, false, path);
+		addDefaultOrderRunner(orderType, null, alias, path);
 	}
 
 	public void bindOrder(String name, FieldType fieldType, String... path) {
-		addBindOrderRunner(name, fieldType, false, path);
+		addBindOrderRunner(name, fieldType, path);
 	}
 
 	public void bindOrder(String name, String... path) {
-		addBindOrderRunner(name, null, false, path);
+		addBindOrderRunner(name, null, path);
 	}
 
 	private void addDefaultOrderRunner(OrderType orderType, String... path) {
-		addDefaultOrderRunner(orderType, null, null, false, path);
+		addDefaultOrderRunner(orderType, null, null, path);
 	}
 
 	private void addDefaultOrderRunner(OrderType orderType, FieldType fieldType, String... path) {
-		addDefaultOrderRunner(orderType, fieldType, null, false, path);
+		addDefaultOrderRunner(orderType, fieldType, null, path);
 	}
 
-	public void setDefaultTranslatableOrder(OrderType orderType, FieldType fieldType, String... path) {
-		addDefaultTranslatableOrderRunner(orderType, fieldType, path);
-	}
-
-	public void setDefaultTranslatableOrder(OrderType orderType, String... path) {
-		addDefaultTranslatableOrderRunner(orderType, path);
-	}
-
-	public void setDefaultTranslatableOrder(String alias, OrderType orderType, FieldType fieldType, String... path) {
-		addDefaultOrderRunner(orderType, fieldType, alias, true, path);
-	}
-
-	public void setDefaultTranslatableOrder(String alias, OrderType orderType, String... path) {
-		addDefaultOrderRunner(orderType, null, alias, true, path);
-	}
-
-	public void bindTranslatableOrder(String name, FieldType fieldType, String... path) {
-		addBindOrderRunner(name, fieldType, true, path);
-	}
-
-	public void bindTranslatableOrder(String name, String... path) {
-		addBindOrderRunner(name, null, true, path);
-	}
-
-	private void addDefaultTranslatableOrderRunner(OrderType orderType, String... path) {
-		addDefaultOrderRunner(orderType, null, null, true, path);
-	}
-
-	private void addDefaultTranslatableOrderRunner(OrderType orderType, FieldType fieldType, String... path) {
-		addDefaultOrderRunner(orderType, fieldType, null, true, path);
-	}
-
-	private void addDefaultOrderRunner(OrderType orderType, FieldType fieldType, String alias, boolean translatable, String... paths) {
+	private void addDefaultOrderRunner(OrderType orderType, FieldType fieldType, String alias, String... paths) {
 		if (alias == null) {
 			alias = paths.length > 0 ? adaptAlias(alias, paths[0]).getKey() : null;
 		}
@@ -281,17 +249,9 @@ public class QueryComposer {
 					resolvedPaths[i] = resolvePath(finalAlias, paths[i]);
 				}
 				if (fieldType == null) {
-					if (translatable) {
-						orderBuilder.setDefaultTranslatableOrder(orderType, resolvedPaths);
-					} else {
-						orderBuilder.setDefaultOrder(orderType, resolvedPaths);
-					}
+					orderBuilder.setDefaultOrder(orderType, resolvedPaths);
 				} else {
-					if (translatable) {
-						orderBuilder.setDefaultTranslatableOrder(orderType, resolvedPaths);
-					} else {
-						orderBuilder.setDefaultOrder(orderType, fieldType, resolvedPaths);
-					}
+					orderBuilder.setDefaultOrder(orderType, fieldType, resolvedPaths);
 				}
 				if (useAlias) {
 					for (int i = 0; i < paths.length; i++) {
@@ -306,7 +266,7 @@ public class QueryComposer {
 		});
 	}
 
-	private void addBindOrderRunner(String name, FieldType fieldType, boolean translatable, String... paths) {
+	private void addBindOrderRunner(String name, FieldType fieldType, String... paths) {
 		orderBuilderRunners.add(() -> {
 			if (orderBuilder.shouldBindOrder(name)) {
 				String[] resolvedPaths = new String[paths.length];
@@ -314,17 +274,9 @@ public class QueryComposer {
 					resolvedPaths[i] = resolvePath(name, paths[i]);
 				}
 				if (fieldType == null) {
-					if (translatable) {
-						orderBuilder.bindTranslatableOrder(name, resolvedPaths);
-					} else {
-						orderBuilder.bindOrder(name, resolvedPaths);
-					}
+					orderBuilder.bindOrder(name, resolvedPaths);
 				} else {
-					if (translatable) {
-						orderBuilder.bindTranslatableOrder(name, resolvedPaths);
-					} else {
-						orderBuilder.bindOrder(name, fieldType, resolvedPaths);
-					}
+					orderBuilder.bindOrder(name, fieldType, resolvedPaths);
 				}
 				for (int i = 0; i < paths.length; i++) {
 					addOrderFieldResolver(name, resolvedPaths[i], paths[i]);
@@ -412,6 +364,7 @@ public class QueryComposer {
 	}
 
 	private void addFieldItem(String alias, String innerAlias, String path, String innerPath, boolean orderField, boolean selectField) {
+		innerPath = resolveInnerPath(innerAlias, innerPath);
 		FieldItem fieldItem = fieldMap.get(alias);
 		if (fieldItem == null) {
 			fieldItem = new FieldItem(alias, innerAlias, path, innerPath);
@@ -478,8 +431,9 @@ public class QueryComposer {
 			fromBasicQueryStr += queryPart;
 		}
 
-		String innerFields = getInnerFields();
-		String innerSelect = "SELECT " + innerFields;
+		String innerSelectFields = getInnerFields(false);
+		String innerGroupByFields = getInnerFields(true);
+		String innerSelect = "SELECT " + innerSelectFields;
 		if (applyOuterQuery) {
 			//This query part returns select fields + column names, for which sorting is supported. Select and Sorting columns should exist in entity table or in tables, which have one to one correspondence
 			//Therefore GROUP BY by all these columns guarantees uniquness of entity's tab.UUID and we shouldn't have duplicates when grouping by select and sorting columns (unless we return tabular native query result)
@@ -488,25 +442,24 @@ public class QueryComposer {
 
 			//This query part selects column names, which will be used by outer query. 
 
-			String fromPart = " FROM ( ";
+			String fromQueryStr = null;
 
-			String fromQueryStr = fromPart + innerSelect + " " + fromBasicQueryStr + " ";
-
-			String searchPart = null;
 			if (applyOuterSearch) {
-				searchPart = " ) tab " + getSearchPart(fromBasicQueryStr) + " GROUP BY " + outerSelectFields + " ) tab";
-			} else {
-				searchPart = getSearchPart(fromBasicQueryStr) + " GROUP BY " + innerFields + " ) tab";
+				fromQueryStr = " FROM ( " + innerSelect + " " + fromBasicQueryStr + " ) tab " 
+						+ getSearchPart(fromBasicQueryStr) + " GROUP BY " + outerSelectFields;
+				countQueryStr = "SELECT DISTINCT COUNT(1) OVER ()" + fromQueryStr;
+				fromQueryStr = outerComposerSelect + fromQueryStr;
+			} else {				
+				fromQueryStr = fromBasicQueryStr + " " + getSearchPart(fromBasicQueryStr) + " GROUP BY " + innerGroupByFields;
+				countQueryStr = "SELECT DISTINCT COUNT(1) OVER () " + fromQueryStr;
+				fromQueryStr = innerSelect + " " + fromQueryStr;
 			}
 
-			fromQueryStr += searchPart;
-
-			queryStr = outerComposerSelect + fromQueryStr + getOrderByPart() + getPagedPart();
-			countQueryStr = "SELECT DISTINCT COUNT(*) OVER () " + fromQueryStr;
+			queryStr = outerComposerSelect + " FROM ( " + fromQueryStr + " ) tab" + getOrderByPart() + getPagedPart();
 		} else {
 			String searchPart = getSearchPart(fromBasicQueryStr);
 			queryStr = innerSelect + " " + fromBasicQueryStr + " " + searchPart + getBasicOrderByPart(searchPart) + getPagedPart();
-			countQueryStr = "SELECT COUNT(*) " + fromBasicQueryStr + " " + getSearchPart(fromBasicQueryStr);
+			countQueryStr = "SELECT COUNT(1) " + fromBasicQueryStr + " " + getSearchPart(fromBasicQueryStr);
 		}
 	}
 
@@ -541,19 +494,19 @@ public class QueryComposer {
 		return result;
 	}
 
-	private String getInnerFields() {
+	private String getInnerFields(boolean groupBy) {
 		String result = rootAlias + "." + Constants.UUID;
 
 		for (FieldItem fieldItem : selectFieldMap.values()) {
 			if (!Constants.UUID.equalsIgnoreCase(fieldItem.getAlias())) {
-				result += ", " + fieldItem.getInnerSelect(rootAlias);
+				result += ", " + fieldItem.getInnerPath(rootAlias, groupBy);
 			}
 		}
 		
 		if (applyOuterSearch || applyOuterQuery) {
 			for (FieldItem fieldItem : orderFieldMap.values()) {
 				if (fieldItem != null && !Constants.UUID.equalsIgnoreCase(fieldItem.getAlias()) && selectFieldMap.get(fieldItem.getAlias()) == null) {
-					result += ", " + fieldItem.getInnerSelect(rootAlias);
+					result += ", " + fieldItem.getInnerPath(rootAlias, groupBy);
 				}
 			}
 		}
@@ -561,7 +514,7 @@ public class QueryComposer {
 		if (applyOuterSearch) {
 			for (FieldItem fieldItem : fieldMap.values()) {
 				if (!Constants.UUID.equalsIgnoreCase(fieldItem.getAlias()) && selectFieldMap.get(fieldItem.getAlias()) == null && orderFieldMap.get(fieldItem.getAlias()) == null) {
-					result += ", " + fieldItem.getInnerSelect(rootAlias);
+					result += ", " + fieldItem.getInnerPath(rootAlias, groupBy);
 				}
 			}
 		}
@@ -670,6 +623,14 @@ public class QueryComposer {
 			path = aliasResolverMap.get(path);
 		}
 		return applyOuterQuery ? (OUTER_QUERY_PREFIX + "." + alias) : path;
+	}
+	
+	private String resolveInnerPath(String alias, String path) {
+		String[] pathParts = path.split("\\.");
+		if (pathParts.length == 1 && aliasResolverMap.get(alias) != null) {
+			path = aliasResolverMap.get(path);
+		}
+		return path;
 	}
 
 	private boolean shouldApplySearch() {
