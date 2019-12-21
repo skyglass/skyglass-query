@@ -1,0 +1,2 @@
+1. Order fields for outer query should have "tab" prefix. Currently it doesn't seem to work but there are no tests for that (or tests have
+wrong assumptions)

@@ -5,7 +5,7 @@ import java.util.List;
 
 import skyglass.query.builder.QueryRequestDTO;
 import skyglass.query.builder.QueryResult;
-import skyglass.query.builder.string.QueryStringBuilder;
+import skyglass.query.builder.string.QueryComposer;
 
 public class QueryResultBuilder<T> {
 
@@ -23,13 +23,13 @@ public class QueryResultBuilder<T> {
 
 	private int totalResults;
 
-	private QueryStringBuilder queryStringBuilder;
+	private QueryComposer queryStringBuilder;
 
 	private QueryResultProvider<T> queryResultProvider;
 
 	private QueryRequestDTO queryRequest;
 
-	public QueryResultBuilder(QueryStringBuilder queryStringBuilder, QueryResultProvider<T> queryResultProvider) {
+	public QueryResultBuilder(QueryComposer queryStringBuilder, QueryResultProvider<T> queryResultProvider) {
 		this.queryStringBuilder = queryStringBuilder;
 		this.queryResultProvider = queryResultProvider;
 		this.queryRequest = queryStringBuilder.getQueryRequest();
@@ -52,7 +52,7 @@ public class QueryResultBuilder<T> {
 		return distinct;
 	}
 
-	protected QueryStringBuilder getQueryStringBuilder() {
+	protected QueryComposer getQueryStringBuilder() {
 		return queryStringBuilder;
 	}
 

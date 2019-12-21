@@ -31,7 +31,7 @@ public class QueryParamProcessor {
 
 	private static final Pattern PARAM_NATIVE_REGEX_PATTERN = Pattern.compile("(?=\\?(\\w+))");
 
-	static String parseParams(QueryStringBuilder root, StringPartBuilder builder, String part) {
+	static String parseParams(QueryComposer root, StringPartBuilder builder, String part) {
 		if (StringUtils.isBlank(part)) {
 			return part;
 		}
@@ -61,7 +61,7 @@ public class QueryParamProcessor {
 		return part;
 	}
 
-	static String parseSearchTerm(QueryStringBuilder root) {
+	static String parseSearchTerm(QueryComposer root) {
 		QueryRequestDTO queryRequest = root.getQueryRequest();
 		if (queryRequest != null) {
 			return queryRequest.getSearchTerm();
@@ -69,7 +69,7 @@ public class QueryParamProcessor {
 		return null;
 	}
 
-	static String parseSearchTerm(String paramName, QueryStringBuilder root) {
+	static String parseSearchTerm(String paramName, QueryComposer root) {
 		QueryRequestDTO queryRequest = root.getQueryRequest();
 		if (queryRequest != null) {
 			try {
@@ -89,7 +89,7 @@ public class QueryParamProcessor {
 		return field.replace("{lang}", language);
 	}
 
-	private static List<String> getAllMatches(QueryStringBuilder root, String text) {
+	private static List<String> getAllMatches(QueryComposer root, String text) {
 		Matcher m = root.isNativeQuery() ? PARAM_NATIVE_REGEX_PATTERN.matcher(text) : PARAM_REGEX_PATTERN.matcher(text);
 		List<String> matches = new ArrayList<String>();
 		while (m.find()) {
@@ -98,14 +98,14 @@ public class QueryParamProcessor {
 		return matches;
 	}
 
-	public static String processPart(QueryStringBuilder root, StringPartBuilder builder, String paramName, String part, Object value) {
+	public static String processPart(QueryComposer root, StringPartBuilder builder, String paramName, String part, Object value) {
 		if (builder.isCollection(value)) {
 			return replaceListPart(root, builder, paramName, part, (Collection<?>) value);
 		}
 		return part;
 	}
 
-	public static String replaceListPart(QueryStringBuilder root, StringPartBuilder builder, String paramName, String part, Collection<?> list) {
+	public static String replaceListPart(QueryComposer root, StringPartBuilder builder, String paramName, String part, Collection<?> list) {
 		if (root.isNativeQuery()) {
 			StringBuilder replacement = new StringBuilder();
 			for (int i = 1; i <= list.size(); i++) {
@@ -121,7 +121,7 @@ public class QueryParamProcessor {
 		return part;
 	}
 
-	static String getInString(QueryStringBuilder root, String propertyName, String paramName, Collection<?> list) {
+	static String getInString(QueryComposer root, String propertyName, String paramName, Collection<?> list) {
 		if (CollectionUtils.isEmpty(list)) {
 			return null;
 		}
@@ -144,7 +144,7 @@ public class QueryParamProcessor {
 		return propertyName.replace(".", "_");
 	}
 
-	private static String getInFormat(QueryStringBuilder root) {
+	private static String getInFormat(QueryComposer root) {
 		return root.isNativeQuery() ? NATIVE_PARAM_IN_FORMAT : PARAM_IN_FORMAT;
 	}
 

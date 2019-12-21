@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import skyglass.query.builder.QueryResult;
 import skyglass.query.builder.string.JpaQueryResultProvider;
 import skyglass.query.builder.string.NativeQueryResultProvider;
-import skyglass.query.builder.string.QueryStringBuilder;
+import skyglass.query.builder.string.QueryComposer;
 
 @Repository
 @Transactional(propagation = Propagation.MANDATORY)
@@ -28,58 +28,58 @@ public class QueryManagerImpl implements QueryManager {
 	private EntityManager entityManager;
 
 	@Override
-	public <T, DTO> QueryResult<DTO> getDtoResult(QueryStringBuilder queryStringBuilder, Function<T, DTO> entityDtoConverter, Class<T> type) {
+	public <T, DTO> QueryResult<DTO> getDtoResult(QueryComposer queryStringBuilder, Function<T, DTO> entityDtoConverter, Class<T> type) {
 		QueryResultProvider<T> queryResultProvider = new JpaQueryResultProvider<T>(entityManager, type);
 		return new EntityDtoConverter<>(queryStringBuilder, queryResultProvider, entityDtoConverter).convert();
 	}
 
 	@Override
-	public <T> QueryResult<T> getEntityResult(QueryStringBuilder queryStringBuilder, Class<T> type) {
+	public <T> QueryResult<T> getEntityResult(QueryComposer queryStringBuilder, Class<T> type) {
 		QueryResultProvider<T> queryResultProvider = new JpaQueryResultProvider<T>(entityManager, type);
 		return new QueryResultBuilder<>(queryStringBuilder, queryResultProvider).getResult();
 	}
 
 	@Override
-	public QueryResult<Object[]> getNativeResult(QueryStringBuilder queryStringBuilder) {
+	public QueryResult<Object[]> getNativeResult(QueryComposer queryStringBuilder) {
 		QueryResultProvider<Object[]> queryResultProvider = new NativeQueryResultProvider(entityManager);
 		return new QueryResultBuilder<>(queryStringBuilder, queryResultProvider).getResult();
 	}
 
 	@Override
-	public <DTO> QueryResult<DTO> convertNativeResult(QueryStringBuilder queryStringBuilder, Supplier<DTO> dtoSupplier) {
+	public <DTO> QueryResult<DTO> convertNativeResult(QueryComposer queryStringBuilder, Supplier<DTO> dtoSupplier) {
 		QueryResultProvider<Object[]> queryResultProvider = new NativeQueryResultProvider(entityManager);
 		return new DtoConverter<>(queryStringBuilder, queryResultProvider, dtoSupplier).convert();
 	}
 
 	@Override
-	public <DTO1, DTO2> QueryResult<DTO2> convertNativeResult(QueryStringBuilder queryStringBuilder, Supplier<DTO1> dto1Supplier,
+	public <DTO1, DTO2> QueryResult<DTO2> convertNativeResult(QueryComposer queryStringBuilder, Supplier<DTO1> dto1Supplier,
 			Function<DTO1, DTO2> dto1Dto2Converter) {
 		QueryResultProvider<Object[]> queryResultProvider = new NativeQueryResultProvider(entityManager);
 		return new DtoDtoConverter<>(queryStringBuilder, queryResultProvider, dto1Supplier, dto1Dto2Converter).convert();
 	}
 
 	@Override
-	public <T, DTO> List<DTO> getDtoList(QueryStringBuilder queryStringBuilder, Function<T, DTO> entityDtoConverter, Class<T> type) {
+	public <T, DTO> List<DTO> getDtoList(QueryComposer queryStringBuilder, Function<T, DTO> entityDtoConverter, Class<T> type) {
 		return getDtoResult(queryStringBuilder, entityDtoConverter, type).getResult();
 	}
 
 	@Override
-	public <T> List<T> getEntityList(QueryStringBuilder queryStringBuilder, Class<T> type) {
+	public <T> List<T> getEntityList(QueryComposer queryStringBuilder, Class<T> type) {
 		return getEntityResult(queryStringBuilder, type).getResult();
 	}
 
 	@Override
-	public List<Object[]> getNativeList(QueryStringBuilder queryStringBuilder) {
+	public List<Object[]> getNativeList(QueryComposer queryStringBuilder) {
 		return getNativeResult(queryStringBuilder).getResult();
 	}
 
 	@Override
-	public <DTO> List<DTO> convertNativeList(QueryStringBuilder queryStringBuilder, Supplier<DTO> dtoSupplier) {
+	public <DTO> List<DTO> convertNativeList(QueryComposer queryStringBuilder, Supplier<DTO> dtoSupplier) {
 		return convertNativeResult(queryStringBuilder, dtoSupplier).getResult();
 	}
 
 	@Override
-	public <DTO1, DTO2> List<DTO2> convertNativeList(QueryStringBuilder queryStringBuilder, Supplier<DTO1> dto1Supplier,
+	public <DTO1, DTO2> List<DTO2> convertNativeList(QueryComposer queryStringBuilder, Supplier<DTO1> dto1Supplier,
 			Function<DTO1, DTO2> dto1Dto2Converter) {
 		return convertNativeResult(queryStringBuilder, dto1Supplier, dto1Dto2Converter).getResult();
 	}

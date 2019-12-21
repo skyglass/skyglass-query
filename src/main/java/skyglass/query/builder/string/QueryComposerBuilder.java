@@ -1,4 +1,4 @@
-package skyglass.query.composer;
+package skyglass.query.builder.string;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -9,7 +9,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -24,22 +23,21 @@ import skyglass.query.QueryRequestUtil;
 import skyglass.query.QuerySearchUtil;
 import skyglass.query.builder.FieldType;
 import skyglass.query.builder.OrderBuilder;
+import skyglass.query.builder.OrderField;
 import skyglass.query.builder.OrderType;
 import skyglass.query.builder.QueryRequestDTO;
 import skyglass.query.builder.SearchBuilder;
 import skyglass.query.builder.config.Constants;
 
-public class QueryComposer {
+public class QueryComposerBuilder {
 
-	private static final Pattern ALIAS_REGEX_PATTERN = Pattern.compile("^(\\$\\{)*$(\\})");
+	private static final Pattern ALIAS_REGEX_PATTERN = Pattern.compile("\\$\\{(.*?)\\}");
 
 	private final String OUTER_QUERY_PREFIX = "tab";
 
 	private QueryRequestDTO queryRequest;
 
 	private boolean applyOuterQuery;
-
-	private boolean applyOuterSearch;
 
 	private Map<String, Set<String>> queryMap;
 
@@ -75,19 +73,31 @@ public class QueryComposer {
 
 	private String rootAlias;
 
-	private String rootTable;
-
 	private String queryStr;
 
 	private String countQueryStr;
+	
+	private QueryComposer queryStringBuilder;
+	
+	private String customSelectPart;
+	
+	private String customGroupByPart;
+	
+	private String customOrderByPart;
 
-	private Map<String, String> queryParameters = new HashMap<>();
-
-	public QueryComposer(QueryRequestDTO queryRequest, String rootAlias, String rootTable) {
+	public QueryComposerBuilder(QueryRequestDTO queryRequest, String rootAlias) {
 		this.queryRequest = queryRequest;
 		this.orderBuilder = new OrderBuilder(queryRequest);
 		this.rootAlias = rootAlias;
-		this.rootTable = rootTable;
+	}
+	
+	public QueryComposerBuilder(QueryComposer queryStringBuilder, QueryRequestDTO queryRequest, String rootAlias) {
+		this(queryRequest, rootAlias);
+		this.queryStringBuilder = queryStringBuilder;
+	}
+	
+	public boolean isDistinct() {
+		return this.applyOuterQuery;
 	}
 
 	public void setDistinct() {
@@ -96,9 +106,9 @@ public class QueryComposer {
 		});
 	}
 	
-	public void setOuterSearch() {
+	public void setDistinct(boolean distinct) {
 		initRunners.add(() -> {
-			this.applyOuterSearch = true;
+			this.applyOuterQuery = distinct;
 		});
 	}
 
@@ -134,9 +144,87 @@ public class QueryComposer {
 		});
 	}
 	
+	public void addSearch(String... paths) {
+		addSearchRunner(paths);
+	}
+
+	public void addAliasResolver(String alias, String path) {
+		initRunners.add(() -> {
+			aliasResolverMap.put(alias, resolveAliasPath(path));
+		});
+	}
+	
+	public void setDefaultOrder(OrderType orderType, FieldType fieldType, String... path) {
+		addDefaultOrderRunner(orderType, fieldType, path);
+	}
+
+	public void setDefaultOrder(OrderType orderType, String... path) {
+		addDefaultOrderRunner(orderType, path);
+	}
+
+	public void setDefaultOrder(String alias, OrderType orderType, FieldType fieldType, String... path) {
+		addDefaultOrderRunner(orderType, fieldType, alias, path);
+	}
+
+	public void setDefaultOrder(String alias, OrderType orderType, String... path) {
+		addDefaultOrderRunner(orderType, null, alias, path);
+	}
+
+	public void bindOrder(String name, FieldType fieldType, String... path) {
+		addBindOrderRunner(name, fieldType, path);
+	}
+
+	public void bindOrder(String name, String... path) {
+		addBindOrderRunner(name, null, path);
+	}
+	
+	public void addSelect(String selectString) {
+		selectBuilderRunners.add(() -> {
+			doAddSelect(selectString);
+		});
+	}
+
+	public void addSelect(String alias, String path) {
+		selectBuilderRunners.add(() -> {
+			doAddSelect(alias, path);
+		});
+	}
+	
+	public String getCountQueryStr() {
+		if (countQueryStr == null) {
+			getQueryStr();
+		}
+		return countQueryStr;
+	}
+
+	public String getQueryStr() {
+		resetAndInit();
+		return queryStr;
+	}
+	
+	void resetAndInit() {
+		reset();
+		init();
+	}
+	
+	public List<OrderField> getOrderFields() {
+		return orderBuilder.getOrderFields();
+	}
+	
+	public void addOrder(OrderType orderType, String... orderFields) {
+		orderBuilder.addOrder(orderType, orderFields);
+	}
+
+	public void setOrder(OrderType orderType, String... orderFields) {
+		orderBuilder.setOrder(orderType, orderFields);
+	}
+
+	public void setDefaultOrders(OrderType orderType, String... orderFields) {
+		orderBuilder.setDefaultOrders(orderType, orderFields);
+	}
+
 	private void reset() {
 		applyOuterQuery = false;
-		applyOuterSearch = false;
 		aliasResolverMap = new HashMap<>();
 		queryMap = new LinkedHashMap<>();
 		queryParts = new ArrayList<>();
@@ -147,7 +235,6 @@ public class QueryComposer {
 		orderFieldMap = new LinkedHashMap<>();
 		queryStr = null;
 		countQueryStr = null;
-		queryParameters = new HashMap<>();
 		searchPartSuppliers = new ArrayList<>();
 		
 	}
@@ -199,20 +286,9 @@ public class QueryComposer {
 		return result;
 	}
 
-	public void addSearch(String... paths) {
-		addSearchRunner(paths);
-	}
-
-	public void addAliasResolver(String alias, String path) {
-		initRunners.add(() -> {
-			aliasResolverMap.put(alias, resolveAliasPath(path));
-		});
-	}
-
 	private String resolveAliasPath(String path) {
 		StringBuilder output = new StringBuilder();
-		Pattern pattern = Pattern.compile("\\$\\{(.*?)\\}");
-		Matcher matcher = pattern.matcher(path);
+		Matcher matcher = ALIAS_REGEX_PATTERN.matcher(path);
 		int lastStart = 0;
 		while (matcher.find()) {
 			String subString = path.substring(lastStart, matcher.start());
@@ -226,40 +302,6 @@ public class QueryComposer {
 		}
 		output.append(path.substring(lastStart));
 		return output.toString();
-	}
-
-	public void addParameter(String name, String value) {
-		initRunners.add(() -> {
-			_addParameter(name, value);
-		});
-	}
-	
-	private void _addParameter(String name, String value) {
-			queryParameters.put(name, value);
-	}
-
-	public void setDefaultOrder(OrderType orderType, FieldType fieldType, String... path) {
-		addDefaultOrderRunner(orderType, fieldType, path);
-	}
-
-	public void setDefaultOrder(OrderType orderType, String... path) {
-		addDefaultOrderRunner(orderType, path);
-	}
-
-	public void setDefaultOrder(String alias, OrderType orderType, FieldType fieldType, String... path) {
-		addDefaultOrderRunner(orderType, fieldType, alias, path);
-	}
-
-	public void setDefaultOrder(String alias, OrderType orderType, String... path) {
-		addDefaultOrderRunner(orderType, null, alias, path);
-	}
-
-	public void bindOrder(String name, FieldType fieldType, String... path) {
-		addBindOrderRunner(name, fieldType, path);
-	}
-
-	public void bindOrder(String name, String... path) {
-		addBindOrderRunner(name, null, path);
 	}
 
 	private void addDefaultOrderRunner(OrderType orderType, String... path) {
@@ -404,18 +446,6 @@ public class QueryComposer {
 		}
 	}
 
-	public void addSelect(String selectString) {
-		selectBuilderRunners.add(() -> {
-			doAddSelect(selectString);
-		});
-	}
-
-	public void addSelect(String alias, String path) {
-		selectBuilderRunners.add(() -> {
-			doAddSelect(alias, path);
-		});
-	}
-
 	private void doAddSelect(String selectString) {
 		if (StringUtils.isEmpty(selectString)) {
 			return;
@@ -444,7 +474,6 @@ public class QueryComposer {
 	}
 
 	private void init() {
-		addSearchParameters();
 		initPart();
 		initSelectPart();
 		initConditionalPart();
@@ -470,18 +499,12 @@ public class QueryComposer {
 
 			String fromQueryStr = null;
 
-			if (applyOuterSearch) {
-				fromQueryStr = " FROM ( " + innerSelect + " " + fromBasicQueryStr + " ) tab " 
-						+ getSearchPart(fromBasicQueryStr) + " GROUP BY " + outerSelectFields;
-				countQueryStr = "SELECT DISTINCT COUNT(1) OVER ()" + fromQueryStr;
-				fromQueryStr = outerComposerSelect + fromQueryStr;
-			} else {				
-				fromQueryStr = fromBasicQueryStr + " " + getSearchPart(fromBasicQueryStr) + " GROUP BY " + innerGroupByFields;
-				countQueryStr = "SELECT DISTINCT COUNT(1) OVER () " + fromQueryStr;
-				fromQueryStr = innerSelect + " " + fromQueryStr;
-			}
 
-			queryStr = outerComposerSelect + " FROM ( " + fromQueryStr + " ) tab" + getOrderByPart() + getPagedPart();
+			fromQueryStr = fromBasicQueryStr + " " + getSearchPart(fromBasicQueryStr) + " GROUP BY " + innerGroupByFields;
+			countQueryStr = "SELECT DISTINCT COUNT(1) OVER () " + fromQueryStr;
+			fromQueryStr = innerSelect + " " + fromQueryStr;
+
+			queryStr = outerComposerSelect + " FROM ( " + fromQueryStr + " ) tab" + getOuterOrderByPart() + getPagedPart();
 		} else {
 			String searchPart = getSearchPart(fromBasicQueryStr);
 			queryStr = innerSelect + " " + fromBasicQueryStr + " " + searchPart + getBasicOrderByPart(searchPart) + getPagedPart();
@@ -489,30 +512,6 @@ public class QueryComposer {
 		}
 	}
 
-	public String getCountQueryStr() {
-		if (countQueryStr == null) {
-			getQueryStr();
-		}
-		return countQueryStr;
-	}
-
-	public String getQueryStr() {
-		reset();
-		init();
-		return queryStr;
-	}
-
-	private void addSearchParameters() {
-		if (StringUtils.isNotBlank(queryRequest.getSearchTerm())) {
-			_addParameter(SearchBuilder.SEARCH_TERM_FIELD + Integer.toString(1), "%" + queryRequest.getSearchTerm() + "%");
-		} else {
-			for (int i = 0; i < queryRequest.getSearchTerms().size(); i++) {
-				if (StringUtils.isNotBlank(queryRequest.getSearchTerms().get(i))) {
-					_addParameter(SearchBuilder.SEARCH_TERM_FIELD + Integer.toString(i), "%" + queryRequest.getSearchTerms().get(i) + "%");
-				}
-			}
-		}
-	}
 
 	private String getOuterSelectFields() {
 		String result = OUTER_QUERY_PREFIX + "." + Constants.UUID;
@@ -533,7 +532,7 @@ public class QueryComposer {
 			}
 		}
 		
-		if (applyOuterSearch || applyOuterQuery) {
+		if (applyOuterQuery) {
 			for (FieldItem fieldItem : orderFieldMap.values()) {
 				if (fieldItem != null && !Constants.UUID.equalsIgnoreCase(fieldItem.getAlias()) && selectFieldMap.get(fieldItem.getAlias()) == null) {
 					result += ", " + fieldItem.getInnerPath(rootAlias, groupBy);
@@ -541,14 +540,17 @@ public class QueryComposer {
 			}
 		}
 
-		if (applyOuterSearch) {
-			for (FieldItem fieldItem : fieldMap.values()) {
-				if (!Constants.UUID.equalsIgnoreCase(fieldItem.getAlias()) && selectFieldMap.get(fieldItem.getAlias()) == null && orderFieldMap.get(fieldItem.getAlias()) == null) {
-					result += ", " + fieldItem.getInnerPath(rootAlias, groupBy);
-				}
-			}
+		return result;
+	}
+	
+	List<SelectField> getSelectFields() {		
+		List<SelectField> result = new ArrayList<>();
+		SelectField selectField = new SelectField(Constants.UUID, rootAlias + "." + Constants.UUID);
+		result.add(selectField);
+		for (FieldItem fieldItem : selectFieldMap.values()) {
+			selectField = new SelectField(fieldItem.getAlias(), fieldItem.getInnerPath(rootAlias));
+			result.add(selectField);
 		}
-
 		return result;
 	}
 
@@ -564,10 +566,6 @@ public class QueryComposer {
 		return result == null ? "" : ((StringUtils.isNotBlank(fromBasicQueryStr) && fromBasicQueryStr.contains(" WHERE ") ? "AND " : "WHERE ") + result);
 	}
 
-	private String getOrderByPart() {
-		return " ORDER BY " + QueryOrderUtil.applyOrder(orderBuilder.getOrderFields());
-	}
-	
 	private void initPart() {
 		for (Runnable initRunner : initRunners) {
 			initRunner.run();
@@ -605,6 +603,10 @@ public class QueryComposer {
 		return (searchPart.length() == 0 || searchPart.substring(searchPart.length() - 1).equals(" ") ? "" : " ") 
 				+ "ORDER BY " + QueryOrderUtil.applyOrder(orderBuilder.getOrderFields());
 	}
+	
+	private String getOuterOrderByPart() {
+		return " ORDER BY " + QueryOrderUtil.applyOrder(orderBuilder.getOrderFields());
+	}
 
 	private String getPagedPart() {
 		return QueryRequestUtil.isPaged(queryRequest) ? " LIMIT ?limit OFFSET ?offset" : "";
@@ -623,19 +625,14 @@ public class QueryComposer {
 		if (fieldItem == null) {
 			fieldItem = fieldMap.get(path);
 		}
-		String outerQueryResult = OUTER_QUERY_PREFIX + "." + fieldItem.getAlias();
 		String[] pathParts = path.split("\\.");
 		if (pathParts.length == 1 && aliasResolverMap.get(path) == null) {
 			throw new IllegalArgumentException("Unknown alias: " + path);
 		}
-		if (applyOuterSearch) {
-			result = outerQueryResult;
+		if (pathParts.length == 1 && aliasResolverMap.get(path) != null) {
+			result = aliasResolverMap.get(path);
 		} else {
-			if (pathParts.length == 1 && aliasResolverMap.get(path) != null) {
-				result = aliasResolverMap.get(path);
-			} else {
-				result = path;
-			}
+			result = path;
 		}
 		return result;
 
@@ -679,6 +676,41 @@ public class QueryComposer {
 			}
 		}
 		return false;
+	}
+	
+	void select(String customSelectPart) {
+		this.customSelectPart = customSelectPart;
+	}
+	
+	String buildSelectResult() {
+		String selectPart = getInnerFields(false);
+		if (customSelectPart == null && StringUtils.isBlank(selectPart)) {
+			customSelectPart = "*";
+		}
+		return "SELECT " + (customSelectPart == null ? selectPart : customSelectPart);
+	}
+	
+	void orderBy(String customOrderByPart) {
+		this.customOrderByPart = customOrderByPart;
+	}
+	
+	String buildOrderByResult() {
+		if (customOrderByPart == null &&  CollectionUtils.isEmpty(orderBuilder.getOrderFields())) {
+			return "";
+		}
+		return "ORDER BY " + (customOrderByPart == null ? QueryOrderUtil.applyOrder(orderBuilder.getOrderFields()) : customOrderByPart);
+	}
+	
+	void groupBy(String customGroupByPart) {
+		this.customGroupByPart = customGroupByPart;
+	}
+	
+	String buildGroupByResult() {
+		String groupByPart = isDistinct() ? getInnerFields(true) : null;
+		if (customGroupByPart == null && StringUtils.isBlank(groupByPart)) {
+			return "";
+		}
+		return "GROUP BY " + (customGroupByPart == null ? groupByPart : customGroupByPart);
 	}
 
 }

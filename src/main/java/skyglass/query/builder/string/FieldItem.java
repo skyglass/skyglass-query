@@ -1,4 +1,4 @@
-package skyglass.query.composer;
+package skyglass.query.builder.string;
 
 public class FieldItem {
 
@@ -25,7 +25,7 @@ public class FieldItem {
 		return getInnerPath(rootAlias) + (!groupBy && useAsAlias ? " AS " + alias : "");
 	}
 
-	private String getInnerPath(String rootAlias) {
+	String getInnerPath(String rootAlias) {
 		return addRootAlias ? (rootAlias + "." + alias) : innerPath;
 	}
 

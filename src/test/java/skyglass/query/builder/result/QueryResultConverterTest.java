@@ -10,13 +10,13 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import skyglass.query.DateUtil;
-import skyglass.query.builder.string.QueryStringBuilder;
+import skyglass.query.builder.string.QueryComposer;
 
 public class QueryResultConverterTest {
 
 	@Test
 	public void testSimpleConverter() {
-		List<MockEntity> list = TestQueryManager.getEntityTestList(QueryStringBuilder.nativ().select("*").from("SpaceMission sm"), getEntityListSupplier(), MockEntity.class);
+		List<MockEntity> list = TestQueryManager.getEntityTestList(QueryComposer.nativ().select("*").from("SpaceMission sm"), getEntityListSupplier(), MockEntity.class);
 		Assert.assertEquals("test1", list.get(0).getTest());
 		Assert.assertEquals("test2", list.get(1).getTest());
 		Assert.assertEquals("test3", list.get(2).getTest());
@@ -24,7 +24,7 @@ public class QueryResultConverterTest {
 
 	@Test
 	public void testSimpleNativeConverter() { 
-		List<MockDTO> list = TestQueryManager.getNativeTestList(QueryStringBuilder.nativ().select("test").from("SpaceMission sm"), getDTOSupplier(), getNativeListSupplier());
+		List<MockDTO> list = TestQueryManager.getNativeTestList(QueryComposer.nativ().select("test").from("SpaceMission sm"), getDTOSupplier(), getNativeListSupplier());
 		Assert.assertEquals("test1", list.get(0).getTest());
 		Assert.assertEquals("test2", list.get(1).getTest());
 		Assert.assertEquals("test3", list.get(2).getTest());
@@ -32,7 +32,7 @@ public class QueryResultConverterTest {
 
 	@Test
 	public void testDateNativeConverter() {
-		List<MockDTO> list = TestQueryManager.getNativeTestList(QueryStringBuilder.nativ().select("testDate").from("SpaceMission sm"), getDTOSupplier(), getNativeDateListSupplier());
+		List<MockDTO> list = TestQueryManager.getNativeTestList(QueryComposer.nativ().select("testDate").from("SpaceMission sm"), getDTOSupplier(), getNativeDateListSupplier());
 		Assert.assertEquals("2018-01-01", DateUtil.format(list.get(0).getTestDate()));
 		Assert.assertEquals("2018-03-01", DateUtil.format(list.get(1).getTestDate()));
 		Assert.assertEquals("2018-05-01", DateUtil.format(list.get(2).getTestDate()));
@@ -40,7 +40,7 @@ public class QueryResultConverterTest {
 
 	@Test
 	public void testEnumNativeConverter() {
-		List<MockDTO> list = TestQueryManager.getNativeTestList(QueryStringBuilder.nativ().select("testEnum").from("SpaceMission sm"), getDTOSupplier(), getNativeEnumListSupplier());
+		List<MockDTO> list = TestQueryManager.getNativeTestList(QueryComposer.nativ().select("testEnum").from("SpaceMission sm"), getDTOSupplier(), getNativeEnumListSupplier());
 		Assert.assertEquals(MockEnum.Test1, list.get(0).getTestEnum());
 		Assert.assertEquals(MockEnum.Test2, list.get(1).getTestEnum());
 		Assert.assertEquals(MockEnum.Test3, list.get(2).getTestEnum());
@@ -48,7 +48,7 @@ public class QueryResultConverterTest {
 
 	@Test
 	public void testEntityDtoConverter() {
-		List<MockDTO> list = TestQueryManager.getEntityDtoTestList(QueryStringBuilder.jpa("sm").select("*").from("SpaceMission sm"), getEntityDtoConverter(), getEntityListSupplier(),
+		List<MockDTO> list = TestQueryManager.getEntityDtoTestList(QueryComposer.jpa("sm").select("*").from("SpaceMission sm"), getEntityDtoConverter(), getEntityListSupplier(),
 				MockEntity.class);
 		Assert.assertEquals("test1", list.get(0).getTest());
 		Assert.assertEquals("test2", list.get(1).getTest());
@@ -57,7 +57,7 @@ public class QueryResultConverterTest {
 
 	@Test
 	public void testDtoDtoConverter() {
-		List<MockDTO2> list = TestQueryManager.getDtoDtoTestList(QueryStringBuilder.nativ().select("test").from("SpaceMission sm"), getDTOSupplier(), getDto1Dto2Converter(),
+		List<MockDTO2> list = TestQueryManager.getDtoDtoTestList(QueryComposer.nativ().select("test").from("SpaceMission sm"), getDTOSupplier(), getDto1Dto2Converter(),
 				getNativeListSupplier());
 		Assert.assertEquals("test1", list.get(0).getTest());
 		Assert.assertEquals("test2", list.get(1).getTest());

@@ -19,7 +19,7 @@ public class NativeQueryResultProvider implements QueryResultProvider<Object[]> 
 	}
 
 	@Override
-	public List<Object[]> getResult(QueryStringBuilder builder, List<String> uuidList) {
+	public List<Object[]> getResult(QueryComposer builder, List<String> uuidList) {
 		Query nativeQuery = entityManager.createNativeQuery(builder.buildResultFromUuidList(uuidList));
 		setParameters(nativeQuery, builder);
 		@SuppressWarnings("unchecked")
@@ -28,7 +28,7 @@ public class NativeQueryResultProvider implements QueryResultProvider<Object[]> 
 	}
 
 	@Override
-	public List<Object[]> getPagedResult(QueryStringBuilder builder, int firstResult, int maxResults) {
+	public List<Object[]> getPagedResult(QueryComposer builder, int firstResult, int maxResults) {
 		Query nativeQuery = entityManager.createNativeQuery(builder.build());
 		setParameters(nativeQuery, builder);
 		nativeQuery.setFirstResult(firstResult);
@@ -39,7 +39,7 @@ public class NativeQueryResultProvider implements QueryResultProvider<Object[]> 
 	}
 
 	@Override
-	public List<Object[]> getUnpagedResult(QueryStringBuilder builder) {
+	public List<Object[]> getUnpagedResult(QueryComposer builder) {
 		Query nativeQuery = entityManager.createNativeQuery(builder.build());
 		setParameters(nativeQuery, builder);
 		@SuppressWarnings("unchecked")
@@ -48,7 +48,7 @@ public class NativeQueryResultProvider implements QueryResultProvider<Object[]> 
 	}
 
 	@Override
-	public int getTotalCount(QueryStringBuilder builder) {
+	public int getTotalCount(QueryComposer builder) {
 		Query nativeQuery = entityManager.createNativeQuery(builder.buildCountPart());
 		setParameters(nativeQuery, builder);
 		Long result = (Long) QueryResultUtil.getSingleResult(nativeQuery);
@@ -56,7 +56,7 @@ public class NativeQueryResultProvider implements QueryResultProvider<Object[]> 
 	}
 
 	@Override
-	public List<String> getUuidList(QueryStringBuilder builder, int firstResult, int maxResults) {
+	public List<String> getUuidList(QueryComposer builder, int firstResult, int maxResults) {
 		Query nativeQuery = entityManager.createNativeQuery(builder.buildUuidListPart());
 		setParameters(nativeQuery, builder);
 		nativeQuery.setFirstResult(firstResult);
@@ -66,7 +66,7 @@ public class NativeQueryResultProvider implements QueryResultProvider<Object[]> 
 		return results;
 	}
 
-	private void setParameters(Query nativeQuery, QueryStringBuilder builder) {
+	private void setParameters(Query nativeQuery, QueryComposer builder) {
 		for (QueryParam queryParam : builder.getParams()) {
 			if (queryParam.getValue() instanceof Date) {
 				nativeQuery.setParameter(queryParam.getName(), (Date) queryParam.getValue(), TemporalType.TIMESTAMP);

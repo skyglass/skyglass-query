@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.function.Supplier;
 
 import skyglass.query.builder.result.QueryResultProvider;
-import skyglass.query.builder.string.QueryStringBuilder;
+import skyglass.query.builder.string.QueryComposer;
 
 public class TestResultProvider<T> implements QueryResultProvider<T> {
 
@@ -15,27 +15,27 @@ public class TestResultProvider<T> implements QueryResultProvider<T> {
 	}
 
 	@Override
-	public List<T> getResult(QueryStringBuilder builder, List<String> uuidList) {
+	public List<T> getResult(QueryComposer builder, List<String> uuidList) {
 		return listSupplier.get();
 	}
 
 	@Override
-	public List<T> getPagedResult(QueryStringBuilder builder, int firstResult, int maxResults) {
+	public List<T> getPagedResult(QueryComposer builder, int firstResult, int maxResults) {
 		return listSupplier.get();
 	}
 
 	@Override
-	public List<T> getUnpagedResult(QueryStringBuilder builder) {
+	public List<T> getUnpagedResult(QueryComposer builder) {
 		return listSupplier.get();
 	}
 
 	@Override
-	public int getTotalCount(QueryStringBuilder builder) {
+	public int getTotalCount(QueryComposer builder) {
 		return 1;
 	}
 
 	@Override
-	public List<String> getUuidList(QueryStringBuilder builder, int firstResult, int maxResults) {
+	public List<String> getUuidList(QueryComposer builder, int firstResult, int maxResults) {
 		return null;
 	}
 

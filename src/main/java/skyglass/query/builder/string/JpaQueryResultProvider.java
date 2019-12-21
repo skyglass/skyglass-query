@@ -20,7 +20,7 @@ public class JpaQueryResultProvider<T> implements QueryResultProvider<T> {
 	}
 
 	@Override
-	public List<T> getResult(QueryStringBuilder builder, List<String> uuidList) {
+	public List<T> getResult(QueryComposer builder, List<String> uuidList) {
 		TypedQuery<T> typedQuery = entityManager.createQuery(builder.buildResultFromUuidList(uuidList), type);
 		setParameters(typedQuery, builder);
 		List<T> results = QueryResultUtil.getListResult(typedQuery);
@@ -28,7 +28,7 @@ public class JpaQueryResultProvider<T> implements QueryResultProvider<T> {
 	}
 
 	@Override
-	public List<T> getPagedResult(QueryStringBuilder builder, int firstResult, int maxResults) {
+	public List<T> getPagedResult(QueryComposer builder, int firstResult, int maxResults) {
 		TypedQuery<T> typedQuery = entityManager.createQuery(builder.build(), type);
 		setParameters(typedQuery, builder);
 		typedQuery.setFirstResult(firstResult);
@@ -38,7 +38,7 @@ public class JpaQueryResultProvider<T> implements QueryResultProvider<T> {
 	}
 
 	@Override
-	public List<T> getUnpagedResult(QueryStringBuilder builder) {
+	public List<T> getUnpagedResult(QueryComposer builder) {
 		TypedQuery<T> typedQuery = entityManager.createQuery(builder.build(), type);
 		setParameters(typedQuery, builder);
 		List<T> results = QueryResultUtil.getListResult(typedQuery);
@@ -46,7 +46,7 @@ public class JpaQueryResultProvider<T> implements QueryResultProvider<T> {
 	}
 
 	@Override
-	public int getTotalCount(QueryStringBuilder builder) {
+	public int getTotalCount(QueryComposer builder) {
 		TypedQuery<Long> typedQuery = entityManager.createQuery(builder.buildCountPart(), Long.class);
 		setParameters(typedQuery, builder);
 		Long result = QueryResultUtil.getSingleResult(typedQuery);
@@ -54,7 +54,7 @@ public class JpaQueryResultProvider<T> implements QueryResultProvider<T> {
 	}
 
 	@Override
-	public List<String> getUuidList(QueryStringBuilder builder, int firstResult, int maxResults) {
+	public List<String> getUuidList(QueryComposer builder, int firstResult, int maxResults) {
 		TypedQuery<String> typedQuery = entityManager.createQuery(builder.buildUuidListPart(), String.class);
 		setParameters(typedQuery, builder);
 		typedQuery.setFirstResult(firstResult);
@@ -63,7 +63,7 @@ public class JpaQueryResultProvider<T> implements QueryResultProvider<T> {
 		return results;
 	}
 
-	private void setParameters(TypedQuery<?> typedQuery, QueryStringBuilder builder) {
+	private void setParameters(TypedQuery<?> typedQuery, QueryComposer builder) {
 		for (QueryParam queryParam : builder.getParams()) {
 			typedQuery.setParameter(queryParam.getName(), queryParam.getValue());
 		}

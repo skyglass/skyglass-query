@@ -12,7 +12,7 @@ import skyglass.query.builder.result.QueryManager;
 public class NativeQueryBuilder {
 
 	@SuppressWarnings("unchecked")
-	public static <T> List<T> getListResult(QueryManager queryManager, QueryStringBuilder queryStringBuilder) {
+	public static <T> List<T> getListResult(QueryManager queryManager, QueryComposer queryStringBuilder) {
 		Query nativeQuery = queryManager.createNativeQuery(queryStringBuilder.build());
 		for (QueryParam queryParam : queryStringBuilder.getParams()) {
 			if (queryParam.getValue() instanceof Date) {

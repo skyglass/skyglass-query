@@ -13,7 +13,7 @@ import org.apache.commons.collections.CollectionUtils;
 
 import skyglass.query.EnumUtil;
 import skyglass.query.builder.QueryResult;
-import skyglass.query.builder.string.QueryStringBuilder;
+import skyglass.query.builder.string.QueryComposer;
 import skyglass.query.builder.string.SelectField;
 
 class QueryResultConverter<T, DTO, DTO2> extends QueryResultBuilder<T> {
@@ -24,19 +24,19 @@ class QueryResultConverter<T, DTO, DTO2> extends QueryResultBuilder<T> {
 
 	private Function<DTO, DTO2> activeRecordDtoConverter;
 
-	QueryResultConverter(QueryStringBuilder queryStringBuilder, QueryResultProvider<T> queryResultProvider, Function<T, DTO2> dtoConverter) {
+	QueryResultConverter(QueryComposer queryStringBuilder, QueryResultProvider<T> queryResultProvider, Function<T, DTO2> dtoConverter) {
 		this(queryStringBuilder, queryResultProvider, null, dtoConverter, null);
 	}
 
-	QueryResultConverter(QueryStringBuilder queryStringBuilder, QueryResultProvider<T> queryResultProvider, Supplier<DTO> activeRecordSupplier) {
+	QueryResultConverter(QueryComposer queryStringBuilder, QueryResultProvider<T> queryResultProvider, Supplier<DTO> activeRecordSupplier) {
 		this(queryStringBuilder, queryResultProvider, activeRecordSupplier, null, null);
 	}
 
-	QueryResultConverter(QueryStringBuilder queryStringBuilder, QueryResultProvider<T> queryResultProvider, Supplier<DTO> activeRecordSupplier, Function<DTO, DTO2> activeRecordDtoConverter) {
+	QueryResultConverter(QueryComposer queryStringBuilder, QueryResultProvider<T> queryResultProvider, Supplier<DTO> activeRecordSupplier, Function<DTO, DTO2> activeRecordDtoConverter) {
 		this(queryStringBuilder, queryResultProvider, activeRecordSupplier, null, activeRecordDtoConverter);
 	}
 
-	QueryResultConverter(QueryStringBuilder queryStringBuilder, QueryResultProvider<T> queryResultProvider, Supplier<DTO> activeRecordSupplier, Function<T, DTO2> entityDtoConverter,
+	QueryResultConverter(QueryComposer queryStringBuilder, QueryResultProvider<T> queryResultProvider, Supplier<DTO> activeRecordSupplier, Function<T, DTO2> entityDtoConverter,
 			Function<DTO, DTO2> activeRecordDtoConverter) {
 		super(queryStringBuilder, queryResultProvider);
 		this.activeRecordSupplier = activeRecordSupplier;
@@ -60,7 +60,7 @@ class QueryResultConverter<T, DTO, DTO2> extends QueryResultBuilder<T> {
 		return convertActiveRecord().getResult();
 	}
 
-	private QueryResult<DTO> convertActiveRecordList(QueryStringBuilder queryStringBuilder, QueryResult<T> queryResult) {
+	private QueryResult<DTO> convertActiveRecordList(QueryComposer queryStringBuilder, QueryResult<T> queryResult) {
 		List<DTO> activeRecordList = null;
 		if (CollectionUtils.isNotEmpty(queryStringBuilder.getSelectFields()) && activeRecordSupplier != null) {
 			activeRecordList = buildActiveRecordFromSelectFields(queryStringBuilder, queryResult);
@@ -72,7 +72,7 @@ class QueryResultConverter<T, DTO, DTO2> extends QueryResultBuilder<T> {
 	}
 
 	@SuppressWarnings("unchecked")
-	private QueryResult<DTO2> convertDtoList(QueryStringBuilder queryStringBuilder, QueryResult<T> queryResult) {
+	private QueryResult<DTO2> convertDtoList(QueryComposer queryStringBuilder, QueryResult<T> queryResult) {
 		List<DTO2> dtoList = null;
 		if (CollectionUtils.isNotEmpty(queryStringBuilder.getSelectFields()) && activeRecordSupplier != null) {
 			List<DTO> activeRecordList = buildActiveRecordFromSelectFields(queryStringBuilder, queryResult);
@@ -90,7 +90,7 @@ class QueryResultConverter<T, DTO, DTO2> extends QueryResultBuilder<T> {
 		return result;
 	}
 
-	private List<DTO> buildActiveRecordFromSelectFields(QueryStringBuilder queryStringBuilder, QueryResult<T> queryResult) {
+	private List<DTO> buildActiveRecordFromSelectFields(QueryComposer queryStringBuilder, QueryResult<T> queryResult) {
 		List<DTO> activeRecordList = new ArrayList<>();
 		for (T result : queryResult.getResult()) {
 			DTO activeRecord = this.activeRecordSupplier.get();

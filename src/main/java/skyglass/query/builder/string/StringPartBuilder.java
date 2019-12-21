@@ -17,7 +17,7 @@ public class StringPartBuilder {
 
 	private static final String OR_SUFFIX = " )";
 
-	QueryStringBuilder root;
+	QueryComposer root;
 
 	private StringPartBuilder parent;
 
@@ -35,11 +35,11 @@ public class StringPartBuilder {
 
 	private int orCount;
 
-	public StringPartBuilder(QueryStringBuilder root, StringPartBuilder parent) {
+	public StringPartBuilder(QueryComposer root, StringPartBuilder parent) {
 		this(root, parent, null);
 	}
 
-	public StringPartBuilder(QueryStringBuilder root, StringPartBuilder parent, String delimiter) {
+	public StringPartBuilder(QueryComposer root, StringPartBuilder parent, String delimiter) {
 		this.root = root;
 		this.parent = parent;
 		this.delimiter = delimiter;
@@ -138,11 +138,11 @@ public class StringPartBuilder {
 		return this;
 	}
 
-	public QueryStringBuilder end() {
+	public QueryComposer end() {
 		return end(null);
 	}
 
-	public QueryStringBuilder end(StringBuilder part) {
+	public QueryComposer end(StringBuilder part) {
 		buildAll(part, null, null);
 		return root;
 	}
@@ -152,7 +152,7 @@ public class StringPartBuilder {
 		return this;
 	}
 
-	public StringPartBuilder appendBuilder(QueryStringBuilder builder) {
+	public StringPartBuilder appendBuilder(QueryComposer builder) {
 		String result = builder.buildPart();
 		Collection<QueryParam> params = builder.getParams();
 		if (isTrueCondition(params)) {

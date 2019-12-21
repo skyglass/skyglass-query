@@ -1,6 +1,5 @@
 package skyglass.query.builder.string;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -8,24 +7,18 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
-
 import skyglass.query.NativeQueryUtil;
-import skyglass.query.builder.OrderBuilder;
-import skyglass.query.builder.OrderField;
+import skyglass.query.builder.FieldType;
 import skyglass.query.builder.OrderType;
 import skyglass.query.builder.QueryRequestDTO;
 import skyglass.query.builder.QueryResult;
 import skyglass.query.builder.result.QueryManager;
 
-public class QueryStringBuilder {
+public class QueryComposer {
 
 	private StringBuilder fromPart;
 
 	private Map<String, QueryParam> params = new HashMap<>();
-
-	private StringPartBuilder selectPart = new StringPartBuilder(this, null);
 
 	private StringPartBuilder joinPart = new StringPartBuilder(this, null);
 
@@ -37,11 +30,7 @@ public class QueryStringBuilder {
 
 	private StringPartBuilder wherePart = new StringPartBuilder(this, null);
 
-	private StringPartBuilder groupByPart = new StringPartBuilder(this, null);
-
 	private StringPartBuilder havingPart = new StringPartBuilder(this, null);
-
-	private StringPartBuilder orderByPart = new StringPartBuilder(this, null);
 
 	private StringPartBuilder queryPart = new StringPartBuilder(this, null);
 
@@ -51,65 +40,53 @@ public class QueryStringBuilder {
 
 	private QueryRequestDTO queryRequest;
 
-	private OrderBuilder orderBuilder;
-
-	private List<SelectField> selectFields = new ArrayList<SelectField>();
-
 	private QueryType queryType;
+	
+	private QueryComposerBuilder queryComposer;
 
-	private StringBuilder mainSelectResult;
-
-	private boolean distinct = false;
-
-	QueryStringBuilder(QueryRequestDTO queryRequest, String rootAlias, boolean isNative) {
-		this(rootAlias, isNative);
+	QueryComposer(QueryRequestDTO queryRequest, String rootAlias, boolean isNative) {
+		init(rootAlias, isNative);
 		this.queryRequest = queryRequest;
+		this.queryComposer = new QueryComposerBuilder(this, queryRequest, rootAlias);
 	}
 
-	QueryStringBuilder(String rootAlias, boolean isNative) {
+	QueryComposer(String rootAlias, boolean isNative) {
+		init(rootAlias, isNative);
+		this.queryComposer = new QueryComposerBuilder(this, null, rootAlias);
+	}
+	
+	private void init(String rootAlias, boolean isNative) {
 		this.rootAlias = rootAlias;
 		this.queryType = isNative ? QueryType.Native : QueryType.Jpa;
 	}
+	
+	private void initComposer() {
+		queryComposer.resetAndInit();
+	}
 
 	//does nothing, only for indentation
-	public QueryStringBuilder ___________________() {
+	public QueryComposer ___________________() {
 		return this;
 	}
 
-	public static QueryStringBuilder nativ() {
-		QueryStringBuilder result = new QueryStringBuilder(null, true);
+	public static QueryComposer nativ() {
+		QueryComposer result = new QueryComposer(null, true);
 		return result;
 	}
 
-	public static QueryStringBuilder nativ(QueryRequestDTO request) {
-		QueryStringBuilder result = new QueryStringBuilder(request, null, true);
+	public static QueryComposer nativ(QueryRequestDTO request) {
+		QueryComposer result = new QueryComposer(request, null, true);
 		return result;
 	}
 
-	public static QueryStringBuilder jpa(String rootAlias) {
-		QueryStringBuilder result = new QueryStringBuilder(rootAlias, false);
+	public static QueryComposer jpa(String rootAlias) {
+		QueryComposer result = new QueryComposer(rootAlias, false);
 		return result;
 	}
 
-	public static QueryStringBuilder jpa(QueryRequestDTO request, String rootAlias) {
-		QueryStringBuilder result = new QueryStringBuilder(request, rootAlias, false);
+	public static QueryComposer jpa(QueryRequestDTO request, String rootAlias) {
+		QueryComposer result = new QueryComposer(request, rootAlias, false);
 		return result;
-	}
-
-	public StringPartBuilder start(String select, String from) {
-		this.fromPart = new StringBuilder(from);
-		return this.selectPart.start(select);
-	}
-
-	public QueryStringBuilder select(String select) {
-		this.selectPart.build(new StringBuilder(select));
-		return this;
-	}
-
-	public QueryStringBuilder select(String select, String from) {
-		this.fromPart = new StringBuilder(from);
-		this.selectPart.build(new StringBuilder(select));
-		return this;
 	}
 
 	public StringPartBuilder startAndPart() {
@@ -128,7 +105,7 @@ public class QueryStringBuilder {
 		return queryPart.start(part);
 	}
 
-	public QueryStringBuilder part(String part) {
+	public QueryComposer part(String part) {
 		queryPart.build(new StringBuilder(part));
 		return this;
 	}
@@ -137,7 +114,7 @@ public class QueryStringBuilder {
 		params.put(param.getName(), param);
 	}
 
-	public QueryStringBuilder from(String from) {
+	public QueryComposer from(String from) {
 		this.fromPart = new StringBuilder(from);
 		return this;
 	}
@@ -145,8 +122,13 @@ public class QueryStringBuilder {
 	public StringPartBuilder startJoin(String join) {
 		return joinPart.start(join);
 	}
+	
+	public QueryComposer select(String customSelectPart) {
+		queryComposer.select(customSelectPart);
+		return this;
+	}
 
-	public QueryStringBuilder join(String join) {
+	public QueryComposer join(String join) {
 		joinPart.build(new StringBuilder(join));
 		return this;
 	}
@@ -155,7 +137,7 @@ public class QueryStringBuilder {
 		return leftJoinPart.start(join);
 	}
 
-	public QueryStringBuilder leftJoin(String join) {
+	public QueryComposer leftJoin(String join) {
 		leftJoinPart.build(new StringBuilder(join));
 		return this;
 	}
@@ -164,7 +146,7 @@ public class QueryStringBuilder {
 		return joinFetchPart.start(joinFetch);
 	}
 
-	public QueryStringBuilder joinFetch(String joinFetch) {
+	public QueryComposer joinFetch(String joinFetch) {
 		joinFetchPart.build(new StringBuilder(joinFetch));
 		return this;
 	}
@@ -173,7 +155,7 @@ public class QueryStringBuilder {
 		return leftJoinFetchPart.start(joinFetch);
 	}
 
-	public QueryStringBuilder leftJoinFetch(String joinFetch) {
+	public QueryComposer leftJoinFetch(String joinFetch) {
 		leftJoinFetchPart.build(new StringBuilder(joinFetch));
 		return this;
 	}
@@ -194,12 +176,8 @@ public class QueryStringBuilder {
 		return wherePart.start(where).startOr();
 	}
 
-	public StringPartBuilder startGroupBy(String groupBy) {
-		return groupByPart.start(groupBy);
-	}
-
-	public QueryStringBuilder groupBy(String groupBy) {
-		groupByPart.build(new StringBuilder(groupBy));
+	public QueryComposer groupBy(String groupBy) {
+		queryComposer.groupBy(groupBy);
 		return this;
 	}
 
@@ -207,110 +185,88 @@ public class QueryStringBuilder {
 		return havingPart.start(having);
 	}
 
-	public QueryStringBuilder having(String having) {
+	public QueryComposer having(String having) {
 		havingPart.build(new StringBuilder(having));
 		return this;
 	}
 
-	public StringPartBuilder startOrderBy(String orderBy) {
-		return orderByPart.start(orderBy);
-	}
-
-	public QueryStringBuilder orderBy(String orderBy) {
-		orderByPart.build(new StringBuilder(orderBy));
-		return this;
-	}
-
-	public QueryStringBuilder setDistinct(String distinctUuidPart) {
-		this.distinct = true;
+	public QueryComposer setDistinct(String distinctUuidPart) {
+		queryComposer.setDistinct();
 		this.distinctUuidPart = distinctUuidPart;
 		return this;
 	}
 
-	public QueryStringBuilder setPaging(int rowsPerPage, int pageNumber) {
+	public QueryComposer setPaging(int rowsPerPage, int pageNumber) {
 		setRowsPerPage(rowsPerPage);
 		setPageNumber(pageNumber);
 		return this;
 	}
 
-	public QueryStringBuilder setLimit(int offset, int limit) {
+	public QueryComposer setLimit(int offset, int limit) {
 		setOffset(offset);
 		setLimit(limit);
 		return this;
 	}
 
-	public QueryStringBuilder setOffset(int offset) {
+	public QueryComposer setOffset(int offset) {
 		getQueryRequest().setOffset(offset);
 		return this;
 	}
 
-	public QueryStringBuilder setLimit(int limit) {
+	public QueryComposer setLimit(int limit) {
 		getQueryRequest().setLimit(limit);
 		return this;
 	}
 
-	public QueryStringBuilder setRowsPerPage(int rowsPerPage) {
+	public QueryComposer setRowsPerPage(int rowsPerPage) {
 		getQueryRequest().setRowsPerPage(rowsPerPage);
 		return this;
 	}
 
-	public QueryStringBuilder setPageNumber(int pageNumber) {
+	public QueryComposer setPageNumber(int pageNumber) {
 		getQueryRequest().setPageNumber(pageNumber);
 		return this;
 	}
 
-	public QueryStringBuilder setSearchTerm(String searchTerm) {
+	public QueryComposer setSearchTerm(String searchTerm) {
 		getQueryRequest().setSearchTerm(searchTerm);
 		return this;
 	}
 
-	public QueryStringBuilder setOrderField(String orderField) {
+	public QueryComposer setOrderField(String orderField) {
 		getQueryRequest().setOrderField(orderField);
 		return this;
 	}
 
-	public QueryStringBuilder setOrderType(OrderType orderType) {
+	public QueryComposer setOrderType(OrderType orderType) {
 		getQueryRequest().setOrderType(orderType);
 		return this;
 	}
 
-	public QueryStringBuilder setLang(String lang) {
+	public QueryComposer setLang(String lang) {
 		getQueryRequest().setLang(lang);
 		return this;
 	}
 
-	public QueryStringBuilder bindOrder(String alias, String... orderFields) {
-		getOrderBuilder().bindOrder(alias, orderFields);
+	public QueryComposer addOrder(OrderType orderType, String... orderFields) {
+		queryComposer.addOrder(orderType, orderFields);
 		return this;
 	}
 
-	public QueryStringBuilder addOrder(OrderType orderType, String... orderFields) {
-		getOrderBuilder().addOrder(orderType, orderFields);
+	public QueryComposer setOrder(OrderType orderType, String... orderFields) {
+		queryComposer.setOrder(orderType, orderFields);
 		return this;
 	}
 
-	public QueryStringBuilder setOrder(OrderType orderType, String... orderFields) {
-		getOrderBuilder().setOrder(orderType, orderFields);
-		return this;
-	}
-
-	public QueryStringBuilder setDefaultOrder(OrderType orderType, String... orderFields) {
-		getOrderBuilder().setDefaultOrder(orderType, orderFields);
-		return this;
-	}
-
-	public QueryStringBuilder setDefaultOrders(OrderType orderType, String... orderFields) {
-		getOrderBuilder().setDefaultOrders(orderType, orderFields);
+	public QueryComposer setDefaultOrders(OrderType orderType, String... orderFields) {
+		queryComposer.setDefaultOrders(orderType, orderFields);
 		return this;
 	}
 
 	public String build() {
+		initComposer();
 		StringBuilder sb = new StringBuilder();
-		sb.append("SELECT ");
-		if (distinct) {
-			sb.append("DISTINCT ");
-		}
-		build(sb, buildMainSelectResult());
+		buildSelectPart(sb);
 		sb.append(" FROM ");
 		build(sb, fromPart);
 		if (joinPart.hasResult()) {
@@ -333,10 +289,7 @@ public class QueryStringBuilder {
 			sb.append(" WHERE ");
 			build(sb, wherePart.getResult());
 		}
-		if (groupByPart.hasResult()) {
-			sb.append(" GROUP BY ");
-			build(sb, groupByPart.getResult());
-		}
+		buildGroupByPart(sb);
 		if (havingPart.hasResult()) {
 			sb.append(" HAVING ");
 			build(sb, havingPart.getResult());
@@ -353,8 +306,7 @@ public class QueryStringBuilder {
 
 	public String buildResultFromUuidList(List<String> uuidList) {
 		StringBuilder sb = new StringBuilder();
-		sb.append("SELECT ");
-		build(sb, buildMainSelectResult());
+		buildSelectPart(sb);
 		sb.append(" FROM ");
 		build(sb, fromPart);
 		if (joinPart.hasResult()) {
@@ -379,10 +331,7 @@ public class QueryStringBuilder {
 		sb.append(" IN ");
 		build(sb, new StringBuilder(NativeQueryUtil.getInString(uuidList)));
 
-		if (groupByPart.hasResult()) {
-			sb.append(" GROUP BY ");
-			build(sb, groupByPart.getResult());
-		}
+		buildGroupByPart(sb);
 		buildOrderByPart(sb);
 		return sb.toString();
 	}
@@ -398,10 +347,7 @@ public class QueryStringBuilder {
 			sb.append(" WHERE ");
 			build(sb, wherePart.getResult());
 		}
-		if (groupByPart.hasResult()) {
-			sb.append(" GROUP BY ");
-			build(sb, groupByPart.getResult());
-		}
+		buildGroupByPart(sb);
 		if (havingPart.hasResult()) {
 			sb.append(" HAVING ");
 			build(sb, havingPart.getResult());
@@ -420,10 +366,7 @@ public class QueryStringBuilder {
 			sb.append(" WHERE ");
 			build(sb, wherePart.getResult());
 		}
-		if (groupByPart.hasResult()) {
-			sb.append(" GROUP BY ");
-			build(sb, groupByPart.getResult());
-		}
+		buildGroupByPart(sb);
 		if (havingPart.hasResult()) {
 			sb.append(" HAVING ");
 			build(sb, havingPart.getResult());
@@ -483,45 +426,132 @@ public class QueryStringBuilder {
 	}
 
 	public boolean isDistinct() {
-		return distinct;
-	}
-
-	QueryStringBuilder buildOrder(List<OrderField> orderFields) {
-		if (!orderByPart.isAlreadyBuilt()) {
-			orderByPart.append(QueryProcessor.applyOrder(orderFields));
-		}
-		return this;
-	}
-
-	QueryStringBuilder buildSelect(List<SelectField> selectFields) {
-		this.selectFields = selectFields;
-		return this;
+		return queryComposer.isDistinct();
 	}
 
 	public List<SelectField> getSelectFields() {
-		buildMainSelectResult();
-		return selectFields;
+		return queryComposer.getSelectFields();
+	}
+	
+	private void buildSelectPart(StringBuilder sb) {
+		String result = queryComposer.buildSelectResult();
+		if (result != null) {
+			build(sb, new StringBuilder(result));
+		}
+	}
+	
+	private void buildOrderByPart(StringBuilder sb) {
+		String result = queryComposer.buildOrderByResult();
+		if (result != null) {
+			build(sb, new StringBuilder(result));
+		}
+	}
+	
+	private void buildGroupByPart(StringBuilder sb) {
+		String result = queryComposer.buildGroupByResult();
+		if (result != null) {
+			build(sb, new StringBuilder(result));
+		}
+	}	
+	
+	public QueryComposer setDistinct() {
+		queryComposer.setDistinct();
+		return this;
+	}
+	
+	public QueryComposer setDistinct(boolean distinct) {
+		queryComposer.setDistinct(distinct);
+		return this;
 	}
 
-	private StringBuilder buildMainSelectResult() {
-		if (mainSelectResult != null) {
-			return mainSelectResult;
-		}
-		mainSelectResult = new StringBuilder();
-		String selectResult = selectPart.getResult().toString();
-		if (StringUtils.isNotBlank(selectResult)) {
-			mainSelectResult.append(selectResult);
-			if (CollectionUtils.isNotEmpty(selectFields)) {
-				mainSelectResult.append(", ");
-			}
-		}
-		if (CollectionUtils.isNotEmpty(selectFields)) {
-			mainSelectResult.append(QueryProcessor.applySelect(selectFields));
-		}
-		selectFields.addAll(QueryProcessor.parseSelect(selectResult));
-		return mainSelectResult;
+	public QueryComposer add(String queryPart) {
+		queryComposer.add(queryPart);
+		return this;
 	}
 
+	public QueryComposer addDistinct(String queryPart) {
+		queryComposer.addDistinct(queryPart);
+		return this;
+	}
+
+	public QueryComposer add(String queryPart, boolean distinct) {
+		queryComposer.add(queryPart, distinct);
+		return this;
+	}
+
+	public QueryComposer addConditional(String queryPart, String... aliases) {
+		queryComposer.addConditional(queryPart, aliases);
+		return this;
+	}
+
+	public QueryComposer addDistinctConditional(String queryPart, String... aliases) {
+		queryComposer.addDistinctConditional(queryPart, aliases);
+		return this;
+	}
+
+	public QueryComposer addConditional(String queryPart, boolean distinct, String... aliases) {
+		queryComposer.addConditional(queryPart, distinct, aliases);
+		return this;
+	}
+	
+	public QueryComposer addSearch(String... paths) {
+		queryComposer.addSearch(paths);
+		return this;
+	}
+
+	public QueryComposer addAliasResolver(String alias, String path) {
+		queryComposer.addAliasResolver(alias, path);
+		return this;
+	}
+	
+	public QueryComposer setDefaultOrder(OrderType orderType, FieldType fieldType, String... path) {
+		queryComposer.setDefaultOrder(orderType, fieldType, path);
+		return this;
+	}
+
+	public QueryComposer setDefaultOrder(OrderType orderType, String... path) {
+		queryComposer.setDefaultOrder(orderType, path);
+		return this;
+	}
+
+	public QueryComposer setDefaultOrder(String alias, OrderType orderType, FieldType fieldType, String... path) {
+		queryComposer.setDefaultOrder(orderType, fieldType, path);
+		return this;
+	}
+
+	public QueryComposer setDefaultOrder(String alias, OrderType orderType, String... path) {
+		queryComposer.setDefaultOrder(alias, orderType, path);
+		return this;
+	}
+
+	public QueryComposer bindOrder(String name, FieldType fieldType, String... path) {
+		queryComposer.bindOrder(name, fieldType, path);
+		return this;
+	}
+
+	public QueryComposer bindOrder(String name, String... path) {
+		queryComposer.bindOrder(name, path);
+		return this;
+	}
+	
+	public QueryComposer addSelect(String selectString) {
+		queryComposer.addSelect(selectString);
+		return this;
+	}
+
+	public QueryComposer addSelect(String alias, String path) {
+		queryComposer.addSelect(alias, path);
+		return this;
+	}
+	
+	public String getCountQueryStr() {
+		return queryComposer.getCountQueryStr();
+	}
+
+	public String getQueryStr() {
+		return queryComposer.getQueryStr();
+	}		
+	
 	private void build(StringBuilder result, StringBuilder part) {
 		if (part != null && part.length() > 0) {
 			result.append(part);
@@ -533,21 +563,6 @@ public class QueryStringBuilder {
 			queryRequest = new QueryRequestDTO();
 		}
 		return queryRequest;
-	}
-
-	private OrderBuilder getOrderBuilder() {
-		if (orderBuilder == null) {
-			orderBuilder = new OrderBuilder(getQueryRequest());
-		}
-		return orderBuilder;
-	}
-
-	private void buildOrderByPart(StringBuilder sb) {
-		buildOrder(getOrderBuilder().getOrderFields());
-		if (orderByPart.hasResult()) {
-			sb.append(" ORDER BY ");
-			build(sb, orderByPart.getResult());
-		}
 	}
 
 }
