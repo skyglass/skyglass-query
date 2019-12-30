@@ -7,11 +7,15 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
+
 import skyglass.query.NativeQueryUtil;
 import skyglass.query.builder.FieldType;
 import skyglass.query.builder.OrderType;
 import skyglass.query.builder.QueryRequestDTO;
 import skyglass.query.builder.QueryResult;
+import skyglass.query.builder.config.Constants;
 import skyglass.query.builder.result.QueryManager;
 
 public class QueryComposer {
@@ -563,6 +567,14 @@ public class QueryComposer {
 			queryRequest = new QueryRequestDTO();
 		}
 		return queryRequest;
+	}
+	
+	boolean shouldBeAdded(Collection<String> aliases) {
+		return queryComposer.shouldBeAdded(aliases);
+	}
+	
+	boolean shouldBeAdded(boolean isDistinct, Collection<String> aliases) {
+		return queryComposer.shouldBeAdded(isDistinct, aliases);
 	}
 
 }

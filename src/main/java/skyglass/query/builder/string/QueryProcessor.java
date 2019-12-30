@@ -66,6 +66,10 @@ public class QueryProcessor {
 	public static String applySearch(QueryRequestDTO queryRequest, SearchType searchType, boolean translatable, boolean nativeQuery, String... searchFields) {
 		return QuerySearchUtil.applySearch(queryRequest, searchType, translatable, nativeQuery, searchFields);
 	}
+	
+	public static String applySearch(QueryRequestDTO queryRequest, SearchType searchType, String searchTermField, boolean translatable, boolean nativeQuery, String... searchFields) {
+		return QuerySearchUtil.applySearch(queryRequest, searchType, searchTermField, translatable, nativeQuery, searchFields);
+	}
 
 	public static String applySearch(boolean nativeQuery, SearchBuilder searchBuilder) {
 		return QuerySearchUtil.applySearch(nativeQuery, searchBuilder);

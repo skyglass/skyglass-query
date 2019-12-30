@@ -261,6 +261,10 @@ public class QueryComposerBuilder {
 
 	private boolean shouldBeAdded(QueryPart queryPart) {
 		Collection<String> aliases = queryMap.get(queryPart.getQueryPart());
+		return shouldBeAdded(queryPart.isDistinct(), aliases);
+	}
+	
+	public boolean shouldBeAdded(Collection<String> aliases) {
 		if (CollectionUtils.isEmpty(aliases)) {
 			return false;
 		}
@@ -280,7 +284,12 @@ public class QueryComposerBuilder {
 				}
 			}
 		}
-		if (result && queryPart.isDistinct()) {
+		return result;
+	}
+	
+	public boolean shouldBeAdded(boolean isDistinct, Collection<String> aliases) {
+		boolean result = shouldBeAdded(aliases);
+		if (result && isDistinct) {
 			this.applyOuterQuery = true;
 		}
 		return result;

@@ -25,7 +25,11 @@ public class StringPartBuilder {
 
 	private Collection<QueryParam> params = new ArrayList<>();
 
+	private Collection<String> aliases = new ArrayList<>();
+	
 	private boolean condition = true;
+	
+	private boolean distinct;
 
 	private boolean alreadyBuilt;
 
@@ -162,13 +166,35 @@ public class StringPartBuilder {
 		return this;
 	}
 
+	public StringPartBuilder addAliases(String... aliases) {
+		return addAliases(false, aliases);
+	}
+	
+	public StringPartBuilder addAliases(boolean distinct, String... aliases) {
+		this.distinct = distinct;
+		for (String alias: aliases) {
+			this.aliases.add(alias);
+		}
+		return this;
+	}
+	
 	public StringPartBuilder setCondition(boolean condition) {
 		this.condition = condition;
 		return this;
 	}
+	
+	public StringPartBuilder setDistinct(boolean distinct) {
+		this.distinct = distinct;
+		return this;
+	}
 
 	public StringPartBuilder addCondition(boolean condition) {
+		return addCondition(condition, false);
+	}
+	
+	public StringPartBuilder addCondition(boolean condition, boolean distinct) {
 		this.condition = this.condition && condition;
+		this.distinct = distinct;
 		return this;
 	}
 
@@ -347,15 +373,27 @@ public class StringPartBuilder {
 	}
 
 	public StringPartBuilder startIf(boolean condition) {
-		return startIf(condition, null);
+		return startIf(condition, false, null);
 	}
 
 	public StringPartBuilder startIf(String part) {
-		return startIf(true, part);
+		return startIf(true, false, part);
 	}
 
 	public StringPartBuilder startIf(boolean condition, String part) {
-		return new StringPartBuilder(root, this).start(part).addCondition(condition);
+		return startIf(condition, false, part);
+	}
+	
+	public StringPartBuilder startIf(boolean condition, boolean distinct, String part) {
+		return new StringPartBuilder(root, this).start(part).addCondition(condition, distinct);
+	}
+
+	public StringPartBuilder startIf(String part, String... aliases) {
+		return startIf(false, part, aliases);
+	}
+	
+	public StringPartBuilder startIf(boolean distinct, String part, String... aliases) {
+		return new StringPartBuilder(root, this).start(part).addAliases(distinct, aliases);
 	}
 
 	public StringPartBuilder startElse() {
@@ -485,6 +523,9 @@ public class StringPartBuilder {
 	}
 
 	private boolean isFalseCondition(Collection<QueryParam> params) {
+		if (CollectionUtils.isNotEmpty(aliases) && !root.shouldBeAdded(distinct, aliases)) {
+			return true;
+		}
 		if (!condition) {
 			return true;
 		}
@@ -549,7 +590,7 @@ public class StringPartBuilder {
 
 	private StringPartBuilder addSearch(String paramName, String paramValue, SearchType searchType, boolean translatable, String... searchFields) {
 		setSearchParameter(paramName, paramValue, searchType);
-		append(QueryProcessor.applySearch(root.getQueryRequest(), searchType, translatable, root.isNativeQuery(), searchFields));
+		append(QueryProcessor.applySearch(root.getQueryRequest(), searchType, paramName, translatable, root.isNativeQuery(), searchFields));
 		return this;
 	}
 

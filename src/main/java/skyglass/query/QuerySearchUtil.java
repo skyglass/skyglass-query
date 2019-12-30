@@ -2,6 +2,8 @@ package skyglass.query;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -10,8 +12,11 @@ import skyglass.query.builder.QueryRequestDTO;
 import skyglass.query.builder.SearchBuilder;
 import skyglass.query.builder.SearchField;
 import skyglass.query.builder.SearchType;
+import skyglass.query.builder.config.Language;
 
 public class QuerySearchUtil {
+	
+	private static final List<String> LANGUAGES = Stream.of(Language.values()).map(e -> e.getLanguageCode()).collect(Collectors.toList());
 
 	public static String applySearch(QueryRequestDTO queryRequest, boolean nativeQuery, String... searchFields) {
 		return applySearch(queryRequest, SearchType.IgnoreCase, false, nativeQuery, searchFields);
@@ -30,7 +35,11 @@ public class QuerySearchUtil {
 	}
 
 	public static String applySearch(QueryRequestDTO queryRequest, SearchType searchType, boolean translatable, boolean nativeQuery, String... searchFields) {
-		SearchField search = new SearchField(new FieldResolver(searchFields), SearchBuilder.SEARCH_TERM_FIELD, searchType, translatable, queryRequest.getLang());
+		return applySearch(queryRequest, searchType, SearchBuilder.SEARCH_TERM_FIELD, translatable, nativeQuery, searchFields);
+	}
+	
+	public static String applySearch(QueryRequestDTO queryRequest, SearchType searchType, String searchTermField, boolean translatable, boolean nativeQuery, String... searchFields) {
+		SearchField search = new SearchField(new FieldResolver(searchFields), searchTermField, searchType, translatable, queryRequest.getLang());
 		return applySearch(nativeQuery, true, search);
 	}
 
@@ -122,7 +131,7 @@ public class QuerySearchUtil {
 	}
 
 	private static List<String> getLanguages(SearchField searchField, boolean searchAllTranslations) {
-		return StringUtils.isBlank(searchField.getLang()) || searchAllTranslations ? QueryTranslationUtil.LANGUAGES : Collections.singletonList(searchField.getLang());
+		return StringUtils.isBlank(searchField.getLang()) || searchAllTranslations ? LANGUAGES : Collections.singletonList(searchField.getLang());
 	}
 
 }

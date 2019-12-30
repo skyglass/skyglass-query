@@ -21,7 +21,7 @@ public class QueryComposerSearchTest {
 				.appendNullable("sm.test = ?test")
 				.addSearch("sm.test1", "sm.test2")
 				.end();
-		Assert.assertEquals("SELECT * FROM SpaceMission sm WHERE sm.test = ?test AND ( LOWER(sm.test1) LIKE LOWER(?searchTerm) OR LOWER(sm.test2) LIKE LOWER(?searchTerm) )", testBuilder.build());
+		Assert.assertEquals("SELECT * FROM SpaceMission sm WHERE sm.test = ?test AND ( ( LOWER(sm.test1) LIKE LOWER(?searchTerm) OR LOWER(sm.test2) LIKE LOWER(?searchTerm) ) )", testBuilder.build());
 		checkParam("test", "not null", testBuilder);
 		checkParam("searchTerm", "%findme%", testBuilder);
 	}
@@ -51,6 +51,7 @@ public class QueryComposerSearchTest {
 		QueryComposer testBuilder = QueryComposer
 				.nativ(MockQueryRequestDto.create(value))
 				.setSearchTerm("findme")
+				.setLang("cn")
 				.select("*")
 				.from("SpaceMission sm")
 				.startAndWhere()
@@ -58,10 +59,10 @@ public class QueryComposerSearchTest {
 				.addTranslatableSearch("sm.test1", "sm.test2")
 				.end();
 		Assert.assertEquals(
-				"SELECT * FROM SpaceMission sm WHERE sm.test = ?test AND ( LOWER(sm.test1.cn) LIKE LOWER(?searchTerm) OR LOWER(sm.test1.de) LIKE LOWER(?searchTerm) OR LOWER(sm.test1.en) LIKE LOWER(?searchTerm) OR LOWER(sm.test1.es) LIKE LOWER(?searchTerm) "
-						+ "OR LOWER(sm.test1.fr) LIKE LOWER(?searchTerm) OR LOWER(sm.test1.jp) LIKE LOWER(?searchTerm) OR LOWER(sm.test1.pt) LIKE LOWER(?searchTerm) "
-						+ "OR LOWER(sm.test2.cn) LIKE LOWER(?searchTerm) OR LOWER(sm.test2.de) LIKE LOWER(?searchTerm) OR LOWER(sm.test2.en) LIKE LOWER(?searchTerm) OR LOWER(sm.test2.es) LIKE LOWER(?searchTerm) OR LOWER(sm.test2.fr) "
-						+ "LIKE LOWER(?searchTerm) OR LOWER(sm.test2.jp) LIKE LOWER(?searchTerm) OR LOWER(sm.test2.pt) LIKE LOWER(?searchTerm) )",
+				"SELECT * FROM SpaceMission sm WHERE sm.test = ?test AND ( ( LOWER(sm.test1.en) LIKE LOWER(?searchTerm) OR LOWER(sm.test1.de) LIKE LOWER(?searchTerm) OR LOWER(sm.test1.cn) LIKE LOWER(?searchTerm) OR LOWER(sm.test1.jp) LIKE LOWER(?searchTerm) "
+						+ "OR LOWER(sm.test1.es) LIKE LOWER(?searchTerm) OR LOWER(sm.test1.fr) LIKE LOWER(?searchTerm) OR LOWER(sm.test1.pt) LIKE LOWER(?searchTerm) "
+						+ "OR LOWER(sm.test1.it) LIKE LOWER(?searchTerm) OR LOWER(sm.test2.en) LIKE LOWER(?searchTerm) OR LOWER(sm.test2.de) LIKE LOWER(?searchTerm) OR LOWER(sm.test2.cn) LIKE LOWER(?searchTerm) OR LOWER(sm.test2.jp) LIKE LOWER(?searchTerm) OR LOWER(sm.test2.es) "
+						+ "LIKE LOWER(?searchTerm) OR LOWER(sm.test2.fr) LIKE LOWER(?searchTerm) OR LOWER(sm.test2.pt) LIKE LOWER(?searchTerm) OR LOWER(sm.test2.it) LIKE LOWER(?searchTerm) ) )",
 				testBuilder.build());
 		checkParam("test", "not null", testBuilder);
 		checkParam("searchTerm", "%findme%", testBuilder);
@@ -79,7 +80,7 @@ public class QueryComposerSearchTest {
 				.from("SpaceMission sm")
 				.startAndWhere()
 				.appendNullable("sm.test = ?test")
-				.addTranslatableSearch("sm.test1", "sm.test2")
+				.addSearch("sm.test1.es", "sm.test2.es")
 				.end();
 		Assert.assertEquals(
 				"SELECT * FROM SpaceMission sm WHERE sm.test = ?test AND ( ( LOWER(sm.test1.es) LIKE LOWER(?searchTerm) OR LOWER(sm.test2.es) LIKE LOWER(?searchTerm) ) )",
@@ -101,11 +102,11 @@ public class QueryComposerSearchTest {
 				.startAndWhere()
 				.appendNullable("sm.test = ?test")
 				.startOr()
-				.__().addTranslatableSearch("sm.test1", "sm.test2")
+				.__().addSearch("sm.test1.es", "sm.test2.es")
 				.__().addSearch("searchTerm2", "findme2", SearchType.StartsIgnoreCase, "sm.test3")
 				.end();
 		Assert.assertEquals(
-				"SELECT * FROM SpaceMission sm WHERE sm.test = ?test AND ( ( LOWER(sm.test1.es) LIKE LOWER(?searchTerm) OR LOWER(sm.test2.es) LIKE LOWER(?searchTerm) ) OR ( LOWER(sm.test3) LIKE LOWER(?searchTerm2) ) )",
+				"SELECT * FROM SpaceMission sm WHERE sm.test = ?test AND ( ( ( LOWER(sm.test1.es) LIKE LOWER(?searchTerm) OR LOWER(sm.test2.es) LIKE LOWER(?searchTerm) ) ) OR ( ( LOWER(sm.test3) LIKE LOWER(?searchTerm2) ) ) )",
 				testBuilder.build());
 		checkParam("test", "not null", testBuilder);
 		checkParam("searchTerm", "%findme%", testBuilder);
