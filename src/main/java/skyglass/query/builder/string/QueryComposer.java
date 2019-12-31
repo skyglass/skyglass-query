@@ -7,15 +7,11 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
-
 import skyglass.query.NativeQueryUtil;
 import skyglass.query.builder.FieldType;
 import skyglass.query.builder.OrderType;
 import skyglass.query.builder.QueryRequestDTO;
 import skyglass.query.builder.QueryResult;
-import skyglass.query.builder.config.Constants;
 import skyglass.query.builder.result.QueryManager;
 
 public class QueryComposer {
@@ -51,12 +47,15 @@ public class QueryComposer {
 	QueryComposer(QueryRequestDTO queryRequest, String rootAlias, boolean isNative) {
 		init(rootAlias, isNative);
 		this.queryRequest = queryRequest;
-		this.queryComposer = new QueryComposerBuilder(this, queryRequest, rootAlias);
+		this.queryComposer = new QueryComposerBuilder(queryRequest, rootAlias);
+	}
+	
+	QueryComposer(QueryRequestDTO queryRequest, String rootAlias) {
+		this(queryRequest, rootAlias, true);
 	}
 
 	QueryComposer(String rootAlias, boolean isNative) {
-		init(rootAlias, isNative);
-		this.queryComposer = new QueryComposerBuilder(this, null, rootAlias);
+		this(null, rootAlias, isNative);
 	}
 	
 	private void init(String rootAlias, boolean isNative) {
@@ -79,13 +78,16 @@ public class QueryComposer {
 	}
 
 	public static QueryComposer nativ(QueryRequestDTO request) {
-		QueryComposer result = new QueryComposer(request, null, true);
+		return nativ(request, null);
+	}
+	
+	public static QueryComposer nativ(QueryRequestDTO request, String rootAlias) {
+		QueryComposer result = new QueryComposer(request, rootAlias, true);
 		return result;
 	}
 
 	public static QueryComposer jpa(String rootAlias) {
-		QueryComposer result = new QueryComposer(rootAlias, false);
-		return result;
+		return jpa(null, rootAlias);
 	}
 
 	public static QueryComposer jpa(QueryRequestDTO request, String rootAlias) {

@@ -77,23 +77,16 @@ public class QueryComposerBuilder {
 
 	private String countQueryStr;
 	
-	private QueryComposer queryStringBuilder;
-	
 	private String customSelectPart;
 	
 	private String customGroupByPart;
 	
 	private String customOrderByPart;
 
-	public QueryComposerBuilder(QueryRequestDTO queryRequest, String rootAlias) {
+	QueryComposerBuilder(QueryRequestDTO queryRequest, String rootAlias) {
 		this.queryRequest = queryRequest;
 		this.orderBuilder = new OrderBuilder(queryRequest);
 		this.rootAlias = rootAlias;
-	}
-	
-	public QueryComposerBuilder(QueryComposer queryStringBuilder, QueryRequestDTO queryRequest, String rootAlias) {
-		this(queryRequest, rootAlias);
-		this.queryStringBuilder = queryStringBuilder;
 	}
 	
 	public boolean isDistinct() {

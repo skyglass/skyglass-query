@@ -43,7 +43,7 @@ public class QueryComposerDistinctTest {
 				.select("*")
 				.from("SpaceMission sm")
 				.startAndWhere()
-				.startNullable("sm.test = ?test")
+				.startNullablePart("sm.test = ?test")
 				.end();
 		Assert.assertEquals("SELECT DISTINCT * FROM SpaceMission sm ORDER BY LOWER(sm.test) DESC", testBuilder.build());
 		Assert.assertEquals("SELECT COUNT(*) FROM SpaceMission sm", testBuilder.buildCountPart());

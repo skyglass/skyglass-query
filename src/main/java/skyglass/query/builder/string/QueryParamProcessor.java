@@ -42,7 +42,7 @@ public class QueryParamProcessor {
 			for (String match : matches) {
 				try {
 					Object paramValue = PropertyUtils.getSimpleProperty(queryRequest, match);
-					paramValues.add(new QueryParam(match, paramValue));
+					paramValues.add(QueryParam.create(match, paramValue));
 				} catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
 					//continue
 				}

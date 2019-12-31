@@ -26,7 +26,7 @@ public class QueryComposerTest {
 				.select("*")
 				.from("SpaceMission sm")
 				.startAndWhere()
-				.appendNullable("sm.test = ?test", "test", value)
+				.appendNullableValue("sm.test = ?test", "test", value)
 				.end();
 		Assert.assertEquals("SELECT * FROM SpaceMission sm", testBuilder.build());
 		checkNoParam("test", testBuilder);
@@ -41,7 +41,7 @@ public class QueryComposerTest {
 				.select("*")
 				.from("SpaceMission sm")
 				.startAndWhere()
-				.appendNullable("sm.test = ?test", "test", value)
+				.appendNullableValue("sm.test = ?test", "test", value)
 				.end();
 		Assert.assertEquals("SELECT * FROM SpaceMission sm WHERE sm.test = ?test", testBuilder.build());
 		checkParam("test", "not null", testBuilder);
@@ -52,7 +52,7 @@ public class QueryComposerTest {
 		String value = " ";
 
 		QueryComposer testBuilder = QueryComposer.nativ().select("*").from("SpaceMission sm").startAndWhere()
-				.startNullable("sm.test = ?test").setParameter("test", value).end();
+				.startNullablePart("sm.test = ?test").setParameter("test", value).end();
 		Assert.assertEquals("SELECT * FROM SpaceMission sm", testBuilder.build());
 		checkNoParam("test", testBuilder);
 	}
@@ -67,7 +67,7 @@ public class QueryComposerTest {
 				.select("*")
 				.from("SpaceMission sm")
 				.startAndWhere()
-				.appendNullable("sm.test = ?test", "test", value)
+				.appendNullableValue("sm.test = ?test", "test", value)
 				.appendNullableList("sm.testList", list)
 				.end();
 		Assert.assertEquals(
@@ -88,7 +88,7 @@ public class QueryComposerTest {
 				.select("*")
 				.from("SpaceMission sm")
 				.startAndWhere()
-				.appendNullable("sm.test = ?test", "test", value)
+				.appendNullableValue("sm.test = ?test", "test", value)
 				.appendNullableList("sm.testList", list)
 				.end();
 		Assert.assertEquals("SELECT * FROM SpaceMission sm WHERE sm.testList IN (?sm_testList1, ?sm_testList2)",
@@ -104,7 +104,7 @@ public class QueryComposerTest {
 		Collection<String> list = null;
 
 		QueryComposer testBuilder = QueryComposer.nativ().select("*").from("SpaceMission sm").startAndWhere()
-				.appendNullable("sm.test = ?test", "test", value).appendNullableList("sm.testList", list).end();
+				.appendNullableValue("sm.test = ?test", "test", value).appendNullableList("sm.testList", list).end();
 		Assert.assertEquals("SELECT * FROM SpaceMission sm WHERE sm.test = ?test", testBuilder.build());
 		checkParam("test", value, testBuilder);
 	}
@@ -115,7 +115,7 @@ public class QueryComposerTest {
 		Collection<String> list = Collections.emptyList();
 
 		QueryComposer testBuilder = QueryComposer.nativ().select("*").from("SpaceMission sm").startAndWhere()
-				.appendNullable("sm.test = ?test", "test", value).appendNullableList("sm.testList", list).end();
+				.appendNullableValue("sm.test = ?test", "test", value).appendNullableList("sm.testList", list).end();
 		Assert.assertEquals("SELECT * FROM SpaceMission sm", testBuilder.build());
 		checkNoParam("test", testBuilder);
 	}
@@ -129,7 +129,7 @@ public class QueryComposerTest {
 				.select("*")
 				.from("SpaceMission sm")
 				.startAndWhere()
-				.appendNullable("sm.test = ?test", "test", value)
+				.appendNullableValue("sm.test = ?test", "test", value)
 				.appendNullableListOrElseFalse("sm.testList", list)
 				.end();
 		Assert.assertEquals(
@@ -147,7 +147,7 @@ public class QueryComposerTest {
 				.nativ()
 				.select("*").from("SpaceMission sm")
 				.startAndWhere()
-				.__().appendNullable("sm.test = ?test", "test", " ")
+				.__().appendNullableValue("sm.test = ?test", "test", " ")
 				.__().appendNullableListOrElseFalse("sm.testList", list)
 				.end();
 		Assert.assertEquals("SELECT * FROM SpaceMission sm WHERE sm.testList IN (?sm_testList1, ?sm_testList2)",
@@ -160,7 +160,7 @@ public class QueryComposerTest {
 	@Test
 	public void testNullableListOrElseFalseNull() {
 		QueryComposer testBuilder = QueryComposer.nativ().select("*").from("SpaceMission sm").startAndWhere()
-				.appendNullable("sm.test = ?test", "test", "not null")
+				.appendNullableValue("sm.test = ?test", "test", "not null")
 				.appendNullableListOrElseFalse("sm.testList", null).end();
 		Assert.assertEquals("SELECT * FROM SpaceMission sm WHERE sm.test = ?test AND 1 = 0", testBuilder.build());
 		checkParam("test", "not null", testBuilder);
@@ -169,7 +169,7 @@ public class QueryComposerTest {
 	@Test
 	public void testNullableListOrElseFalseListNull() {
 		QueryComposer testBuilder = QueryComposer.nativ().select("*").from("SpaceMission sm").startAndWhere()
-				.appendNullable("sm.test = ?test", "test", null)
+				.appendNullableValue("sm.test = ?test", "test", null)
 				.appendNullableListOrElseFalse("sm.testList", Collections.emptyList()).end();
 		Assert.assertEquals("SELECT * FROM SpaceMission sm WHERE 1 = 0", testBuilder.build());
 		checkNoParam("test", testBuilder);
@@ -178,7 +178,7 @@ public class QueryComposerTest {
 	@Test
 	public void testNullableOrElseOtherQuery1() {
 		QueryComposer testBuilder = QueryComposer.nativ().select("*").from("SpaceMission sm").startAndWhere()
-				.startNullable("sm.test = ?test").setParameter("test", " ").orElse("1 = 1").end();
+				.startNullablePart("sm.test = ?test").setParameter("test", " ").orElse("1 = 1").end();
 		Assert.assertEquals("SELECT * FROM SpaceMission sm WHERE 1 = 1", testBuilder.build());
 		checkNoParam("test", testBuilder);
 	}
@@ -186,7 +186,7 @@ public class QueryComposerTest {
 	@Test
 	public void testNullableOrElseOtherQuery2() {
 		QueryComposer testBuilder = QueryComposer.nativ().select("*").from("SpaceMission sm").startAndWhere()
-				.startNullable("sm.test = ?test").setParameter("test", "not null").orElse("1 = 1").end();
+				.startNullablePart("sm.test = ?test").setParameter("test", "not null").orElse("1 = 1").end();
 		Assert.assertEquals("SELECT * FROM SpaceMission sm WHERE sm.test = ?test", testBuilder.build());
 		checkParam("test", "not null", testBuilder);
 	}
@@ -194,7 +194,7 @@ public class QueryComposerTest {
 	@Test
 	public void testNullableNotNullQuery2() {
 		QueryComposer testBuilder = QueryComposer.nativ().select("*").from("SpaceMission sm").startAndWhere()
-				.startNullable("sm.test = ?test").setParameter("test", "not null").end();
+				.startNullablePart("sm.test = ?test").setParameter("test", "not null").end();
 		Assert.assertEquals("SELECT * FROM SpaceMission sm WHERE sm.test = ?test", testBuilder.build());
 		checkParam("test", "not null", testBuilder);
 	}
@@ -202,7 +202,7 @@ public class QueryComposerTest {
 	@Test
 	public void testNestedNullableNullQuery() {
 		QueryComposer testBuilder = QueryComposer.nativ().select("sm").from("SpaceMission sm").startAndWhere()
-				.startNullable("sm.test1 = ?test1").setParameter("test1", " ").startNullable("sm.test2 = ?test2")
+				.startNullablePart("sm.test1 = ?test1").setParameter("test1", " ").startNullablePart("sm.test2 = ?test2")
 				.setParameter("test2", "not null").end();
 		Assert.assertEquals("SELECT sm FROM SpaceMission sm", testBuilder.build());
 		checkNoParam("test1", testBuilder);
@@ -212,7 +212,7 @@ public class QueryComposerTest {
 	@Test
 	public void testNestedNullableNotNullQuery1() {
 		QueryComposer testBuilder = QueryComposer.nativ().select("sm").from("SpaceMission sm").startAndWhere()
-				.startNullable("sm.test1 = ?test1").setParameter("test1", "not null").startNullable("sm.test2 = ?test2")
+				.startNullablePart("sm.test1 = ?test1").setParameter("test1", "not null").startNullablePart("sm.test2 = ?test2")
 				.setParameter("test2", " ").end();
 		Assert.assertEquals("SELECT sm FROM SpaceMission sm WHERE sm.test1 = ?test1", testBuilder.build());
 		checkParam("test1", "not null", testBuilder);
@@ -222,8 +222,8 @@ public class QueryComposerTest {
 	@Test
 	public void testNestedNullableNotNullQuery2() {
 		QueryComposer testBuilder = QueryComposer.nativ().select("sm").from("SpaceMission sm").startAndWhere()
-				.startNullable("sm.test1 = ?test1").setParameter("test1", "not null")
-				.startNullable(" AND sm.test2 = ?test2").setParameter("test2", "not null").end();
+				.startNullablePart("sm.test1 = ?test1").setParameter("test1", "not null")
+				.startNullablePart(" AND sm.test2 = ?test2").setParameter("test2", "not null").end();
 		Assert.assertEquals("SELECT sm FROM SpaceMission sm WHERE sm.test1 = ?test1 AND sm.test2 = ?test2",
 				testBuilder.build());
 		checkParam("test1", "not null", testBuilder);
@@ -233,8 +233,8 @@ public class QueryComposerTest {
 	@Test
 	public void testJoiningNullableNotNullQuery2() {
 		QueryComposer testBuilder = QueryComposer.nativ().select("sm").from("SpaceMission sm").startAndWhere()
-				.startNullable("sm.test1 = ?test1").setParameter("test1", "not null").stopNullable()
-				.startNullable("sm.test2 = ?test2").setParameter("test2", "not null").stopNullable().end();
+				.startNullablePart("sm.test1 = ?test1").setParameter("test1", "not null").stopNullable()
+				.startNullablePart("sm.test2 = ?test2").setParameter("test2", "not null").stopNullable().end();
 		Assert.assertEquals("SELECT sm FROM SpaceMission sm WHERE sm.test1 = ?test1 AND sm.test2 = ?test2",
 				testBuilder.build());
 		checkParam("test1", "not null", testBuilder);
@@ -244,8 +244,8 @@ public class QueryComposerTest {
 	@Test
 	public void testCombinedJoinNullableNotNullQuery() {
 		QueryComposer testBuilder = QueryComposer.nativ().select("sm").from("SpaceMission sm").startAndWhere()
-				.startNullable("sm.test1 = ?test1").setParameter("test1", "not null").stopNullable()
-				.startNullable("sm.test2 = ?test2").setParameter("test2", "not null").stopNullable()
+				.startNullablePart("sm.test1 = ?test1").setParameter("test1", "not null").stopNullable()
+				.startNullablePart("sm.test2 = ?test2").setParameter("test2", "not null").stopNullable()
 				.startOr()
 				.__().append("sm.test3 = 'test3'")
 				.__().appendNullableList("sm.test4", "pr", Arrays.asList(new String[] { "test41", "test42" }))
@@ -264,8 +264,8 @@ public class QueryComposerTest {
 	@Test
 	public void testNestedCombinedJoinNullableNotNullQuery() {
 		QueryComposer testBuilder = QueryComposer.nativ().select("sm").from("SpaceMission sm").startAndWhere()
-				.startNullable("sm.test1 = ?test1").setParameter("test1", "not null").stopNullable()
-				.startNullable("sm.test2 = ?test2").setParameter("test2", "not null").stopNullable()
+				.startNullablePart("sm.test1 = ?test1").setParameter("test1", "not null").stopNullable()
+				.startNullablePart("sm.test2 = ?test2").setParameter("test2", "not null").stopNullable()
 				.startOr()
 				.__().append("sm.test3 = 'test3'")
 				.__().startOr()

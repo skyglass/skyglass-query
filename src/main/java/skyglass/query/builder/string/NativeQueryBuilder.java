@@ -15,10 +15,12 @@ public class NativeQueryBuilder {
 	public static <T> List<T> getListResult(QueryManager queryManager, QueryComposer queryStringBuilder) {
 		Query nativeQuery = queryManager.createNativeQuery(queryStringBuilder.build());
 		for (QueryParam queryParam : queryStringBuilder.getParams()) {
-			if (queryParam.getValue() instanceof Date) {
-				nativeQuery.setParameter(queryParam.getName(), (Date) queryParam.getValue(), TemporalType.TIMESTAMP);
-			} else {
-				nativeQuery.setParameter(queryParam.getName(), queryParam.getValue());
+			if (!(queryParam instanceof AliasParam)) {
+				if (queryParam.getValue() instanceof Date) {
+					nativeQuery.setParameter(queryParam.getName(), (Date) queryParam.getValue(), TemporalType.TIMESTAMP);
+				} else {
+					nativeQuery.setParameter(queryParam.getName(), queryParam.getValue());
+				}
 			}
 		}
 		return QueryResultUtil.getListResult(nativeQuery);

@@ -3,6 +3,7 @@ package skyglass.query.builder.string;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.commons.collections.CollectionUtils;
@@ -24,8 +25,6 @@ public class StringPartBuilder {
 	private StringBuilder sb = new StringBuilder();
 
 	private Collection<QueryParam> params = new ArrayList<>();
-
-	private Collection<String> aliases = new ArrayList<>();
 	
 	private boolean condition = true;
 	
@@ -173,7 +172,7 @@ public class StringPartBuilder {
 	public StringPartBuilder addAliases(boolean distinct, String... aliases) {
 		this.distinct = distinct;
 		for (String alias: aliases) {
-			this.aliases.add(alias);
+			this.params.add(QueryParam.create(alias, AliasType.Alias));
 		}
 		return this;
 	}
@@ -199,7 +198,7 @@ public class StringPartBuilder {
 	}
 
 	public StringPartBuilder setParameter(String name, Object value) {
-		params.add(new QueryParam(name, value));
+		params.add(QueryParam.create(name, value));
 		return this;
 	}
 
@@ -219,16 +218,16 @@ public class StringPartBuilder {
 			if (root.isNativeQuery()) {
 				int index = 1;
 				for (Object value : values) {
-					params.add(new QueryParam(name + Integer.toString(index), value));
+					params.add(QueryParam.create(name + Integer.toString(index), value));
 					index++;
 				}
 			} else {
-				params.add(new QueryParam(name, values));
+				params.add(QueryParam.create(name, values));
 			}
 		} else {
 			// should add null parameter explicitly, otherwise isFalseCondition()
 			// will return false, and the query part will be appended
-			params.add(new QueryParam(name, null));
+			params.add(QueryParam.create(name, null));
 		}
 		return this;
 	}
@@ -259,36 +258,52 @@ public class StringPartBuilder {
 	}
 
 	private StringPartBuilder appendNullableList(String propertyName, String paramName, Collection<?> list, boolean orElseFalse) {
-		StringPartBuilder result = startNullable(QueryParamProcessor.getInString(root, propertyName, paramName, list)).setParameterList(paramName, list);
+		StringPartBuilder result = startNullablePart(QueryParamProcessor.getInString(root, propertyName, paramName, list)).setParameterList(paramName, list);
 		return orElseFalse ? result.orElse("1 = 0") : result.skipIfFalse();
 	}
 
-	public StringPartBuilder appendNullables(String part, String paramName, Object... values) {
-		return appendNullable(part, paramName, Arrays.asList(values));
+	public StringPartBuilder appendNullableValues(String part, String paramName, Object... values) {
+		return appendNullableValue(part, paramName, Arrays.asList(values));
 	}
 
-	public StringPartBuilder appendNullablesOrElseFalse(String part, String paramName, Object... values) {
-		return appendNullable(part, paramName, Arrays.asList(values));
+	public StringPartBuilder appendNullableValuesOrElseFalse(String part, String paramName, Object... values) {
+		return appendNullableValue(part, paramName, Arrays.asList(values));
 	}
 
-	public StringPartBuilder appendNullables(String part, String paramName, Collection<?> list) {
+	public StringPartBuilder appendNullableValues(String part, String paramName, Collection<?> list) {
 		return appendNullable(part, paramName, list, false);
 	}
 
-	public StringPartBuilder appendNullablesOrElseFalse(String part, String paramName, Collection<?> list) {
+	public StringPartBuilder appendNullableValuesOrElseFalse(String part, String paramName, Collection<?> list) {
 		return appendNullable(part, paramName, list, true);
 	}
 
-	public StringPartBuilder appendNullable(String part, String paramName, Object value) {
+	public StringPartBuilder appendNullableValue(String part, String paramName, Object value) {
 		return appendNullable(part, paramName, value, false);
 	}
 
-	public StringPartBuilder appendNullableOrElseFalse(String part, String paramName, Object value) {
+	public StringPartBuilder appendNullableValueOrElseFalse(String part, String paramName, Object value) {
 		return appendNullable(part, paramName, value, true);
+	}
+	
+	public StringPartBuilder appendNullable(String part, String... aliasNames) {
+		StringPartBuilder result = null;
+		for (String aliasName: aliasNames) {
+			result = appendNullable(part, aliasName, AliasType.Alias, false);
+		}
+		return result;
+	}
+
+	public StringPartBuilder appendNullableOrElseFalse(String part, String... aliasNames) {
+		StringPartBuilder result = null;
+		for (String aliasName: aliasNames) {
+			result = appendNullable(part, aliasName, AliasType.Alias, true);
+		}
+		return result;
 	}
 
 	private StringPartBuilder appendNullable(String part, String paramName, Object value, boolean orElseFalse) {
-		StringPartBuilder result = startNullable(QueryParamProcessor.processPart(root, this, paramName, part, value));
+		StringPartBuilder result = startNullablePart(QueryParamProcessor.processPart(root, this, paramName, part, value));
 		result = isCollection(value) ? result.setParameterList(paramName, (Collection<?>) value) : result.setParameter(paramName, value);
 		result = orElseFalse ? result.orElse("1 = 0") : result.skipIfFalse();
 		return result;
@@ -303,21 +318,29 @@ public class StringPartBuilder {
 	}
 
 	private StringPartBuilder appendNullable(String part, boolean orElseFalse) {
-		StringPartBuilder result = startNullable(part);
+		StringPartBuilder result = startNullablePart(part);
 		result = orElseFalse ? result.orElse("1 = 0") : result.skipIfFalse();
 		return result;
 	}
 
 	public StringPartBuilder startNullable() {
-		return startNullable(null);
+		return startNullablePart(null);
 	}
 
-	public StringPartBuilder startNullable(String part) {
+	public StringPartBuilder startNullablePart(String part) {
 		return new StringPartBuilder(root, this).start(part, true);
 	}
 
-	public StringPartBuilder startNullable(String part, String paramName, Object value) {
-		return startNullable(part).setParameter(paramName, value);
+	public StringPartBuilder startNullableValue(String part, String paramName, Object value) {
+		return startNullablePart(part).setParameter(paramName, value);
+	}
+	
+	public StringPartBuilder startNullable(String part, String... aliasNames) {
+		StringPartBuilder result = null;
+		for (String aliasName: aliasNames) {
+			result = startNullablePart(part).setParameter(aliasName, AliasType.Alias);
+		}
+		return result;
 	}
 
 	@SuppressWarnings({ "rawtypes", "unused" })
@@ -406,6 +429,14 @@ public class StringPartBuilder {
 
 	public StringPartBuilder appendIfTrue(boolean condition, String part) {
 		return startIf(condition, part).skipIfFalse();
+	}
+	
+	public StringPartBuilder appendIfAliases(String part, String... aliases) {
+		return appendIfAliases(false, part, aliases);
+	}
+	
+	public StringPartBuilder appendIfAliases(boolean distinct, String part, String... aliases) {
+		return startIf(distinct, part, aliases);
 	}
 
 	public StringPartBuilder startAnd() {
@@ -523,9 +554,6 @@ public class StringPartBuilder {
 	}
 
 	private boolean isFalseCondition(Collection<QueryParam> params) {
-		if (CollectionUtils.isNotEmpty(aliases) && !root.shouldBeAdded(distinct, aliases)) {
-			return true;
-		}
 		if (!condition) {
 			return true;
 		}
@@ -533,7 +561,10 @@ public class StringPartBuilder {
 			return false;
 		}
 		for (QueryParam queryParam : params) {
-			if (isEmpty(queryParam.getValue())) {
+			if (queryParam instanceof AliasParam
+					&& !root.shouldBeAdded(distinct, Collections.singletonList(queryParam.getName()))) {
+				return true;
+			} else if (isEmpty(queryParam.getValue())) {
 				return true;
 			}
 		}

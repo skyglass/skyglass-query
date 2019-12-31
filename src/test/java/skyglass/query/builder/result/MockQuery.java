@@ -11,7 +11,7 @@ public class MockQuery {
 	private Map<String, QueryParam> values = new LinkedHashMap<>();
 
 	public void setParameter(String name, Object value) {
-		this.values.put(name, new QueryParam(name, value));
+		this.values.put(name, QueryParam.create(name, value));
 	}
 
 	public Collection<QueryParam> getParams() {

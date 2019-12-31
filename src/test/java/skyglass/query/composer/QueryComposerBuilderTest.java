@@ -18,6 +18,7 @@ import skyglass.query.builder.OrderType;
 import skyglass.query.builder.QueryRequestDTO;
 import skyglass.query.builder.SearchBuilder;
 import skyglass.query.builder.string.MockQueryRequestDto;
+import skyglass.query.builder.string.QueryComposer;
 import skyglass.query.builder.string.QueryComposerBuilder;
 
 public class QueryComposerBuilderTest {
@@ -33,7 +34,7 @@ public class QueryComposerBuilderTest {
 
 		String expectedResult = getExpectedResult1(queryRequest, QueryTranslationUtil.coalesce(queryRequest.getLang(), "trDescription"), "planetDescription");
 
-		QueryComposerBuilder queryComposer = createQueryComposer1(queryRequest, true);
+		QueryComposer queryComposer = createQueryComposer1(queryRequest, true);
 
 		String result = queryComposer.getQueryStr();
 		Assert.assertEquals(expectedResult, result);
@@ -86,8 +87,8 @@ public class QueryComposerBuilderTest {
 		Assert.assertEquals(expectedResult, result);
 	}
 	
-	private QueryComposerBuilder createQueryComposer1(QueryRequestDTO queryRequest, boolean distinct) {
-		QueryComposerBuilder queryComposer = new QueryComposerBuilder(queryRequest, "sm");
+	private QueryComposer createQueryComposer1(QueryRequestDTO queryRequest, boolean distinct) {
+		QueryComposer queryComposer = QueryComposer.nativ(queryRequest, "sm");
 
 		queryComposer.addSelect("sm.UUID");
 		queryComposer.add("FROM SPACEMISSION sm ");
@@ -179,7 +180,7 @@ public class QueryComposerBuilderTest {
 				+ "WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate AND "
 				+ "( ( LOWER(user.name) LIKE LOWER(?searchTerm0) ) )";
 
-		QueryComposerBuilder queryComposer = new QueryComposerBuilder(queryRequest, "sm");
+		QueryComposer queryComposer = QueryComposer.nativ(queryRequest, "sm");
 
 		queryComposer.addSelect("sm.UUID");
 		queryComposer.add("FROM SPACEMISSION sm ");
@@ -222,7 +223,7 @@ public class QueryComposerBuilderTest {
 
 		String expectedResult = getExpectedResult(queryRequest, false);
 
-		QueryComposerBuilder queryComposer = createQueryComposer(queryRequest, null, false, false, null);
+		QueryComposer queryComposer = createQueryComposer(queryRequest, null, false, false, null);
 		String result = queryComposer.getQueryStr();
 		Assert.assertEquals(expectedResult, result);
 	}
@@ -238,7 +239,7 @@ public class QueryComposerBuilderTest {
 				+ "LEFT JOIN PLANETINFO pi ON pi.planet_UUID = pl.UUID LEFT JOIN TranslatedField trLocalName ON trLocalName.UUID = pi.nameI18n_UUID "
 				+ "LEFT JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate ORDER BY sm.createdAt DESC";
 
-		QueryComposerBuilder queryComposer = createQueryComposer(queryRequest, null, false, false, "sm.uuid");
+		QueryComposer queryComposer = createQueryComposer(queryRequest, null, false, false, "sm.uuid");
 		String result = queryComposer.getQueryStr();
 		Assert.assertEquals(expectedResult, result);
 	}
@@ -259,7 +260,7 @@ public class QueryComposerBuilderTest {
 
 		expectedResult += " AND " + searchPart + " ORDER BY sm.createdAt DESC";
 
-		QueryComposerBuilder queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"), false, false, "sm.UUID");
+		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"), false, false, "sm.UUID");
 		queryComposer.addAliasResolver("createdBy", "user.name");
 		queryComposer.addAliasResolver("bparamValue", "bparam.value");
 		String result = queryComposer.getQueryStr();
@@ -274,7 +275,7 @@ public class QueryComposerBuilderTest {
 
 		String expectedResult = getExpectedResult(queryRequest, true, "user.name", "bparam.value");
 
-		QueryComposerBuilder queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"), false, false, null);
+		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"), false, false, null);
 		queryComposer.setDistinct();
 		String result = queryComposer.getQueryStr();
 		Assert.assertEquals(expectedResult, result);
@@ -288,7 +289,7 @@ public class QueryComposerBuilderTest {
 
 		String expectedResult = getExpectedResult(queryRequest, true, "user.name", "bparam.value");
 
-		QueryComposerBuilder queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"), true, false, null);
+		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"), true, false, null);
 		queryComposer.addAliasResolver("createdBy", "user.name");
 		queryComposer.addAliasResolver("bparamValue", "bparam.value");
 		String result = queryComposer.getQueryStr();
@@ -315,7 +316,7 @@ public class QueryComposerBuilderTest {
 		expectedResult += " AND " + searchPart + " ORDER BY " 
 		+ QueryFunctions.lower(QueryTranslationUtil.coalesce("trDescription")) + " ASC";
 
-		QueryComposerBuilder queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"), false, false, "sm.UUID");
+		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"), false, false, "sm.UUID");
 		queryComposer.addAliasResolver("createdBy", "user.name");
 		queryComposer.addAliasResolver("bparamValue", "bparam.value");
 		String result = queryComposer.getQueryStr();
@@ -331,7 +332,7 @@ public class QueryComposerBuilderTest {
 
 		String expectedResult = getExpectedResult(queryRequest, true, "user.name", "bparam.value");
 
-		QueryComposerBuilder queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"), false, true, null);
+		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"), false, true, null);
 		String result = queryComposer.getQueryStr();
 		Assert.assertEquals(expectedResult, result);
 	}
@@ -345,7 +346,7 @@ public class QueryComposerBuilderTest {
 
 		String expectedResult = getExpectedResult(queryRequest, false, "user.name", "bparam.value");
 
-		QueryComposerBuilder queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"), false, false, null);
+		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"), false, false, null);
 		String result = queryComposer.getQueryStr();
 		Assert.assertEquals(expectedResult, result);
 	}
@@ -359,7 +360,7 @@ public class QueryComposerBuilderTest {
 
 		String expectedResult = getExpectedResult(queryRequest, false, "user.name", "bparam.value");
 
-		QueryComposerBuilder queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"), false, false, null);
+		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"), false, false, null);
 		String result = queryComposer.getQueryStr();
 		Assert.assertEquals(expectedResult, result);
 	}
@@ -373,7 +374,7 @@ public class QueryComposerBuilderTest {
 
 		String expectedResult = getExpectedResult(queryRequest, true, "user.name", "bparam.value");
 
-		QueryComposerBuilder queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"), false, true, null);
+		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"), false, true, null);
 		String result = queryComposer.getQueryStr();
 		Assert.assertEquals(expectedResult, result);
 	}
@@ -396,7 +397,7 @@ public class QueryComposerBuilderTest {
 
 		expectedResult += " AND " + searchPart + " ORDER BY LOWER(user.name) ASC";
 
-		QueryComposerBuilder queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("bparamValue"), false, false, "sm.uuid");
+		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("bparamValue"), false, false, "sm.uuid");
 		queryComposer.addAliasResolver("createdBy", "user.name");
 		queryComposer.addAliasResolver("bparamValue", "bparam.value");
 		String result = queryComposer.getQueryStr();
@@ -421,15 +422,15 @@ public class QueryComposerBuilderTest {
 
 		expectedResult += " AND " + searchPart;
 
-		QueryComposerBuilder queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("bparamValue"), false, false, "sm.uuid");
+		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("bparamValue"), false, false, "sm.uuid");
 		queryComposer.addAliasResolver("createdBy", "user.name");
 		queryComposer.addAliasResolver("bparamValue", "bparam.value");
 		String result = queryComposer.getCountQueryStr();
 		Assert.assertEquals(expectedResult, result);
 	}
 
-	private QueryComposerBuilder createQueryComposer(QueryRequestDTO queryRequest, Consumer<QueryComposerBuilder> searchConsumer, boolean distinctSearch, boolean distinctOrder, String selectString) {
-		QueryComposerBuilder queryComposer = new QueryComposerBuilder(queryRequest, "sm");
+	private QueryComposer createQueryComposer(QueryRequestDTO queryRequest, Consumer<QueryComposer> searchConsumer, boolean distinctSearch, boolean distinctOrder, String selectString) {
+		QueryComposer queryComposer = QueryComposer.nativ(queryRequest, "sm");
 
 		String languageCode = QueryRequestUtil.getCurrentLanguageCode(queryRequest);
 
@@ -601,7 +602,7 @@ public class QueryComposerBuilderTest {
 		return " ORDER BY " + QueryOrderUtil.applyOrder(orderBuilder.getOrderFields());
 	}
 
-	private void addPlanetInfoSelectPart(QueryComposerBuilder queryComposer, String languageCode) {
+	private void addPlanetInfoSelectPart(QueryComposer queryComposer, String languageCode) {
 		queryComposer.addSelect("planetName", "planetName");
 		queryComposer.addSelect("planetDescription", "planetDescription");
 		queryComposer.addSelect("localPlanetName", "localPlanetName");
