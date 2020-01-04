@@ -2,7 +2,7 @@ package skyglass.query.builder;
 
 /**
  * This class contains information on how to build correspondent SQL ORDER BY part
- * (See QueryOrderUtil class, which converts the list of OrderField classe to correspondent SQL ORDER BY part)
+ * (See QueryOrderUtil class, which converts the list of OrderField classes to correspondent SQL ORDER BY part)
  * 
  */
 public class OrderField {

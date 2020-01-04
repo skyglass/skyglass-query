@@ -38,9 +38,9 @@ public class QueryOrderUtil {
 	private static String applyMultipleOrder(OrderField orderField) {
 		StringBuilder sb = new StringBuilder();
 		if (orderField.isString()) {
-			sb.append(QueryFunctions.lowerCoalesce(orderField.getOrderField().getResolversArray()));
+			sb.append(QueryFunctions.lowerConcat(orderField.getOrderField().getResolversArray()));
 		} else {
-			sb.append(QueryFunctions.coalesce(orderField.getOrderField().getResolversArray()));
+			sb.append(QueryFunctions.concat(orderField.getOrderField().getResolversArray()));
 		}
 		sb.append(orderField.isDescending() ? " DESC" : " ASC");
 		return sb.toString();

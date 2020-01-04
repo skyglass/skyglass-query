@@ -3,8 +3,6 @@ package skyglass.query.builder;
 import java.util.ArrayList;
 import java.util.List;
 
-import skyglass.query.QueryTranslationUtil;
-
 /**
  * This class allows to build order fields from QueryRequestDTO in a declarative way.
  * Each OrderField class contains information on how to build correspondent SQL ORDER BY part
@@ -59,14 +57,20 @@ public class OrderBuilder {
 		return setDefaultOrder(orderType, FieldType.String, orderFields);
 	}
 
-	public OrderBuilder setDefaultOrders(OrderType orderType, String... orderFields) {
-		return setDefaultOrders(orderType, FieldType.String, orderFields);
-	}
-
 	public OrderBuilder setDefaultOrder(OrderType orderType, FieldType fieldType, String... orderFields) {
 		if (this.orderFields.size() == 0) {
 			setOrder(orderType, fieldType, orderFields);
 		}
+		return this;
+	}
+	
+	
+	public OrderBuilder addDefaultOrder(OrderType orderType, String... orderFields) {
+		return addDefaultOrder(orderType, FieldType.String, orderFields);
+	}
+
+	public OrderBuilder addDefaultOrder(OrderType orderType, FieldType fieldType, String... orderFields) {
+		addOrder(orderType, fieldType, orderFields);
 		return this;
 	}
 
@@ -74,21 +78,8 @@ public class OrderBuilder {
 		return this.orderFields.size() == 0;
 	}
 
-	public OrderBuilder setDefaultOrders(OrderType orderType, FieldType fieldType, String... orderFields) {
-		if (this.orderFields.size() == 0) {
-			for (String orderField : orderFields) {
-				addOrder(orderType, fieldType, orderField);
-			}
-		}
-		return this;
-	}
-
 	public List<OrderField> getOrderFields() {
 		return orderFields;
-	}
-
-	private String getCurrentLang() {
-		return queryRequest == null ? null : queryRequest.getLang();
 	}
 
 }

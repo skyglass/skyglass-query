@@ -197,7 +197,6 @@ public class QueryComposer {
 	}
 
 	public QueryComposer setDistinct(String distinctUuidPart) {
-		queryComposer.setDistinct();
 		this.distinctUuidPart = distinctUuidPart;
 		return this;
 	}
@@ -255,17 +254,12 @@ public class QueryComposer {
 	}
 
 	public QueryComposer addOrder(OrderType orderType, String... orderFields) {
-		queryComposer.addOrder(orderType, orderFields);
+		queryComposer.addDefaultOrder(orderType, orderFields);
 		return this;
 	}
 
 	public QueryComposer setOrder(OrderType orderType, String... orderFields) {
-		queryComposer.setOrder(orderType, orderFields);
-		return this;
-	}
-
-	public QueryComposer setDefaultOrders(OrderType orderType, String... orderFields) {
-		queryComposer.setDefaultOrders(orderType, orderFields);
+		queryComposer.setDefaultOrder(orderType, orderFields);
 		return this;
 	}
 
@@ -311,6 +305,7 @@ public class QueryComposer {
 	}
 
 	public String buildResultFromUuidList(List<String> uuidList) {
+		initComposer();
 		StringBuilder sb = new StringBuilder();
 		buildSelectPart(sb);
 		sb.append(" FROM ");
@@ -436,6 +431,7 @@ public class QueryComposer {
 	}
 
 	public List<SelectField> getSelectFields() {
+		initComposer();
 		return queryComposer.getSelectFields();
 	}
 	
@@ -510,6 +506,26 @@ public class QueryComposer {
 		return this;
 	}
 	
+	public QueryComposer addDefaultOrder(OrderType orderType, FieldType fieldType, String... path) {
+		queryComposer.addDefaultOrder(orderType, fieldType, path);
+		return this;
+	}
+
+	public QueryComposer addDefaultOrder(OrderType orderType, String... path) {
+		queryComposer.addDefaultOrder(orderType, path);
+		return this;
+	}
+
+	public QueryComposer addDefaultOrder(String alias, OrderType orderType, FieldType fieldType, String... path) {
+		queryComposer.addDefaultOrder(orderType, fieldType, path);
+		return this;
+	}
+
+	public QueryComposer addDefaultOrder(String alias, OrderType orderType, String... path) {
+		queryComposer.addDefaultOrder(alias, orderType, path);
+		return this;
+	}
+	
 	public QueryComposer setDefaultOrder(OrderType orderType, FieldType fieldType, String... path) {
 		queryComposer.setDefaultOrder(orderType, fieldType, path);
 		return this;
@@ -578,5 +594,5 @@ public class QueryComposer {
 	boolean shouldBeAdded(boolean isDistinct, Collection<String> aliases) {
 		return queryComposer.shouldBeAdded(isDistinct, aliases);
 	}
-
+	
 }

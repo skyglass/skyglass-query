@@ -95,7 +95,7 @@ public class QueryComposerOrderByAndCountTest {
 				.startAndWhere()
 				.startNullablePart("sm.test = ?test")
 				.end();
-		Assert.assertEquals("SELECT * FROM SpaceMission sm ORDER BY CONCAT(COALESCE(LOWER(sm.test1)), COALESCE(LOWER(sm.test2))) DESC", testBuilder.build());
+		Assert.assertEquals("SELECT * FROM SpaceMission sm ORDER BY CONCAT(COALESCE(LOWER(sm.test1), ''), COALESCE(LOWER(sm.test2), '')) DESC", testBuilder.build());
 		Assert.assertEquals("SELECT COUNT(*) FROM SpaceMission sm", testBuilder.buildCountPart());
 		checkNoParam("test", testBuilder);
 	}

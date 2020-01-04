@@ -147,20 +147,38 @@ public class QueryComposerBuilder {
 		});
 	}
 	
+	
+	public void addDefaultOrder(OrderType orderType, FieldType fieldType, String... path) {
+		addDefaultOrderRunner(orderType, fieldType, true, path);
+	}
+
+	public void addDefaultOrder(OrderType orderType, String... path) {
+		addDefaultOrderRunner(orderType, true, path);
+	}
+
+	public void addDefaultOrder(String alias, OrderType orderType, FieldType fieldType, String... path) {
+		addDefaultOrderRunner(orderType, fieldType, alias, true, path);
+	}
+
+	public void addDefaultOrder(String alias, OrderType orderType, String... path) {
+		addDefaultOrderRunner(orderType, null, alias, true, path);
+	}	
+	
+	
 	public void setDefaultOrder(OrderType orderType, FieldType fieldType, String... path) {
-		addDefaultOrderRunner(orderType, fieldType, path);
+		addDefaultOrderRunner(orderType, fieldType, false, path);
 	}
 
 	public void setDefaultOrder(OrderType orderType, String... path) {
-		addDefaultOrderRunner(orderType, path);
+		addDefaultOrderRunner(orderType, false, path);
 	}
 
 	public void setDefaultOrder(String alias, OrderType orderType, FieldType fieldType, String... path) {
-		addDefaultOrderRunner(orderType, fieldType, alias, path);
+		addDefaultOrderRunner(orderType, fieldType, alias, false, path);
 	}
 
 	public void setDefaultOrder(String alias, OrderType orderType, String... path) {
-		addDefaultOrderRunner(orderType, null, alias, path);
+		addDefaultOrderRunner(orderType, null, alias, false, path);
 	}
 
 	public void bindOrder(String name, FieldType fieldType, String... path) {
@@ -204,18 +222,6 @@ public class QueryComposerBuilder {
 		return orderBuilder.getOrderFields();
 	}
 	
-	public void addOrder(OrderType orderType, String... orderFields) {
-		orderBuilder.addOrder(orderType, orderFields);
-	}
-
-	public void setOrder(OrderType orderType, String... orderFields) {
-		orderBuilder.setOrder(orderType, orderFields);
-	}
-
-	public void setDefaultOrders(OrderType orderType, String... orderFields) {
-		orderBuilder.setDefaultOrders(orderType, orderFields);
-	}
-
 	private void reset() {
 		applyOuterQuery = false;
 		aliasResolverMap = new HashMap<>();
@@ -306,30 +312,38 @@ public class QueryComposerBuilder {
 		return output.toString();
 	}
 
-	private void addDefaultOrderRunner(OrderType orderType, String... path) {
-		addDefaultOrderRunner(orderType, null, null, path);
+	private void addDefaultOrderRunner(OrderType orderType, boolean add, String... path) {
+		addDefaultOrderRunner(orderType, null, null, add, path);
 	}
 
-	private void addDefaultOrderRunner(OrderType orderType, FieldType fieldType, String... path) {
-		addDefaultOrderRunner(orderType, fieldType, null, path);
+	private void addDefaultOrderRunner(OrderType orderType, FieldType fieldType, boolean add, String... path) {
+		addDefaultOrderRunner(orderType, fieldType, null, add, path);
 	}
 
-	private void addDefaultOrderRunner(OrderType orderType, FieldType fieldType, String alias, String... paths) {
+	private void addDefaultOrderRunner(OrderType orderType, FieldType fieldType, String alias, boolean add, String... paths) {
 		if (alias == null) {
 			alias = paths.length > 0 ? adaptAlias(alias, paths[0]).getKey() : null;
 		}
 		final String finalAlias = alias;
 		final boolean useAlias = alias != null;
 		defaultOrderBuilderRunners.add(() -> {
-			if (orderBuilder.shouldSetDefaultOrder()) {
+			if (add || orderBuilder.shouldSetDefaultOrder()) {
 				String[] resolvedPaths = new String[paths.length];
 				for (int i = 0; i < paths.length; i++) {
 					resolvedPaths[i] = resolvePath(finalAlias, paths[i]);
 				}
 				if (fieldType == null) {
-					orderBuilder.setDefaultOrder(orderType, resolvedPaths);
+					if (add) {
+						orderBuilder.addDefaultOrder(orderType, resolvedPaths);
+					} else {
+						orderBuilder.setDefaultOrder(orderType, resolvedPaths);
+					}
 				} else {
-					orderBuilder.setDefaultOrder(orderType, fieldType, resolvedPaths);
+					if (add) {
+						orderBuilder.addDefaultOrder(orderType, fieldType, resolvedPaths);
+					} else {
+						orderBuilder.setDefaultOrder(orderType, fieldType, resolvedPaths);
+					}
 				}
 				if (useAlias) {
 					for (int i = 0; i < paths.length; i++) {
@@ -545,8 +559,12 @@ public class QueryComposerBuilder {
 		return result;
 	}
 	
-	List<SelectField> getSelectFields() {		
+	List<SelectField> getSelectFields() {	
 		List<SelectField> result = new ArrayList<>();
+		if (customSelectPart != null) {
+			result.addAll(QueryProcessor.parseSelect(customSelectPart));
+			return result;
+		}
 		SelectField selectField = new SelectField(Constants.UUID, rootAlias + "." + Constants.UUID);
 		result.add(selectField);
 		for (FieldItem fieldItem : selectFieldMap.values()) {
@@ -692,6 +710,10 @@ public class QueryComposerBuilder {
 		return "SELECT " + (customSelectPart == null ? selectPart : customSelectPart);
 	}
 	
+	private boolean isCustomSelect() {
+		return customSelectPart != null;
+	}
+	
 	void orderBy(String customOrderByPart) {
 		this.customOrderByPart = customOrderByPart;
 	}
@@ -700,7 +722,7 @@ public class QueryComposerBuilder {
 		if (customOrderByPart == null &&  CollectionUtils.isEmpty(orderBuilder.getOrderFields())) {
 			return "";
 		}
-		return "ORDER BY " + (customOrderByPart == null ? QueryOrderUtil.applyOrder(orderBuilder.getOrderFields()) : customOrderByPart);
+		return " ORDER BY " + (customOrderByPart == null ? QueryOrderUtil.applyOrder(orderBuilder.getOrderFields()) : customOrderByPart);
 	}
 	
 	void groupBy(String customGroupByPart) {
@@ -708,11 +730,11 @@ public class QueryComposerBuilder {
 	}
 	
 	String buildGroupByResult() {
-		String groupByPart = isDistinct() ? getInnerFields(true) : null;
+		String groupByPart = isDistinct() && !isCustomSelect() ? getInnerFields(true) : null;
 		if (customGroupByPart == null && StringUtils.isBlank(groupByPart)) {
 			return "";
 		}
-		return "GROUP BY " + (customGroupByPart == null ? groupByPart : customGroupByPart);
+		return " GROUP BY " + (customGroupByPart == null ? groupByPart : customGroupByPart);
 	}
 
 }

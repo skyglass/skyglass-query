@@ -18,6 +18,23 @@ public class QueryFunctions {
 		sb.append(")");
 		return sb.toString();
 	}
+	
+	private static String concat(String[] fieldResolvers, boolean lower) {
+		StringBuilder sb = new StringBuilder();
+		sb.append("CONCAT(");
+		int i = 0;
+		for (String fieldResolver : fieldResolvers) {
+			if (i > 0) {
+				sb.append(", ");
+			}
+			sb.append("COALESCE(");
+			sb.append(lower ? lower(fieldResolver) : fieldResolver);
+			sb.append(", '')");
+			i++;
+		}
+		sb.append(")");
+		return sb.toString();
+	}
 
 	public static String lower(String fieldResolver) {
 		return String.format("LOWER(%s)", fieldResolver);
@@ -29,6 +46,14 @@ public class QueryFunctions {
 
 	public static String lowerCoalesce(String... fieldResolvers) {
 		return coalesce(fieldResolvers, true);
+	}
+	
+	public static String concat(String... fieldResolvers) {
+		return concat(fieldResolvers, false);
+	}
+
+	public static String lowerConcat(String... fieldResolvers) {
+		return concat(fieldResolvers, true);
 	}
 
 	public static String and(String queryStr1, String queryStr2) {

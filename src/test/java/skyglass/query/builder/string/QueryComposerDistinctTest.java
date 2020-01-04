@@ -40,7 +40,7 @@ public class QueryComposerDistinctTest {
 				.setOrderField("test")
 				.setOrderType(OrderType.Desc)
 				.bindOrder("test", "sm.test")
-				.select("*")
+				.select("DISTINCT *")
 				.from("SpaceMission sm")
 				.startAndWhere()
 				.startNullablePart("sm.test = ?test")
@@ -48,7 +48,7 @@ public class QueryComposerDistinctTest {
 		Assert.assertEquals("SELECT DISTINCT * FROM SpaceMission sm ORDER BY LOWER(sm.test) DESC", testBuilder.build());
 		Assert.assertEquals("SELECT COUNT(*) FROM SpaceMission sm", testBuilder.buildCountPart());
 		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT DISTINCT sm.uuid AS UUID FROM SpaceMission sm ORDER BY LOWER(sm.test) DESC ) tab", testBuilder.buildUuidListPart());
-		Assert.assertEquals("SELECT * FROM SpaceMission sm WHERE sm.uuid IN ('test-list1', 'test-list2') ORDER BY LOWER(sm.test) DESC", testBuilder.buildResultFromUuidList(list));
+		Assert.assertEquals("SELECT DISTINCT * FROM SpaceMission sm WHERE sm.uuid IN ('test-list1', 'test-list2') ORDER BY LOWER(sm.test) DESC", testBuilder.buildResultFromUuidList(list));
 		checkNoParam("test", testBuilder);
 	}
 
@@ -61,7 +61,7 @@ public class QueryComposerDistinctTest {
 				.nativ(MockQueryRequestDto.createWithList(value, list))
 				.setDistinct("sm.uuid")
 				.setDefaultOrder(OrderType.Desc, "sm.test")
-				.select("*")
+				.select("DISTINCT *")
 				.from("SpaceMission sm")
 				.startAndWhere()
 				.__().appendNullable("sm.test = ?test")
@@ -76,7 +76,7 @@ public class QueryComposerDistinctTest {
 		Assert.assertEquals(
 				"SELECT tab.UUID FROM ( SELECT DISTINCT sm.uuid AS UUID FROM SpaceMission sm WHERE sm.test = ?test AND sm.testList IN (?testList1, ?testList2) ORDER BY LOWER(sm.test) DESC ) tab",
 				testBuilder.buildUuidListPart());
-		Assert.assertEquals("SELECT * FROM SpaceMission sm WHERE sm.uuid IN ('test-list1', 'test-list2') ORDER BY LOWER(sm.test) DESC", testBuilder.buildResultFromUuidList(list));
+		Assert.assertEquals("SELECT DISTINCT * FROM SpaceMission sm WHERE sm.uuid IN ('test-list1', 'test-list2') ORDER BY LOWER(sm.test) DESC", testBuilder.buildResultFromUuidList(list));
 		checkParam("test", "not null", testBuilder);
 		checkParam("testList1", list.get(0), testBuilder);
 		checkParam("testList2", list.get(1), testBuilder);
