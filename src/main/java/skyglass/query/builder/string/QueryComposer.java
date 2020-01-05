@@ -12,6 +12,7 @@ import skyglass.query.builder.FieldType;
 import skyglass.query.builder.OrderType;
 import skyglass.query.builder.QueryRequestDTO;
 import skyglass.query.builder.QueryResult;
+import skyglass.query.builder.config.Constants;
 import skyglass.query.builder.result.QueryManager;
 
 public class QueryComposer {
@@ -264,9 +265,32 @@ public class QueryComposer {
 	}
 
 	public String build() {
+		return build(false);
+	}
+	
+	public String buildUuidListPart() {
+		return build(true);
+	}
+	
+	private String build(boolean isUuids) {
 		initComposer();
 		StringBuilder sb = new StringBuilder();
-		buildSelectPart(sb);
+		if (queryComposer.isApplyOuterQuery()) {
+			buildSelectPart(sb, isUuids, true);
+			sb.append(" FROM ( ");
+			buildInner(sb, isUuids);
+			sb.append(" ) tab");
+			buildOrderByPart(sb, false);
+		} else {
+			buildInner(sb, isUuids);
+		}
+		return sb.toString();
+	}
+	
+
+	
+	private void buildInner(StringBuilder sb, boolean isUuids) {
+		buildSelectPart(sb, isUuids, false);
 		sb.append(" FROM ");
 		build(sb, fromPart);
 		if (joinPart.hasResult()) {
@@ -289,13 +313,48 @@ public class QueryComposer {
 			sb.append(" WHERE ");
 			build(sb, wherePart.getResult());
 		}
-		buildGroupByPart(sb);
+		buildGroupByPart(sb, true);
 		if (havingPart.hasResult()) {
 			sb.append(" HAVING ");
 			build(sb, havingPart.getResult());
 		}
-		buildOrderByPart(sb);
-		return sb.toString();
+		buildOrderByPart(sb, true);
+	}
+	
+	private void initBuilder() {
+		String queryStr = null;
+		String countQueryStr = null;
+
+		String fromBasicQueryStr = "";
+		List<String> parts = queryComposer.resolveInnerFrom();
+		for (String queryPart : parts) {
+			fromBasicQueryStr += queryPart;
+		}
+
+		String innerSelectFields = queryComposer.getInnerFields(false);
+		String innerGroupByFields = queryComposer.getInnerFields(true);
+		String innerSelect = "SELECT " + innerSelectFields;
+		if (queryComposer.isApplyOuterQuery()) {
+			//This query part returns select fields + column names, for which sorting is supported. Select and Sorting columns should exist in entity table or in tables, which have one to one correspondence
+			//Therefore GROUP BY by all these columns guarantees uniquness of entity's tab.UUID and we shouldn't have duplicates when grouping by select and sorting columns (unless we return tabular native query result)
+			String outerSelectFields = queryComposer.getOuterSelectFields();
+			String outerComposerSelect = "SELECT " + outerSelectFields;
+
+			//This query part selects column names, which will be used by outer query. 
+
+			String fromQueryStr = null;
+
+
+			fromQueryStr = fromBasicQueryStr + " " + queryComposer.getSearchPart(fromBasicQueryStr) + " GROUP BY " + innerGroupByFields;
+			countQueryStr = "SELECT DISTINCT COUNT(1) OVER () " + fromQueryStr;
+			fromQueryStr = innerSelect + " " + fromQueryStr;
+
+			queryStr = outerComposerSelect + " FROM ( " + fromQueryStr + " ) tab" + queryComposer.getOuterOrderByPart() + queryComposer.getPagedPart();
+		} else {
+			String searchPart = queryComposer.getSearchPart(fromBasicQueryStr);
+			queryStr = innerSelect + " " + fromBasicQueryStr + " " + searchPart + queryComposer.getBasicOrderByPart(searchPart) + queryComposer.getPagedPart();
+			countQueryStr = "SELECT COUNT(1) " + fromBasicQueryStr + " " + queryComposer.getSearchPart(fromBasicQueryStr);
+		}
 	}
 
 	public String buildPart() {
@@ -307,7 +366,7 @@ public class QueryComposer {
 	public String buildResultFromUuidList(List<String> uuidList) {
 		initComposer();
 		StringBuilder sb = new StringBuilder();
-		buildSelectPart(sb);
+		buildSelectPart(sb, false, true);
 		sb.append(" FROM ");
 		build(sb, fromPart);
 		if (joinPart.hasResult()) {
@@ -331,30 +390,6 @@ public class QueryComposer {
 		sb.append(distinctUuidPart);
 		sb.append(" IN ");
 		build(sb, new StringBuilder(NativeQueryUtil.getInString(uuidList)));
-
-		buildGroupByPart(sb);
-		buildOrderByPart(sb);
-		return sb.toString();
-	}
-
-	public String buildUuidListPart() {
-		StringBuilder sb = new StringBuilder();
-		sb.append("SELECT tab.UUID FROM ( SELECT DISTINCT ");
-		sb.append(distinctUuidPart);
-		sb.append(" AS UUID");
-		sb.append(" FROM ");
-		build(sb, fromPart);
-		if (wherePart.hasResult()) {
-			sb.append(" WHERE ");
-			build(sb, wherePart.getResult());
-		}
-		buildGroupByPart(sb);
-		if (havingPart.hasResult()) {
-			sb.append(" HAVING ");
-			build(sb, havingPart.getResult());
-		}
-		buildOrderByPart(sb);
-		sb.append(" ) tab");
 
 		return sb.toString();
 	}
@@ -435,24 +470,53 @@ public class QueryComposer {
 		return queryComposer.getSelectFields();
 	}
 	
-	private void buildSelectPart(StringBuilder sb) {
-		String result = queryComposer.buildSelectResult();
+	private void buildSelectPart(StringBuilder sb, boolean isUuids, boolean isInner) {
+		String result = null;
+		if (isUuids) {
+			if (queryComposer.isApplyOuterQuery() && !isInner) {
+				result = QueryComposerBuilder.OUTER_QUERY_PREFIX + "." + Constants.UUID;
+			} else {
+				if (distinctUuidPart != null) {
+					result = distinctUuidPart;
+				} else {
+					result = rootAlias + "." + Constants.UUID;
+				}
+			}
+		} else {
+			if (queryComposer.getCustomSelectPart() != null) {
+				result = queryComposer.getCustomSelectPart();
+			} else if (queryComposer.isApplyOuterQuery() && !isInner) {
+				result = queryComposer.getOuterSelectFields();
+			} else {
+				result = queryComposer.getInnerFields(false);
+			}
+		}
+		
 		if (result != null) {
-			build(sb, new StringBuilder(result));
+			build(sb, new StringBuilder("SELECT " + result));
 		}
 	}
 	
-	private void buildOrderByPart(StringBuilder sb) {
-		String result = queryComposer.buildOrderByResult();
+	private void buildOrderByPart(StringBuilder sb, boolean isInner) {
+		String result = null;
+		if (queryComposer.isApplyOuterQuery() && !isInner) {
+			result = queryComposer.getOrderByPart();
+		}
+		if (!queryComposer.isApplyOuterQuery() && isInner) {
+			result = queryComposer.getOrderByPart();
+		}	
 		if (result != null) {
-			build(sb, new StringBuilder(result));
+			build(sb, new StringBuilder(" ORDER BY " + result));
 		}
 	}
 	
-	private void buildGroupByPart(StringBuilder sb) {
-		String result = queryComposer.buildGroupByResult();
+	private void buildGroupByPart(StringBuilder sb, boolean isInner) {		
+		String result = null;
+		if (queryComposer.isApplyOuterQuery() && isInner) {
+			result = queryComposer.getInnerFields(true);
+		}		
 		if (result != null) {
-			build(sb, new StringBuilder(result));
+			build(sb, new StringBuilder(" GROUP BY " + result));
 		}
 	}	
 	

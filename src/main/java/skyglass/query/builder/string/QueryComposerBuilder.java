@@ -33,7 +33,7 @@ public class QueryComposerBuilder {
 
 	private static final Pattern ALIAS_REGEX_PATTERN = Pattern.compile("\\$\\{(.*?)\\}");
 
-	private final String OUTER_QUERY_PREFIX = "tab";
+	final static String OUTER_QUERY_PREFIX = "tab";
 
 	private QueryRequestDTO queryRequest;
 
@@ -489,47 +489,16 @@ public class QueryComposerBuilder {
 		addSelectFieldResolver(alias, path, path);
 	}
 
-	private void init() {
+	void init() {
 		initPart();
 		initSelectPart();
 		initConditionalPart();
 		initSearchPart();
 		initOrderByPart();
-
-		String fromBasicQueryStr = "";
-		List<String> parts = resolveInnerFrom();
-		for (String queryPart : parts) {
-			fromBasicQueryStr += queryPart;
-		}
-
-		String innerSelectFields = getInnerFields(false);
-		String innerGroupByFields = getInnerFields(true);
-		String innerSelect = "SELECT " + innerSelectFields;
-		if (applyOuterQuery) {
-			//This query part returns select fields + column names, for which sorting is supported. Select and Sorting columns should exist in entity table or in tables, which have one to one correspondence
-			//Therefore GROUP BY by all these columns guarantees uniquness of entity's tab.UUID and we shouldn't have duplicates when grouping by select and sorting columns (unless we return tabular native query result)
-			String outerSelectFields = getOuterSelectFields();
-			String outerComposerSelect = "SELECT " + outerSelectFields;
-
-			//This query part selects column names, which will be used by outer query. 
-
-			String fromQueryStr = null;
-
-
-			fromQueryStr = fromBasicQueryStr + " " + getSearchPart(fromBasicQueryStr) + " GROUP BY " + innerGroupByFields;
-			countQueryStr = "SELECT DISTINCT COUNT(1) OVER () " + fromQueryStr;
-			fromQueryStr = innerSelect + " " + fromQueryStr;
-
-			queryStr = outerComposerSelect + " FROM ( " + fromQueryStr + " ) tab" + getOuterOrderByPart() + getPagedPart();
-		} else {
-			String searchPart = getSearchPart(fromBasicQueryStr);
-			queryStr = innerSelect + " " + fromBasicQueryStr + " " + searchPart + getBasicOrderByPart(searchPart) + getPagedPart();
-			countQueryStr = "SELECT COUNT(1) " + fromBasicQueryStr + " " + getSearchPart(fromBasicQueryStr);
-		}
 	}
 
 
-	private String getOuterSelectFields() {
+	String getOuterSelectFields() {
 		String result = OUTER_QUERY_PREFIX + "." + Constants.UUID;
 		for (FieldItem fieldItem : selectFieldMap.values()) {
 			if (!Constants.UUID.equalsIgnoreCase(fieldItem.getAlias())) {
@@ -539,7 +508,7 @@ public class QueryComposerBuilder {
 		return result;
 	}
 
-	private String getInnerFields(boolean groupBy) {
+	String getInnerFields(boolean groupBy) {
 		String result = rootAlias + "." + Constants.UUID;
 
 		for (FieldItem fieldItem : selectFieldMap.values()) {
@@ -574,11 +543,11 @@ public class QueryComposerBuilder {
 		return result;
 	}
 
-	private List<String> resolveInnerFrom() {
+	List<String> resolveInnerFrom() {
 		return queryParts.stream().filter(s -> shouldBeAdded(s)).map(s -> s.getQueryPart()).collect(Collectors.toList());
 	}
 
-	private String getSearchPart(String fromBasicQueryStr) {
+	String getSearchPart(String fromBasicQueryStr) {
 		String result = null;
 		for (String searchPartSupplier : searchPartSuppliers) {
 			result = QueryFunctions.and(result, searchPartSupplier);
@@ -618,17 +587,21 @@ public class QueryComposerBuilder {
 			orderBuilderRunner.run();
 		}
 	}
+	
+	String getOrderByPart() {
+		return QueryOrderUtil.applyOrder(orderBuilder.getOrderFields());
+	}
 
-	private String getBasicOrderByPart(String searchPart) {
+	String getBasicOrderByPart(String searchPart) {
 		return (searchPart.length() == 0 || searchPart.substring(searchPart.length() - 1).equals(" ") ? "" : " ") 
 				+ "ORDER BY " + QueryOrderUtil.applyOrder(orderBuilder.getOrderFields());
 	}
 	
-	private String getOuterOrderByPart() {
+	String getOuterOrderByPart() {
 		return " ORDER BY " + QueryOrderUtil.applyOrder(orderBuilder.getOrderFields());
 	}
 
-	private String getPagedPart() {
+	String getPagedPart() {
 		return QueryRequestUtil.isPaged(queryRequest) ? " LIMIT ?limit OFFSET ?offset" : "";
 	}
 
@@ -710,6 +683,10 @@ public class QueryComposerBuilder {
 		return "SELECT " + (customSelectPart == null ? selectPart : customSelectPart);
 	}
 	
+	String getCustomSelectPart() {
+		return customSelectPart;
+	}
+	
 	private boolean isCustomSelect() {
 		return customSelectPart != null;
 	}
@@ -735,6 +712,10 @@ public class QueryComposerBuilder {
 			return "";
 		}
 		return " GROUP BY " + (customGroupByPart == null ? groupByPart : customGroupByPart);
+	}
+	
+	boolean isApplyOuterQuery() {
+		return applyOuterQuery;
 	}
 
 }
