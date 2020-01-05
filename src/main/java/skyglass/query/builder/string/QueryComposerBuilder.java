@@ -33,8 +33,6 @@ public class QueryComposerBuilder {
 
 	private static final Pattern ALIAS_REGEX_PATTERN = Pattern.compile("\\$\\{(.*?)\\}");
 
-	final static String OUTER_QUERY_PREFIX = "tab";
-
 	private QueryRequestDTO queryRequest;
 
 	private boolean applyOuterQuery;
@@ -72,16 +70,14 @@ public class QueryComposerBuilder {
 	private OrderBuilder orderBuilder;
 
 	private String rootAlias;
-
-	private String queryStr;
-
-	private String countQueryStr;
 	
 	private String customSelectPart;
 	
 	private String customGroupByPart;
 	
 	private String customOrderByPart;
+	
+	private boolean hasWherePart;
 
 	QueryComposerBuilder(QueryRequestDTO queryRequest, String rootAlias) {
 		this.queryRequest = queryRequest;
@@ -111,6 +107,12 @@ public class QueryComposerBuilder {
 
 	public void addDistinct(String queryPart) {
 		add(queryPart, true);
+	}
+	
+	public void addWherePart(String queryPart) {
+		queryPartBuilderRunners.add(() -> {
+			doAddWherePart(queryPart);
+		});
 	}
 
 	public void add(String queryPart, boolean distinct) {
@@ -201,18 +203,6 @@ public class QueryComposerBuilder {
 		});
 	}
 	
-	public String getCountQueryStr() {
-		if (countQueryStr == null) {
-			getQueryStr();
-		}
-		return countQueryStr;
-	}
-
-	public String getQueryStr() {
-		resetAndInit();
-		return queryStr;
-	}
-	
 	void resetAndInit() {
 		reset();
 		init();
@@ -224,6 +214,7 @@ public class QueryComposerBuilder {
 	
 	private void reset() {
 		applyOuterQuery = false;
+		hasWherePart = false;
 		aliasResolverMap = new HashMap<>();
 		queryMap = new LinkedHashMap<>();
 		queryParts = new ArrayList<>();
@@ -232,14 +223,21 @@ public class QueryComposerBuilder {
 		fieldPathMap = new LinkedHashMap<>();
 		selectFieldMap = new LinkedHashMap<>();
 		orderFieldMap = new LinkedHashMap<>();
-		queryStr = null;
-		countQueryStr = null;
 		searchPartSuppliers = new ArrayList<>();
 		
 	}
 
 	private void doAdd(String queryPart, boolean distinct) {
 		queryParts.add(new QueryPart(queryPart, distinct));
+		queryMap.computeIfAbsent(queryPart, a -> new HashSet<>()).add(Constants.UUID);
+	}
+	
+	private void doAddWherePart(String queryPart) {
+		if (!hasWherePart) {
+			queryPart = "WHERE " + queryPart;
+			hasWherePart = true;
+		}
+		queryParts.add(new QueryPart(queryPart, false));
 		queryMap.computeIfAbsent(queryPart, a -> new HashSet<>()).add(Constants.UUID);
 	}
 
@@ -499,10 +497,10 @@ public class QueryComposerBuilder {
 
 
 	String getOuterSelectFields() {
-		String result = OUTER_QUERY_PREFIX + "." + Constants.UUID;
+		String result = Constants.OUTER_QUERY_PREFIX + "." + Constants.UUID;
 		for (FieldItem fieldItem : selectFieldMap.values()) {
 			if (!Constants.UUID.equalsIgnoreCase(fieldItem.getAlias())) {
-				result += ", " + OUTER_QUERY_PREFIX + "." + fieldItem.getAlias();
+				result += ", " + Constants.OUTER_QUERY_PREFIX + "." + fieldItem.getAlias();
 			}
 		}
 		return result;
@@ -547,12 +545,12 @@ public class QueryComposerBuilder {
 		return queryParts.stream().filter(s -> shouldBeAdded(s)).map(s -> s.getQueryPart()).collect(Collectors.toList());
 	}
 
-	String getSearchPart(String fromBasicQueryStr) {
+	String getSearchPart(boolean whereHasResult) {
 		String result = null;
 		for (String searchPartSupplier : searchPartSuppliers) {
 			result = QueryFunctions.and(result, searchPartSupplier);
 		}
-		return result == null ? "" : ((StringUtils.isNotBlank(fromBasicQueryStr) && fromBasicQueryStr.contains(" WHERE ") ? "AND " : "WHERE ") + result);
+		return result == null ? "" : ((whereHasResult || hasWherePart ? " AND " : " WHERE ") + result);
 	}
 
 	private void initPart() {
@@ -643,7 +641,7 @@ public class QueryComposerBuilder {
 		if (pathParts.length == 1 && aliasResolverMap.get(alias) != null) {
 			path = aliasResolverMap.get(path);
 		}
-		return applyOuterQuery ? (OUTER_QUERY_PREFIX + "." + alias) : path;
+		return applyOuterQuery ? (Constants.OUTER_QUERY_PREFIX + "." + alias) : path;
 	}
 	
 	private String resolveInnerPath(String alias, String path) {
@@ -714,8 +712,8 @@ public class QueryComposerBuilder {
 		return " GROUP BY " + (customGroupByPart == null ? groupByPart : customGroupByPart);
 	}
 	
-	boolean isApplyOuterQuery() {
-		return applyOuterQuery;
+	boolean isApplyOuterQuery(boolean isNative) {
+		return applyOuterQuery && isNative;
 	}
 
 }

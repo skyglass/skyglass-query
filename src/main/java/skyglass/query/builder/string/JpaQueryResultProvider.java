@@ -1,14 +1,18 @@
 package skyglass.query.builder.string;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.persistence.EntityManager;
 import javax.persistence.TypedQuery;
 
+import skyglass.data.common.model.IdObject;
 import skyglass.query.QueryResultUtil;
 import skyglass.query.builder.result.QueryResultProvider;
 
-public class JpaQueryResultProvider<T> implements QueryResultProvider<T> {
+public class JpaQueryResultProvider<T extends IdObject> implements QueryResultProvider<T> {
 
 	private EntityManager entityManager;
 
@@ -24,7 +28,15 @@ public class JpaQueryResultProvider<T> implements QueryResultProvider<T> {
 		TypedQuery<T> typedQuery = entityManager.createQuery(builder.buildResultFromUuidList(uuidList), type);
 		setParameters(typedQuery, builder);
 		List<T> results = QueryResultUtil.getListResult(typedQuery);
-		return results;
+		Map<String, T> idMap = new HashMap<>();
+		for (T result: results) {
+			idMap.put(result.getUuid(), result);
+		}
+		List<T> finalResult = new ArrayList<>();
+		for (String uuid: uuidList) {
+			finalResult.add(idMap.get(uuid));
+		}
+		return finalResult;
 	}
 
 	@Override
