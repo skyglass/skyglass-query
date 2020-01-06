@@ -33,10 +33,12 @@ public class QueryResultBuilder<T> {
 		this.queryStringBuilder = queryStringBuilder;
 		this.queryResultProvider = queryResultProvider;
 		this.queryRequest = queryStringBuilder.getQueryRequest();
-		this.rowsPerPage = queryRequest.getRowsPerPage();
-		this.pageNumber = queryRequest.getPageNumber();
-		this.offset = queryRequest.getOffset();
-		this.limit = queryRequest.getLimit();
+		if (this.queryRequest != null) {
+			this.rowsPerPage = queryRequest.getRowsPerPage();
+			this.pageNumber = queryRequest.getPageNumber();
+			this.offset = queryRequest.getOffset();
+			this.limit = queryRequest.getLimit();
+		}
 		this.distinct = queryStringBuilder.isDistinct();
 	}
 

@@ -9,6 +9,7 @@ import java.util.function.Supplier;
 
 import javax.persistence.Query;
 
+import skyglass.data.common.model.IdObject;
 import skyglass.query.builder.QueryResult;
 import skyglass.query.builder.string.QueryComposer;
 
@@ -16,9 +17,9 @@ public interface QueryManager {
 
 	public Query createNativeQuery(String sqlString);
 
-	public <T, DTO> QueryResult<DTO> getDtoResult(QueryComposer queryStringBuilder, Function<T, DTO> entityDtoConverter, Class<T> type);
+	public <T extends IdObject, DTO> QueryResult<DTO> getDtoResult(QueryComposer queryStringBuilder, Function<T, DTO> entityDtoConverter, Class<T> type);
 
-	public <T> QueryResult<T> getEntityResult(QueryComposer queryStringBuilder, Class<T> type);
+	public <T extends IdObject> QueryResult<T> getEntityResult(QueryComposer queryStringBuilder, Class<T> type);
 
 	public QueryResult<Object[]> getNativeResult(QueryComposer queryStringBuilder);
 
@@ -27,9 +28,9 @@ public interface QueryManager {
 	public <DTO1, DTO2> QueryResult<DTO2> convertNativeResult(QueryComposer queryStringBuilder, Supplier<DTO1> dto1Supplier,
 			Function<DTO1, DTO2> dto1Dto2Converter);
 
-	public <T, DTO> List<DTO> getDtoList(QueryComposer queryStringBuilder, Function<T, DTO> entityDtoConverter, Class<T> type);
+	public <T extends IdObject, DTO> List<DTO> getDtoList(QueryComposer queryStringBuilder, Function<T, DTO> entityDtoConverter, Class<T> type);
 
-	public <T> List<T> getEntityList(QueryComposer queryStringBuilder, Class<T> type);
+	public <T extends IdObject> List<T> getEntityList(QueryComposer queryStringBuilder, Class<T> type);
 
 	public List<Object[]> getNativeList(QueryComposer queryStringBuilder);
 

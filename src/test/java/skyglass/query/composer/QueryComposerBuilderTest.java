@@ -1,6 +1,7 @@
 package skyglass.query.composer;
 
 import java.util.Arrays;
+import java.util.Date;
 import java.util.function.Consumer;
 
 import org.apache.commons.lang3.StringUtils;
@@ -31,6 +32,7 @@ public class QueryComposerBuilderTest {
 		queryRequest.setOrderField("planetDescription");
 		queryRequest.setOrderType(OrderType.Desc);
 		queryRequest.setSearchTerms(Arrays.asList(new String[] { "test1" }));
+		queryRequest.setLimit(10);
 
 		String expectedResult = getExpectedResult1(queryRequest, QueryTranslationUtil.coalesce(queryRequest.getLang(), "trDescription"), "planetDescription");
 
@@ -71,6 +73,7 @@ public class QueryComposerBuilderTest {
 		
 		queryRequest.setOrderField("createdBy");
 		queryRequest.setOrderType(OrderType.Asc);
+		queryRequest.setLimit(-1);
 		queryComposer.setDistinct(false);
 		expectedResult = getExpectedResult2(queryRequest, "user.name", "createdBy");
 		result = queryComposer.getQueryStr();
@@ -88,19 +91,21 @@ public class QueryComposerBuilderTest {
 	}
 	
 	private QueryComposer createQueryComposer1(QueryRequestDTO queryRequest, boolean distinct) {
+		queryRequest.set("fromDate", new Date());
+		queryRequest.set("toDate", new Date());
 		QueryComposer queryComposer = QueryComposer.nativ(queryRequest, "sm");
 
 		queryComposer.addSelect("sm.UUID");
-		queryComposer.add("FROM SPACEMISSION sm ");
+		queryComposer.add("FROM SPACEMISSION sm");
 
-		queryComposer.addConditional("JOIN PLANET pl ON sm.PLANET_UUID = pl.uuid ", "planetId");
-		queryComposer.addConditional("JOIN TranslatedField trName ON trName.UUID = pl.nameI18n_UUID ", "planetName");
-		queryComposer.addConditional("JOIN USER user ON sm.CREATEDBY_UUID = user.uuid ", "createdBy");
-		queryComposer.addConditional("LEFT JOIN TranslatedField trDescription ON trDescription.UUID = pl.descriptionI18n_UUID ", "planetDescription");
-		queryComposer.addConditional("LEFT JOIN PLANETINFO pi ON pi.planet_UUID = pl.UUID ", "localPlanetName");
-		queryComposer.addConditional("LEFT JOIN TranslatedField trLocalName ON trLocalName.UUID = pi.nameI18n_UUID ", "localPlanetName");
-		queryComposer.addConditional("LEFT JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID ", true, "bparamValue");
-		queryComposer.addWherePart("sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate");
+		queryComposer.addConditional("JOIN PLANET pl ON sm.PLANET_UUID = pl.uuid", "planetId");
+		queryComposer.addConditional("JOIN TranslatedField trName ON trName.UUID = pl.nameI18n_UUID", "planetName");
+		queryComposer.addConditional("JOIN USER user ON sm.CREATEDBY_UUID = user.uuid", "createdBy");
+		queryComposer.addConditional("LEFT JOIN TranslatedField trDescription ON trDescription.UUID = pl.descriptionI18n_UUID", "planetDescription");
+		queryComposer.addConditional("LEFT JOIN PLANETINFO pi ON pi.planet_UUID = pl.UUID", "localPlanetName");
+		queryComposer.addConditional("LEFT JOIN TranslatedField trLocalName ON trLocalName.UUID = pi.nameI18n_UUID", "localPlanetName");
+		queryComposer.addConditional("LEFT JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID", true, "bparamValue");
+		queryComposer.addWhere("sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate");
 		queryComposer.addSearch("sm.planetId", "sm.from", "sm.destination", "sm.operator", "createdBy", "planetDescription", "direction");
 		
 		queryComposer.addAliasResolver("planetDescription", QueryTranslationUtil.coalesce(queryRequest.getLang(), "trDescription"));
@@ -174,6 +179,8 @@ public class QueryComposerBuilderTest {
 		queryRequest.setOrderField("createdAt");
 		queryRequest.setOrderType(OrderType.Desc);
 		queryRequest.setSearchTerms(Arrays.asList(new String[] { "test1" }));
+		queryRequest.set("fromDate", new Date());
+		queryRequest.set("toDate", new Date());
 
 		String expectedResult = "SELECT COUNT(1) FROM SPACEMISSION sm "
 				+ "JOIN USER user ON sm.CREATEDBY_UUID = user.uuid "
@@ -183,16 +190,16 @@ public class QueryComposerBuilderTest {
 		QueryComposer queryComposer = QueryComposer.nativ(queryRequest, "sm");
 
 		queryComposer.addSelect("sm.UUID");
-		queryComposer.add("FROM SPACEMISSION sm ");
+		queryComposer.add("FROM SPACEMISSION sm");
 
-		queryComposer.addConditional("JOIN PLANET pl ON sm.PLANET_UUID = pl.uuid ", "planetId");
-		queryComposer.addConditional("JOIN TranslatedField trName ON trName.UUID = pl.nameI18n_UUID ", "planetName");
-		queryComposer.addConditional("JOIN USER user ON sm.CREATEDBY_UUID = user.uuid ", "createdBy");
-		queryComposer.addConditional("LEFT JOIN TranslatedField trDescription ON trDescription.UUID = pl.descriptionI18n_UUID ", "planetDescription");
+		queryComposer.addConditional("JOIN PLANET pl ON sm.PLANET_UUID = pl.uuid", "planetId");
+		queryComposer.addConditional("JOIN TranslatedField trName ON trName.UUID = pl.nameI18n_UUID", "planetName");
+		queryComposer.addConditional("JOIN USER user ON sm.CREATEDBY_UUID = user.uuid", "createdBy");
+		queryComposer.addConditional("LEFT JOIN TranslatedField trDescription ON trDescription.UUID = pl.descriptionI18n_UUID", "planetDescription");
 		queryComposer.addConditional("LEFT JOIN PLANETINFO pi ON pi.planet_UUID = pl.UUID ", "localPlanetName");
-		queryComposer.addConditional("LEFT JOIN TranslatedField trLocalName ON trLocalName.UUID = pi.nameI18n_UUID ", "localPlanetName");
-		queryComposer.addConditional("LEFT JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID ", true, "bparamValue");
-		queryComposer.addWherePart("sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate");
+		queryComposer.addConditional("LEFT JOIN TranslatedField trLocalName ON trLocalName.UUID = pi.nameI18n_UUID", "localPlanetName");
+		queryComposer.addConditional("LEFT JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID", false, "bparamValue");
+		queryComposer.addWhere("sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate");
 		queryComposer.addSearch("createdBy");
 
 		queryComposer.setDefaultOrder(OrderType.Desc, FieldType.Date, "sm.createdAt");
@@ -329,6 +336,7 @@ public class QueryComposerBuilderTest {
 		QueryRequestDTO queryRequest = MockQueryRequestDto.create("");
 		queryRequest.setSearchTerm("test1");
 		queryRequest.setOrderField("planetName");
+		queryRequest.setPageNumber(1);
 
 		String expectedResult = getExpectedResult(queryRequest, true, "user.name", "bparam.value");
 
@@ -431,6 +439,9 @@ public class QueryComposerBuilderTest {
 
 	private QueryComposer createQueryComposer(QueryRequestDTO queryRequest, Consumer<QueryComposer> searchConsumer, boolean distinctSearch, boolean distinctOrder, String selectString) {
 		QueryComposer queryComposer = QueryComposer.nativ(queryRequest, "sm");
+		queryRequest.set("fromDate", new Date());
+		queryRequest.set("toDate", new Date());
+		queryRequest.setLimit(10);
 
 		String languageCode = QueryRequestUtil.getCurrentLanguageCode(queryRequest);
 
@@ -442,16 +453,16 @@ public class QueryComposerBuilderTest {
 		if (selectString == null) {
 			addPlanetInfoSelectPart(queryComposer, languageCode);
 		}
-		queryComposer.add("FROM SPACEMISSION sm ");
+		queryComposer.add("FROM SPACEMISSION sm");
 
-		queryComposer.addConditional("JOIN PLANET pl ON sm.PLANET_UUID = pl.uuid ", "planetId");
-		queryComposer.addConditional("JOIN TranslatedField trName ON trName.UUID = pl.nameI18n_UUID ", "planetName");
-		queryComposer.addConditional("JOIN USER user ON sm.CREATEDBY_UUID = user.uuid ", "createdBy");
-		queryComposer.addConditional("LEFT JOIN TranslatedField trDescription ON trDescription.UUID = pl.descriptionI18n_UUID ", "planetDescription");
-		queryComposer.addConditional("LEFT JOIN PLANETINFO pi ON pi.planet_UUID = pl.UUID ", "localPlanetName");
-		queryComposer.addConditional("LEFT JOIN TranslatedField trLocalName ON trLocalName.UUID = pi.nameI18n_UUID ", "localPlanetName");
-		queryComposer.addConditional("LEFT JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID ", distinctSearch, "bparamValue");
-		queryComposer.addWherePart("sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate");
+		queryComposer.addConditional("JOIN PLANET pl ON sm.PLANET_UUID = pl.uuid", "planetId");
+		queryComposer.addConditional("JOIN TranslatedField trName ON trName.UUID = pl.nameI18n_UUID", "planetName");
+		queryComposer.addConditional("JOIN USER user ON sm.CREATEDBY_UUID = user.uuid", "createdBy");
+		queryComposer.addConditional("LEFT JOIN TranslatedField trDescription ON trDescription.UUID = pl.descriptionI18n_UUID", "planetDescription");
+		queryComposer.addConditional("LEFT JOIN PLANETINFO pi ON pi.planet_UUID = pl.UUID", "localPlanetName");
+		queryComposer.addConditional("LEFT JOIN TranslatedField trLocalName ON trLocalName.UUID = pi.nameI18n_UUID", "localPlanetName");
+		queryComposer.addConditional("LEFT JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID", distinctSearch, "bparamValue");
+		queryComposer.addWhere("sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate");
 		if (searchConsumer == null) {
 			queryComposer.addSearch("sm.planetId", "sm.from", "sm.destination", "sm.operator", "createdBy", "bparamValue", "direction", "planetName", "planetDescription", "localPlanetName",
 					"localPlanetDescription");

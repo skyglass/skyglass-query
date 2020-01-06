@@ -15,6 +15,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import skyglass.data.common.model.IdObject;
 import skyglass.query.builder.QueryResult;
 import skyglass.query.builder.string.JpaQueryResultProvider;
 import skyglass.query.builder.string.NativeQueryResultProvider;
@@ -28,13 +29,13 @@ public class QueryManagerImpl implements QueryManager {
 	private EntityManager entityManager;
 
 	@Override
-	public <T, DTO> QueryResult<DTO> getDtoResult(QueryComposer queryStringBuilder, Function<T, DTO> entityDtoConverter, Class<T> type) {
+	public <T extends IdObject, DTO> QueryResult<DTO> getDtoResult(QueryComposer queryStringBuilder, Function<T, DTO> entityDtoConverter, Class<T> type) {
 		QueryResultProvider<T> queryResultProvider = new JpaQueryResultProvider<T>(entityManager, type);
 		return new EntityDtoConverter<>(queryStringBuilder, queryResultProvider, entityDtoConverter).convert();
 	}
 
 	@Override
-	public <T> QueryResult<T> getEntityResult(QueryComposer queryStringBuilder, Class<T> type) {
+	public <T extends IdObject> QueryResult<T> getEntityResult(QueryComposer queryStringBuilder, Class<T> type) {
 		QueryResultProvider<T> queryResultProvider = new JpaQueryResultProvider<T>(entityManager, type);
 		return new QueryResultBuilder<>(queryStringBuilder, queryResultProvider).getResult();
 	}
@@ -59,12 +60,12 @@ public class QueryManagerImpl implements QueryManager {
 	}
 
 	@Override
-	public <T, DTO> List<DTO> getDtoList(QueryComposer queryStringBuilder, Function<T, DTO> entityDtoConverter, Class<T> type) {
+	public <T extends IdObject, DTO> List<DTO> getDtoList(QueryComposer queryStringBuilder, Function<T, DTO> entityDtoConverter, Class<T> type) {
 		return getDtoResult(queryStringBuilder, entityDtoConverter, type).getResult();
 	}
 
 	@Override
-	public <T> List<T> getEntityList(QueryComposer queryStringBuilder, Class<T> type) {
+	public <T extends IdObject> List<T> getEntityList(QueryComposer queryStringBuilder, Class<T> type) {
 		return getEntityResult(queryStringBuilder, type).getResult();
 	}
 

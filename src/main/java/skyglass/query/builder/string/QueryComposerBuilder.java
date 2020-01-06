@@ -34,6 +34,8 @@ public class QueryComposerBuilder {
 	private static final Pattern ALIAS_REGEX_PATTERN = Pattern.compile("\\$\\{(.*?)\\}");
 
 	private QueryRequestDTO queryRequest;
+	
+	private QueryComposer root;
 
 	private boolean applyOuterQuery;
 
@@ -77,9 +79,10 @@ public class QueryComposerBuilder {
 	
 	private String customOrderByPart;
 	
-	private boolean hasWherePart;
-
-	QueryComposerBuilder(QueryRequestDTO queryRequest, String rootAlias) {
+	private boolean forceDistinct;
+	
+	QueryComposerBuilder(QueryComposer root, QueryRequestDTO queryRequest, String rootAlias) {
+		this.root = root;
 		this.queryRequest = queryRequest;
 		this.orderBuilder = new OrderBuilder(queryRequest);
 		this.rootAlias = rootAlias;
@@ -91,14 +94,27 @@ public class QueryComposerBuilder {
 
 	public void setDistinct() {
 		initRunners.add(() -> {
-			this.applyOuterQuery = true;
+			_forceDistinct(true);
 		});
 	}
 	
 	public void setDistinct(boolean distinct) {
 		initRunners.add(() -> {
-			this.applyOuterQuery = distinct;
+			_forceDistinct(distinct);
 		});
+	}
+	
+	void _setDistinct(boolean distinct) {
+		if (!forceDistinct) {
+			this.applyOuterQuery = distinct;
+		}
+	}
+	
+	void _forceDistinct(boolean distinct) {
+		this.applyOuterQuery = distinct;
+		if (distinct) {
+			this.forceDistinct = true;
+		}
 	}
 
 	public void add(String queryPart) {
@@ -109,11 +125,55 @@ public class QueryComposerBuilder {
 		add(queryPart, true);
 	}
 	
-	public void addWherePart(String queryPart) {
+	public void addWhere(String queryPart) {
+		addWhere(queryPart, null, false);
+	}
+	
+	public void addOrWhere(String queryPart) {
+		addWhere(queryPart, "OR", false);
+	}
+	
+	public void addDistinctWhere(String queryPart) {
+		addWhere(queryPart, null, true);
+	}
+	
+	public void addDistinctOrWhere(String queryPart) {
+		addWhere(queryPart, "OR", true);
+	}
+	
+	public void addConditionalWhere(String queryPart, String... aliases) {
+		addConditionalWhere(queryPart, null, aliases);
+	}
+
+	public void addDistinctConditionalWhere(String queryPart, String... aliases) {
+		addDistinctConditionalWhere(queryPart, null, aliases);
+	}	
+	
+	public void addConditionalOrWhere(String queryPart, String... aliases) {
+		addConditionalWhere(queryPart, "OR", aliases);
+	}
+
+	public void addDistinctConditionalOrWhere(String queryPart, String... aliases) {
+		addDistinctConditionalWhere(queryPart, "OR", aliases);
+	}
+	
+	private void addWhere(String queryPart, String delimiter, boolean distinct) {
 		queryPartBuilderRunners.add(() -> {
-			doAddWherePart(queryPart);
+			doAddWhere(queryPart, delimiter, distinct);
 		});
 	}
+	
+	private void addConditionalWhere(String queryPart, String delimiter, String... aliases) {
+		queryPartBuilderRunners.add(() -> {
+			doAddWhereConditional(queryPart, delimiter, false, aliases);
+		});
+	}
+
+	private void addDistinctConditionalWhere(String queryPart, String delimiter, String... aliases) {
+		queryPartBuilderRunners.add(() -> {
+			doAddWhereConditional(queryPart, delimiter, true, aliases);
+		});
+	}	
 
 	public void add(String queryPart, boolean distinct) {
 		queryPartBuilderRunners.add(() -> {
@@ -214,7 +274,8 @@ public class QueryComposerBuilder {
 	
 	private void reset() {
 		applyOuterQuery = false;
-		hasWherePart = false;
+		forceDistinct = false;
+		root.setCustomWherePart(false);
 		aliasResolverMap = new HashMap<>();
 		queryMap = new LinkedHashMap<>();
 		queryParts = new ArrayList<>();
@@ -228,17 +289,15 @@ public class QueryComposerBuilder {
 	}
 
 	private void doAdd(String queryPart, boolean distinct) {
-		queryParts.add(new QueryPart(queryPart, distinct));
-		queryMap.computeIfAbsent(queryPart, a -> new HashSet<>()).add(Constants.UUID);
+		addQueryPart(queryPart, distinct, null, false);
 	}
 	
-	private void doAddWherePart(String queryPart) {
-		if (!hasWherePart) {
-			queryPart = "WHERE " + queryPart;
-			hasWherePart = true;
-		}
-		queryParts.add(new QueryPart(queryPart, false));
-		queryMap.computeIfAbsent(queryPart, a -> new HashSet<>()).add(Constants.UUID);
+	private void doAddWhere(String queryPart, String delimiter, boolean distinct) {
+		addQueryPart(queryPart, distinct, delimiter, true);
+	}
+	
+	private void doAddWhereConditional(String queryPart, String delimiter, boolean distinct, String... aliases) {
+		addQueryPart(queryPart, distinct, delimiter, true, aliases);
 	}
 
 	private void doAddConditional(String queryPart, String... aliases) {
@@ -250,15 +309,25 @@ public class QueryComposerBuilder {
 	}
 
 	private void doAddConditional(String queryPart, boolean distinct, String... aliases) {
-		queryParts.add(new QueryPart(queryPart, distinct));
-		for (String alias : aliases) {
-			queryMap.computeIfAbsent(queryPart, a -> new HashSet<>()).add(alias);
-		}
+		addQueryPart(queryPart, distinct, null, false, aliases);
 	}
-
+	
+	private void addQueryPart(String queryPart, boolean distinct, String delimiter, boolean wherePart, String... aliases) {
+		QueryPart result = new QueryPart(root, queryPart, distinct, delimiter, wherePart);
+		queryParts.add(result);
+		for (String alias : aliases) {
+			queryMap.computeIfAbsent(result.getQueryPart(), a -> new HashSet<>()).add(alias);
+		}
+		if (aliases.length == 0) {
+			queryMap.computeIfAbsent(result.getQueryPart(), a -> new HashSet<>()).add(Constants.UUID);
+		}		
+	}
+	
 	private boolean shouldBeAdded(QueryPart queryPart) {
 		Collection<String> aliases = queryMap.get(queryPart.getQueryPart());
-		return shouldBeAdded(queryPart.isDistinct(), aliases);
+		boolean result1 = shouldBeAdded(isDistinct(), aliases);
+		boolean result2 = queryPart.hasNoEmptyParamValues();
+		return result1 && result2;
 	}
 	
 	public boolean shouldBeAdded(Collection<String> aliases) {
@@ -287,7 +356,7 @@ public class QueryComposerBuilder {
 	public boolean shouldBeAdded(boolean isDistinct, Collection<String> aliases) {
 		boolean result = shouldBeAdded(aliases);
 		if (result && isDistinct) {
-			this.applyOuterQuery = true;
+			_setDistinct(true);
 		}
 		return result;
 	}
@@ -381,16 +450,16 @@ public class QueryComposerBuilder {
 				analyzeSearchPath(paths[j]);
 			}
 			boolean applyOuterQueryOriginal = applyOuterQuery;
-			applyOuterQuery = false;
+			_setDistinct(false);
 			for (String path : paths) {
 				addSearchFieldResolver(path, path);
 			}
 			if (!shouldApplySearch()) {
-				applyOuterQuery = false;
+				_setDistinct(false);
 			} else if (applyOuterQuery) {
 				//applyOuterSearch = true;
 			}
-			applyOuterQuery = applyOuterQuery || applyOuterQueryOriginal;
+			_setDistinct(applyOuterQuery || applyOuterQueryOriginal);
 			
 			List<String> searchTerms = CollectionUtils.isEmpty(queryRequest.getSearchTerms())
 					? (StringUtils.isBlank(queryRequest.getSearchTerm())
@@ -515,7 +584,7 @@ public class QueryComposerBuilder {
 			}
 		}
 		
-		if (applyOuterQuery) {
+		if (root.applyOuterQuery()) {
 			for (FieldItem fieldItem : orderFieldMap.values()) {
 				if (fieldItem != null && !Constants.UUID.equalsIgnoreCase(fieldItem.getAlias()) && selectFieldMap.get(fieldItem.getAlias()) == null) {
 					result += ", " + fieldItem.getInnerPath(rootAlias, groupBy);
@@ -550,7 +619,7 @@ public class QueryComposerBuilder {
 		for (String searchPartSupplier : searchPartSuppliers) {
 			result = QueryFunctions.and(result, searchPartSupplier);
 		}
-		return result == null ? "" : ((whereHasResult || hasWherePart ? " AND " : " WHERE ") + result);
+		return result == null ? "" : ((whereHasResult ? " AND " : " WHERE ") + result);
 	}
 
 	private void initPart() {
@@ -641,7 +710,7 @@ public class QueryComposerBuilder {
 		if (pathParts.length == 1 && aliasResolverMap.get(alias) != null) {
 			path = aliasResolverMap.get(path);
 		}
-		return applyOuterQuery ? (Constants.OUTER_QUERY_PREFIX + "." + alias) : path;
+		return root.applyOuterQuery() ? (Constants.OUTER_QUERY_PREFIX + "." + alias) : path;
 	}
 	
 	private String resolveInnerPath(String alias, String path) {

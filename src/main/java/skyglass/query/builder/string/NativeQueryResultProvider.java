@@ -20,11 +20,8 @@ public class NativeQueryResultProvider implements QueryResultProvider<Object[]> 
 
 	@Override
 	public List<Object[]> getResult(QueryComposer builder, List<String> uuidList) {
-		Query nativeQuery = entityManager.createNativeQuery(builder.buildResultFromUuidList(uuidList));
-		setParameters(nativeQuery, builder);
-		@SuppressWarnings("unchecked")
-		List<Object[]> results = QueryResultUtil.getListResult(nativeQuery);
-		return results;
+		throw new UnsupportedOperationException("This method is not supported for native queries. Please return result directly, without"
+				+ " intermediately returning uuid list");
 	}
 
 	@Override

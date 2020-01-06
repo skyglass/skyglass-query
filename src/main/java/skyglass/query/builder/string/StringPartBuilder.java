@@ -1,6 +1,5 @@
 package skyglass.query.builder.string;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -12,7 +11,7 @@ import org.apache.commons.lang3.StringUtils;
 import skyglass.query.builder.SearchBuilder;
 import skyglass.query.builder.SearchType;
 
-public class StringPartBuilder {
+public class StringPartBuilder extends QueryParamBuilder {
 
 	public static final String SEARCH_TERM_FIELD = "searchTerm";
 
@@ -24,8 +23,6 @@ public class StringPartBuilder {
 
 	private StringBuilder sb = new StringBuilder();
 
-	private Collection<QueryParam> params = new ArrayList<>();
-	
 	private boolean condition = true;
 	
 	private boolean distinct;
@@ -198,7 +195,7 @@ public class StringPartBuilder {
 	}
 
 	public StringPartBuilder setParameter(String name, Object value) {
-		params.add(QueryParam.create(name, value));
+		_doSetParameter(name, value);
 		return this;
 	}
 
@@ -214,21 +211,7 @@ public class StringPartBuilder {
 
 	@SuppressWarnings("rawtypes")
 	private StringPartBuilder doSetParameters(String name, Collection values) {
-		if (CollectionUtils.isNotEmpty(values)) {
-			if (root.isNativeQuery()) {
-				int index = 1;
-				for (Object value : values) {
-					params.add(QueryParam.create(name + Integer.toString(index), value));
-					index++;
-				}
-			} else {
-				params.add(QueryParam.create(name, values));
-			}
-		} else {
-			// should add null parameter explicitly, otherwise isFalseCondition()
-			// will return false, and the query part will be appended
-			params.add(QueryParam.create(name, null));
-		}
+		_doSetParameters(root, name, values);
 		return this;
 	}
 
@@ -570,28 +553,7 @@ public class StringPartBuilder {
 		}
 		return false;
 	}
-
-	private boolean isEmpty(Object value) {
-		if (value == null) {
-			return true;
-		}
-		if (isCollection(value) && CollectionUtils.isEmpty((Collection<?>) value)) {
-			return true;
-		}
-		if (value instanceof String) {
-			return isStringEmpty((String) value);
-		}
-		return false;
-	}
-
-	boolean isCollection(Object value) {
-		return value instanceof Collection;
-	}
-
-	private boolean isStringEmpty(String value) {
-		return StringUtils.isBlank((String) value);
-	}
-
+	
 	private Collection<QueryParam> combine(Collection<QueryParam> params, Collection<QueryParam> childParams) {
 		if (CollectionUtils.isEmpty(params) && CollectionUtils.isEmpty(childParams)) {
 			return null;

@@ -2,7 +2,9 @@ package skyglass.query.builder;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import skyglass.query.builder.config.Language;
 
@@ -12,7 +14,7 @@ public class QueryRequestDTO implements Serializable {
 
 	public static final String DEFAULT_LANGUAGE = Language.DEFAULT.getLanguageCode();
 
-	private int offset = -1;
+	private int offset = 0;
 
 	private int limit = -1;
 
@@ -29,6 +31,8 @@ public class QueryRequestDTO implements Serializable {
 	private OrderType orderType;
 
 	private String lang;
+	
+	private Map<String, Object> map = new HashMap<>();
 
 	public int getRowsPerPage() {
 		return rowsPerPage;
@@ -100,6 +104,15 @@ public class QueryRequestDTO implements Serializable {
 
 	public void setSearchTerms(List<String> searchTerms) {
 		this.searchTerms = searchTerms;
+	}
+	
+	public <T> void set(String name, T value) {
+		this.map.put(name, value);
+	}
+	
+	@SuppressWarnings("unchecked")
+	public <T> T get(String name) {
+		return (T)this.map.get(name);
 	}
 
 }

@@ -31,7 +31,7 @@ public class QueryParamProcessor {
 
 	private static final Pattern PARAM_NATIVE_REGEX_PATTERN = Pattern.compile("(?=\\?(\\w+))");
 
-	static String parseParams(QueryComposer root, StringPartBuilder builder, String part) {
+	static String parseParams(QueryComposer root, QueryParamBuilder builder, String part) {
 		if (StringUtils.isBlank(part)) {
 			return part;
 		}
@@ -40,21 +40,17 @@ public class QueryParamProcessor {
 			List<QueryParam> paramValues = new ArrayList<>();
 			List<String> matches = getAllMatches(root, part);
 			for (String match : matches) {
-				try {
-					Object paramValue = PropertyUtils.getSimpleProperty(queryRequest, match);
-					paramValues.add(QueryParam.create(match, paramValue));
-				} catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-					//continue
-				}
+				Object paramValue = getSimpleProperty(queryRequest, match);
+				paramValues.add(QueryParam.create(match, paramValue));
 			}
 
 			for (QueryParam param : paramValues) {
 				if (builder.isCollection(param.getValue())) {
 					Collection<?> collection = (Collection<?>) param.getValue();
 					part = replaceListPart(root, builder, param.getName(), part, collection);
-					builder.setParameterList(param.getName(), collection);
+					builder._doSetParameters(root, param.getName(), collection);
 				} else {
-					builder.setParameter(param.getName(), param.getValue());
+					builder._doSetParameter(param.getName(), param.getValue());
 				}
 			}
 		}
@@ -72,13 +68,9 @@ public class QueryParamProcessor {
 	static String parseSearchTerm(String paramName, QueryComposer root) {
 		QueryRequestDTO queryRequest = root.getQueryRequest();
 		if (queryRequest != null) {
-			try {
-				Object result = PropertyUtils.getSimpleProperty(queryRequest, paramName);
-				if (result != null) {
-					return result.toString();
-				}
-			} catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-				//continue
+			Object result = getSimpleProperty(queryRequest, paramName);
+			if (result != null) {
+				return result.toString();
 			}
 		}
 		return null;
@@ -105,7 +97,7 @@ public class QueryParamProcessor {
 		return part;
 	}
 
-	public static String replaceListPart(QueryComposer root, StringPartBuilder builder, String paramName, String part, Collection<?> list) {
+	public static String replaceListPart(QueryComposer root, QueryParamBuilder builder, String paramName, String part, Collection<?> list) {
 		if (root.isNativeQuery()) {
 			StringBuilder replacement = new StringBuilder();
 			for (int i = 1; i <= list.size(); i++) {
@@ -153,6 +145,19 @@ public class QueryParamProcessor {
 		for (String test : testList) {
 			System.out.println(test);
 		}
+	}
+	
+	private static Object getSimpleProperty(QueryRequestDTO queryRequest, String paramName) {
+		Object result = null;
+		try {
+			result = PropertyUtils.getSimpleProperty(queryRequest, paramName);
+		} catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+			//continue
+		}
+		if (result == null) {
+			result = queryRequest.get(paramName); 
+		}
+		return result;
 	}
 
 }
