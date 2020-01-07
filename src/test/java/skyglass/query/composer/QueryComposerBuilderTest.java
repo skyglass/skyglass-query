@@ -95,7 +95,7 @@ public class QueryComposerBuilderTest {
 		queryRequest.set("toDate", new Date());
 		QueryComposer queryComposer = QueryComposer.nativ(queryRequest, "sm");
 
-		queryComposer.addSelect("sm.UUID");
+		queryComposer.select("sm.UUID");
 		queryComposer.add("FROM SPACEMISSION sm");
 
 		queryComposer.addConditional("JOIN PLANET pl ON sm.PLANET_UUID = pl.uuid", "planetId");
@@ -189,7 +189,7 @@ public class QueryComposerBuilderTest {
 
 		QueryComposer queryComposer = QueryComposer.nativ(queryRequest, "sm");
 
-		queryComposer.addSelect("sm.UUID");
+		queryComposer.select("sm.UUID");
 		queryComposer.add("FROM SPACEMISSION sm");
 
 		queryComposer.addConditional("JOIN PLANET pl ON sm.PLANET_UUID = pl.uuid", "planetId");
@@ -449,7 +449,7 @@ public class QueryComposerBuilderTest {
 				: ("sm.UUID, sm.planetId, sm.from, sm.destination, sm.currentPosition, sm.operator, user.name AS createdBy, bparam.value AS bparamValue, "
 						+ QueryFunctions.ordinalToString(Direction.values(), "sm.direction") + " AS direction, finalPlanetName, finalPlanetDescription");
 
-		queryComposer.addSelect(selectStr);
+		queryComposer.select(selectStr);
 		if (selectString == null) {
 			addPlanetInfoSelectPart(queryComposer, languageCode);
 		}

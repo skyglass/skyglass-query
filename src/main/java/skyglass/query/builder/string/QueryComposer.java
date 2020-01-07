@@ -77,13 +77,9 @@ public class QueryComposer {
 		return this;
 	}
 
-	public static QueryComposer nativ() {
-		QueryComposer result = new QueryComposer(null, true);
+	public static QueryComposer nativ(String rootAlias) {
+		QueryComposer result = new QueryComposer(rootAlias, true);
 		return result;
-	}
-
-	public static QueryComposer nativ(QueryRequestDTO request) {
-		return nativ(request, null);
 	}
 	
 	public static QueryComposer nativ(QueryRequestDTO request, String rootAlias) {
@@ -132,11 +128,6 @@ public class QueryComposer {
 
 	public StringPartBuilder startJoin(String join) {
 		return joinPart.start(join);
-	}
-	
-	public QueryComposer select(String customSelectPart) {
-		queryComposer.select(customSelectPart);
-		return this;
 	}
 
 	public QueryComposer join(String join) {
@@ -301,7 +292,7 @@ public class QueryComposer {
 		initComposer();
 		StringBuilder sb = new StringBuilder();
 		if (applyOuterQuery()) {
-			sb.append("SELECT DISTINCT COUNT(1) OVER () ");
+			sb.append("SELECT DISTINCT COUNT(1) OVER ()");
 			buildInner(sb, false, true, false);
 		} else {
 			sb.append("SELECT COUNT(" + (isNativeQuery() ? "1" : rootAlias) + ")");
@@ -459,9 +450,7 @@ public class QueryComposer {
 				}
 			}
 		} else {
-			if (queryComposer.getCustomSelectPart() != null) {
-				result = queryComposer.getCustomSelectPart();
-			} else if (applyOuterQuery() && !isInner) {
+			if (applyOuterQuery() && !isInner) {
 				result = queryComposer.getOuterSelectFields();
 			} else {
 				result = queryComposer.getInnerFields(false);
@@ -637,8 +626,8 @@ public class QueryComposer {
 		return this;
 	}
 	
-	public QueryComposer addSelect(String selectString) {
-		queryComposer.addSelect(selectString);
+	public QueryComposer select(String selectString) {
+		queryComposer.select(selectString);
 		return this;
 	}
 

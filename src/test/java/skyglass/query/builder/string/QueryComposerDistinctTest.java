@@ -16,7 +16,7 @@ public class QueryComposerDistinctTest {
 		List<String> list = Arrays.asList(new String[] { "test-list1", "test-list2" });
 		String value = "   ";
 		QueryComposer testBuilder = QueryComposer
-				.nativ(MockQueryRequestDto.create(value))
+				.nativ(MockQueryRequestDto.create(value), "sm")
 				.setDistinct("sm.uuid")
 				.select("*")
 				.from("SpaceMission sm")
@@ -35,7 +35,7 @@ public class QueryComposerDistinctTest {
 		List<String> list = Arrays.asList(new String[] { "test-list1", "test-list2" });
 
 		QueryComposer testBuilder = QueryComposer
-				.nativ(MockQueryRequestDto.create(value))
+				.nativ(MockQueryRequestDto.create(value), "sm")
 				.setDistinct("sm.uuid")
 				.setOrderField("test")
 				.setOrderType(OrderType.Desc)
@@ -58,7 +58,7 @@ public class QueryComposerDistinctTest {
 		List<String> list = Arrays.asList(new String[] { "test-list1", "test-list2" });
 
 		QueryComposer testBuilder = QueryComposer
-				.nativ(MockQueryRequestDto.createWithList(value, list))
+				.nativ(MockQueryRequestDto.createWithList(value, list), "sm")
 				.setDistinct("sm.uuid")
 				.setDefaultOrder(OrderType.Desc, "sm.test")
 				.select("DISTINCT *")

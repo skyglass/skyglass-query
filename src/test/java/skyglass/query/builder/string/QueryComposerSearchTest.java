@@ -13,7 +13,7 @@ public class QueryComposerSearchTest {
 		String value = "not null";
 
 		QueryComposer testBuilder = QueryComposer
-				.nativ(MockQueryRequestDto.create(value))
+				.nativ(MockQueryRequestDto.create(value), "sm")
 				.setSearchTerm("findme")
 				.select("*")
 				.from("SpaceMission sm")
@@ -49,7 +49,7 @@ public class QueryComposerSearchTest {
 		String value = "not null";
 
 		QueryComposer testBuilder = QueryComposer
-				.nativ(MockQueryRequestDto.create(value))
+				.nativ(MockQueryRequestDto.create(value), "sm")
 				.setSearchTerm("findme")
 				.setLang("cn")
 				.select("*")
@@ -73,7 +73,7 @@ public class QueryComposerSearchTest {
 		String value = "not null";
 
 		QueryComposer testBuilder = QueryComposer
-				.nativ(MockQueryRequestDto.create(value))
+				.nativ(MockQueryRequestDto.create(value), "sm")
 				.setSearchTerm("findme")
 				.setLang("es")
 				.select("*")
@@ -94,7 +94,7 @@ public class QueryComposerSearchTest {
 		String value = "not null";
 
 		QueryComposer testBuilder = QueryComposer
-				.nativ(MockQueryRequestDto.create(value))
+				.nativ(MockQueryRequestDto.create(value), "sm")
 				.setSearchTerm("findme")
 				.setLang("es")
 				.select("*")

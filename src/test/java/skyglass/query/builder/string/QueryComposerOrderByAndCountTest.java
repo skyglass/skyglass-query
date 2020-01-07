@@ -15,7 +15,7 @@ public class QueryComposerOrderByAndCountTest {
 	public void testCountPart() {
 		String value = "   ";
 		QueryComposer testBuilder = QueryComposer
-				.nativ(MockQueryRequestDto.create(value))
+				.nativ(MockQueryRequestDto.create(value), "sm")
 				.select("*")
 				.from("SpaceMission sm")
 				.startAndWhere()
@@ -30,7 +30,7 @@ public class QueryComposerOrderByAndCountTest {
 		String value = "not null";
 
 		QueryComposer testBuilder = QueryComposer
-				.nativ(MockQueryRequestDto.create(value))
+				.nativ(MockQueryRequestDto.create(value), "sm")
 				.setOrderField("test")
 				.setOrderType(OrderType.Desc)
 				.select("*")
@@ -48,7 +48,7 @@ public class QueryComposerOrderByAndCountTest {
 		String value = "not null";
 
 		QueryComposer testBuilder = QueryComposer
-				.nativ(MockQueryRequestDto.create(value))
+				.nativ(MockQueryRequestDto.create(value), "sm")
 				.setOrderField("test")
 				.setOrderType(OrderType.Desc)
 				.bindOrder("test2", "sm.test")
@@ -67,7 +67,7 @@ public class QueryComposerOrderByAndCountTest {
 		String value = " ";
 
 		QueryComposer testBuilder = QueryComposer
-				.nativ(MockQueryRequestDto.create(value))
+				.nativ(MockQueryRequestDto.create(value), "sm")
 				.setOrderField("test")
 				.setOrderType(OrderType.Desc)
 				.bindOrder("test", "sm.test")
@@ -86,7 +86,7 @@ public class QueryComposerOrderByAndCountTest {
 		String value = " ";
 
 		QueryComposer testBuilder = QueryComposer
-				.nativ(MockQueryRequestDto.create(value))
+				.nativ(MockQueryRequestDto.create(value), "sm")
 				.setOrderField("test")
 				.setOrderType(OrderType.Desc)
 				.bindOrder("test", "sm.test1", "sm.test2")
@@ -106,7 +106,7 @@ public class QueryComposerOrderByAndCountTest {
 		List<String> list = Arrays.asList(new String[] { "test-list1", "test-list2" });
 
 		QueryComposer testBuilder = QueryComposer
-				.nativ(MockQueryRequestDto.createWithList(value, list))
+				.nativ(MockQueryRequestDto.createWithList(value, list), "sm")
 				.setDefaultOrder(OrderType.Desc, "sm.test")
 				.select("*")
 				.from("SpaceMission sm")
@@ -131,7 +131,7 @@ public class QueryComposerOrderByAndCountTest {
 		List<String> list = Arrays.asList(new String[] { "test-list1", "test-list2" });
 
 		QueryComposer testBuilder = QueryComposer
-				.nativ(MockQueryRequestDto.createWithList(value, list))
+				.nativ(MockQueryRequestDto.createWithList(value, list), "sm")
 				.setOrderField("test")
 				.setOrderType(OrderType.Desc)
 				.bindOrder("test", "sm.test")

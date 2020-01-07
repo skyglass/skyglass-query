@@ -7,6 +7,7 @@ import java.util.List;
 import org.junit.Assert;
 import org.junit.Test;
 
+import skyglass.query.builder.OrderType;
 import skyglass.query.builder.QueryRequestDTO;
 import skyglass.query.builder.result.MockQuery;
 
@@ -16,11 +17,11 @@ public class QueryComposerWithRequestValuesTest {
 	public void testNullableNullQuery1() {
 		String value = "   ";
 		QueryComposer testBuilder = QueryComposer
-				.nativ(MockQueryMapRequestDto.create(value))
+				.nativ(MockQueryMapRequestDto.create(value), "sm")
 				.select("*")
 				.add("FROM SpaceMission sm")
 				.addConditionalWhere("sm.test = ?test");
-		Assert.assertEquals("SELECT * FROM SpaceMission sm", testBuilder.build());
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm", testBuilder.build());
 		checkNoParam("test", testBuilder);
 	}
 
@@ -31,12 +32,12 @@ public class QueryComposerWithRequestValuesTest {
 		QueryRequestDTO request = MockQueryMapRequestDto.create(value);
 		request.setOrderField("order");
 		QueryComposer testBuilder = QueryComposer
-				.nativ(request)
+				.nativ(request, "sm")
 				.select("*")
 				.add("FROM SpaceMission sm")
 				.addConditionalWhere("sm.test = ?test", "order")
 				.bindOrder("order", "sm.order");
-		Assert.assertEquals("SELECT * FROM SpaceMission sm WHERE sm.test = ?test ORDER BY LOWER(sm.order) ASC", testBuilder.build());
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test ORDER BY LOWER(sm.order) ASC", testBuilder.build());
 		checkParam("test", "not null", testBuilder);
 	}
 	
@@ -52,7 +53,29 @@ public class QueryComposerWithRequestValuesTest {
 				.add("FROM SpaceMission sm")
 				.addDistinctConditionalWhere("sm.test = ?test", "order")
 				.bindOrder("order", "sm.order");
-		Assert.assertEquals("SELECT * FROM SpaceMission sm WHERE sm.test = ?test GROUP BY sm.UUID ORDER BY LOWER(sm.order) ASC", testBuilder.build());
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test GROUP BY sm.UUID ORDER BY LOWER(sm.order) ASC", testBuilder.build());
+		Assert.assertEquals("SELECT COUNT(1) FROM SpaceMission sm WHERE sm.test = ?test GROUP BY sm.UUID", testBuilder.buildCountPart());
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test GROUP BY sm.UUID ORDER BY LOWER(sm.order) ASC", testBuilder.buildUuidListPart());
+		checkParam("test", "not null", testBuilder);
+	}
+	
+	@Test
+	public void testNullableNotNullQuery1DistinctPaged() {
+		String value = "not null";
+
+		QueryRequestDTO request = MockQueryMapRequestDto.create(value);
+		request.setOrderField("order");
+		request.setOrderType(OrderType.Desc);
+		QueryComposer testBuilder = QueryComposer
+				.nativ(request, "sm")
+				.select("*")
+				.add("FROM SpaceMission sm")
+				.addDistinctConditionalWhere("sm.test = ?test", "order")
+				.bindOrder("order", "sm.order")
+				.setLimit(10);
+		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT sm.UUID, sm.order AS order FROM SpaceMission sm WHERE sm.test = ?test GROUP BY sm.UUID, sm.order ) tab ORDER BY LOWER(tab.order) DESC", testBuilder.build());
+		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm WHERE sm.test = ?test GROUP BY sm.UUID, sm.order", testBuilder.buildCountPart());
+		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test GROUP BY sm.UUID, sm.order ) tab ORDER BY LOWER(tab.order) DESC", testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
 
@@ -61,11 +84,11 @@ public class QueryComposerWithRequestValuesTest {
 		String value = " ";
 
 		QueryComposer testBuilder = QueryComposer
-				.nativ(MockQueryMapRequestDto.create(value))
+				.nativ(MockQueryMapRequestDto.create(value), "sm")
 				.select("*")
 				.from("SpaceMission sm")
 				.addConditionalWhere("sm.test = ?test");
-		Assert.assertEquals("SELECT * FROM SpaceMission sm", testBuilder.build());
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm", testBuilder.build());
 		checkNoParam("test", testBuilder);
 	}
 
@@ -75,13 +98,34 @@ public class QueryComposerWithRequestValuesTest {
 		List<String> list = Arrays.asList(new String[] { "test-list1", "test-list2" });
 
 		QueryComposer testBuilder = QueryComposer
-				.nativ(MockQueryMapRequestDto.createWithList(value, list))
+				.nativ(MockQueryMapRequestDto.createWithList(value, list), "sm")
 				.select("*")
 				.from("SpaceMission sm")
 				.addConditionalWhere("sm.test = ?test")
 				.addConditionalOrWhere("sm.testList IN ?testList");
 		Assert.assertEquals(
-				"SELECT * FROM SpaceMission sm WHERE sm.test = ?test OR sm.testList IN (?testList1, ?testList2)",
+				"SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test OR sm.testList IN (?testList1, ?testList2)",
+				testBuilder.build());
+		checkParam("test", "not null", testBuilder);
+		checkParam("testList1", list.get(0), testBuilder);
+		checkParam("testList2", list.get(1), testBuilder);
+	}
+	
+	@Test
+	public void testNullableListNotNullQuery1DistinctSelectPaged() {
+		String value = "not null";
+		List<String> list = Arrays.asList(new String[] { "test-list1", "test-list2" });
+
+		QueryComposer testBuilder = QueryComposer
+				.nativ(MockQueryMapRequestDto.createWithList(value, list), "sm")
+				.select("sm.UUID, pl.NAME")
+				.from("SpaceMission sm")
+				.addConditional("LEFT JOIN PLANET pl ON pl.MISSION_UUID = sm.UUID", "name")
+				.addConditionalWhere("sm.test = ?test")
+				.addDistinctConditionalOrWhere("sm.testList IN ?testList")
+				.setLimit(10);
+		Assert.assertEquals(
+				"SELECT tab.UUID, tab.NAME FROM ( SELECT sm.UUID, pl.NAME FROM SpaceMission sm WHERE sm.test = ?test OR sm.testList IN (?testList1, ?testList2) GROUP BY sm.UUID ) tab",
 				testBuilder.build());
 		checkParam("test", "not null", testBuilder);
 		checkParam("testList1", list.get(0), testBuilder);
@@ -94,12 +138,12 @@ public class QueryComposerWithRequestValuesTest {
 		List<String> list = Arrays.asList(new String[] { "test-list1", "test-list2" });
 
 		QueryComposer testBuilder = QueryComposer
-				.nativ(MockQueryMapRequestDto.createWithList(value, list))
+				.nativ(MockQueryMapRequestDto.createWithList(value, list), "sm")
 				.select("*")
 				.from("SpaceMission sm")
 				.addConditionalWhere("sm.test = ?test")
 				.addConditionalOrWhere("sm.testList IN ?testList");
-		Assert.assertEquals("SELECT * FROM SpaceMission sm WHERE sm.testList IN (?testList1, ?testList2)",
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm WHERE sm.testList IN (?testList1, ?testList2)",
 				testBuilder.build());
 		checkNoParam("test", testBuilder);
 		checkParam("testList1", list.get(0), testBuilder);
@@ -112,12 +156,12 @@ public class QueryComposerWithRequestValuesTest {
 		List<String> list = null;
 
 		QueryComposer testBuilder = QueryComposer
-				.nativ(MockQueryMapRequestDto.createWithList(value, list))
+				.nativ(MockQueryMapRequestDto.createWithList(value, list), "sm")
 				.select("*")
 				.from("SpaceMission sm")
 				.addConditionalWhere("sm.test = ?test")
 				.addConditionalOrWhere("sm.testList IN ?testList");
-		Assert.assertEquals("SELECT * FROM SpaceMission sm WHERE sm.test = ?test", testBuilder.build());
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test", testBuilder.build());
 		checkParam("test", value, testBuilder);
 	}
 
@@ -127,12 +171,12 @@ public class QueryComposerWithRequestValuesTest {
 		List<String> list = Collections.emptyList();
 
 		QueryComposer testBuilder = QueryComposer
-				.nativ(MockQueryMapRequestDto.createWithList(value, list))
+				.nativ(MockQueryMapRequestDto.createWithList(value, list), "sm")
 				.select("*")
 				.from("SpaceMission sm")
 				.addConditionalWhere("sm.test = ?test")
 				.addConditionalOrWhere("sm.testList IN ?testList");
-		Assert.assertEquals("SELECT * FROM SpaceMission sm", testBuilder.build());
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm", testBuilder.build());
 		checkNoParam("test", testBuilder);
 	}
 
@@ -142,13 +186,13 @@ public class QueryComposerWithRequestValuesTest {
 		List<String> list = Arrays.asList(new String[] { "test-list1", "test-list2" });
 
 		QueryComposer testBuilder = QueryComposer
-				.nativ(MockQueryMapRequestDto.createWithList(value, list))
+				.nativ(MockQueryMapRequestDto.createWithList(value, list), "sm")
 				.select("*")
 				.from("SpaceMission sm")
 				.addConditionalWhere("sm.test = ?test")
 				.addConditionalWhere("sm.testList IN ?testList");
 		Assert.assertEquals(
-				"SELECT * FROM SpaceMission sm WHERE sm.test = ?test AND sm.testList IN (?testList1, ?testList2)",
+				"SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test AND sm.testList IN (?testList1, ?testList2)",
 				testBuilder.build());
 		checkParam("test", value, testBuilder);
 		checkParam("testList1", list.get(0), testBuilder);

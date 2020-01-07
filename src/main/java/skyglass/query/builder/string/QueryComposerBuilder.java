@@ -73,8 +73,6 @@ public class QueryComposerBuilder {
 
 	private String rootAlias;
 	
-	private String customSelectPart;
-	
 	private String customGroupByPart;
 	
 	private String customOrderByPart;
@@ -251,7 +249,7 @@ public class QueryComposerBuilder {
 		addBindOrderRunner(name, null, path);
 	}
 	
-	public void addSelect(String selectString) {
+	public void select(String selectString) {
 		selectBuilderRunners.add(() -> {
 			doAddSelect(selectString);
 		});
@@ -530,6 +528,13 @@ public class QueryComposerBuilder {
 	}
 
 	private void doAddSelect(String selectString) {
+		if (selectString.equals("*") || selectString.equals(rootAlias)) {
+			if (root.isNativeQuery()) {
+				selectString = rootAlias + "." + Constants.UUID;
+			} else {
+				selectString = rootAlias;
+			}
+		}
 		if (StringUtils.isEmpty(selectString)) {
 			return;
 		}
@@ -597,10 +602,6 @@ public class QueryComposerBuilder {
 	
 	List<SelectField> getSelectFields() {	
 		List<SelectField> result = new ArrayList<>();
-		if (customSelectPart != null) {
-			result.addAll(QueryProcessor.parseSelect(customSelectPart));
-			return result;
-		}
 		SelectField selectField = new SelectField(Constants.UUID, rootAlias + "." + Constants.UUID);
 		result.add(selectField);
 		for (FieldItem fieldItem : selectFieldMap.values()) {
@@ -738,24 +739,12 @@ public class QueryComposerBuilder {
 		return false;
 	}
 	
-	void select(String customSelectPart) {
-		this.customSelectPart = customSelectPart;
-	}
-	
 	String buildSelectResult() {
 		String selectPart = getInnerFields(false);
-		if (customSelectPart == null && StringUtils.isBlank(selectPart)) {
-			customSelectPart = "*";
+		if (StringUtils.isBlank(selectPart)) {
+			selectPart = rootAlias + "." + Constants.UUID;
 		}
-		return "SELECT " + (customSelectPart == null ? selectPart : customSelectPart);
-	}
-	
-	String getCustomSelectPart() {
-		return customSelectPart;
-	}
-	
-	private boolean isCustomSelect() {
-		return customSelectPart != null;
+		return "SELECT " + selectPart;
 	}
 	
 	void orderBy(String customOrderByPart) {
@@ -774,7 +763,7 @@ public class QueryComposerBuilder {
 	}
 	
 	String buildGroupByResult() {
-		String groupByPart = isDistinct() && !isCustomSelect() ? getInnerFields(true) : null;
+		String groupByPart = isDistinct() ? getInnerFields(true) : null;
 		if (customGroupByPart == null && StringUtils.isBlank(groupByPart)) {
 			return "";
 		}
