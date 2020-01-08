@@ -38,7 +38,7 @@ public class QueryComposerOrderByAndCountTest {
 				.startAndWhere()
 				.appendNullable("sm.test = ?test")
 				.end();
-		Assert.assertEquals("SELECT * FROM SpaceMission sm WHERE sm.test = ?test", testBuilder.build());
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test", testBuilder.build());
 		Assert.assertEquals("SELECT COUNT(1) FROM SpaceMission sm WHERE sm.test = ?test", testBuilder.buildCountPart());
 		checkParam("test", "not null", testBuilder);
 	}
@@ -57,7 +57,7 @@ public class QueryComposerOrderByAndCountTest {
 				.startAndWhere()
 				.appendNullable("sm.test = ?test")
 				.end();
-		Assert.assertEquals("SELECT * FROM SpaceMission sm WHERE sm.test = ?test", testBuilder.build());
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test", testBuilder.build());
 		Assert.assertEquals("SELECT COUNT(1) FROM SpaceMission sm WHERE sm.test = ?test", testBuilder.buildCountPart());
 		checkParam("test", "not null", testBuilder);
 	}
@@ -76,7 +76,7 @@ public class QueryComposerOrderByAndCountTest {
 				.startAndWhere()
 				.startNullablePart("sm.test = ?test")
 				.end();
-		Assert.assertEquals("SELECT * FROM SpaceMission sm ORDER BY LOWER(sm.test) DESC", testBuilder.build());
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm ORDER BY LOWER(sm.test) DESC", testBuilder.build());
 		Assert.assertEquals("SELECT COUNT(1) FROM SpaceMission sm", testBuilder.buildCountPart());
 		checkNoParam("test", testBuilder);
 	}
@@ -95,7 +95,7 @@ public class QueryComposerOrderByAndCountTest {
 				.startAndWhere()
 				.startNullablePart("sm.test = ?test")
 				.end();
-		Assert.assertEquals("SELECT * FROM SpaceMission sm ORDER BY CONCAT(COALESCE(LOWER(sm.test1), ''), COALESCE(LOWER(sm.test2), '')) DESC", testBuilder.build());
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm ORDER BY CONCAT(COALESCE(LOWER(sm.test1), ''), COALESCE(LOWER(sm.test2), '')) DESC", testBuilder.build());
 		Assert.assertEquals("SELECT COUNT(1) FROM SpaceMission sm", testBuilder.buildCountPart());
 		checkNoParam("test", testBuilder);
 	}
@@ -115,7 +115,7 @@ public class QueryComposerOrderByAndCountTest {
 				.__().appendNullable("sm.testList IN ?testList")
 				.end();
 		Assert.assertEquals(
-				"SELECT * FROM SpaceMission sm WHERE sm.test = ?test AND sm.testList IN (?testList1, ?testList2) ORDER BY LOWER(sm.test) DESC",
+				"SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test AND sm.testList IN (?testList1, ?testList2) ORDER BY LOWER(sm.test) DESC",
 				testBuilder.build());
 		Assert.assertEquals(
 				"SELECT COUNT(1) FROM SpaceMission sm WHERE sm.test = ?test AND sm.testList IN (?testList1, ?testList2)",
@@ -142,7 +142,7 @@ public class QueryComposerOrderByAndCountTest {
 				.__().appendNullable("sm.test = ?test")
 				.__().appendNullable("sm.testList IN ?testList")
 				.end();
-		Assert.assertEquals("SELECT * FROM SpaceMission sm WHERE sm.testList IN (?testList1, ?testList2) ORDER BY LOWER(sm.test) DESC, LOWER(sm.test2) ASC",
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm WHERE sm.testList IN (?testList1, ?testList2) ORDER BY LOWER(sm.test) DESC, LOWER(sm.test2) ASC",
 				testBuilder.build());
 		Assert.assertEquals("SELECT COUNT(1) FROM SpaceMission sm WHERE sm.testList IN (?testList1, ?testList2)",
 				testBuilder.buildCountPart());

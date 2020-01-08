@@ -13,6 +13,7 @@ import org.apache.commons.collections.CollectionUtils;
 
 import skyglass.query.EnumUtil;
 import skyglass.query.builder.QueryResult;
+import skyglass.query.builder.config.Constants;
 import skyglass.query.builder.string.QueryComposer;
 import skyglass.query.builder.string.SelectField;
 
@@ -96,18 +97,19 @@ class QueryResultConverter<T, DTO, DTO2> extends QueryResultBuilder<T> {
 			DTO activeRecord = this.activeRecordSupplier.get();
 			int i = 0;
 			for (SelectField selectField : queryStringBuilder.getSelectFields()) {
-				Object propValue = getPropertyValue(result, selectField.getAlias(), i);
+				Object propValue = getPropertyValue(result, getAlias(selectField), i);
 				if (propValue != null) {
 					try {
-						Field typeField = activeRecord.getClass().getDeclaredField(selectField.getAlias());
+						Field typeField = activeRecord.getClass().getDeclaredField(getAlias(selectField));
 						@SuppressWarnings("rawtypes")
 						Class typeClass = typeField.getType();
 						if (typeClass.isEnum()) {
 							propValue = EnumUtil.getEnumInstanceObject(propValue, typeClass);
 						}
-						PropertyUtils.setSimpleProperty(activeRecord, selectField.getAlias(), getPropertyValue(result, selectField.getAlias(), i));
-					} catch (IllegalAccessException | NoSuchMethodException | InvocationTargetException | NoSuchFieldException ex) {
-						throw new IllegalArgumentException("Could not set value of the property " + selectField.getAlias() + " to " + propValue, ex);
+						PropertyUtils.setSimpleProperty(activeRecord, getAlias(selectField), getPropertyValue(result, getAlias(selectField), i));
+					} catch (IllegalAccessException | NoSuchMethodException 
+							| InvocationTargetException | NoSuchFieldException ex) {
+						throw new IllegalArgumentException("Could not set value of the property " + getAlias(selectField) + " to " + propValue, ex);
 					}
 				}
 				i++;
@@ -137,5 +139,13 @@ class QueryResultConverter<T, DTO, DTO2> extends QueryResultBuilder<T> {
 			return null;
 		}
 		return value;
+	}
+	
+	private String getAlias(SelectField selectField) {
+		String result = selectField.getAlias();
+		if (Constants.UUID.equals(result)) {
+			return Constants.JPA_UUID;
+		}
+		return result;
 	}
 }

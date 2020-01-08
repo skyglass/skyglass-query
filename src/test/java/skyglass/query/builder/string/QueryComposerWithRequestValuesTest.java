@@ -54,7 +54,7 @@ public class QueryComposerWithRequestValuesTest {
 				.addDistinctConditionalWhere("sm.test = ?test", "order")
 				.bindOrder("order", "sm.order");
 		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test GROUP BY sm.UUID ORDER BY LOWER(sm.order) ASC", testBuilder.build());
-		Assert.assertEquals("SELECT COUNT(1) FROM SpaceMission sm WHERE sm.test = ?test GROUP BY sm.UUID", testBuilder.buildCountPart());
+		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm WHERE sm.test = ?test GROUP BY sm.UUID", testBuilder.buildCountPart());
 		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test GROUP BY sm.UUID ORDER BY LOWER(sm.order) ASC", testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
@@ -118,14 +118,15 @@ public class QueryComposerWithRequestValuesTest {
 
 		QueryComposer testBuilder = QueryComposer
 				.nativ(MockQueryMapRequestDto.createWithList(value, list), "sm")
-				.select("sm.UUID, pl.NAME")
+				.select("TEST, pl.NAME")
 				.from("SpaceMission sm")
 				.addConditional("LEFT JOIN PLANET pl ON pl.MISSION_UUID = sm.UUID", "name")
+				.addConditional("LEFT JOIN SUN sun ON sun.MISSION_UUID = sm.UUID", "name2")
 				.addConditionalWhere("sm.test = ?test")
 				.addDistinctConditionalOrWhere("sm.testList IN ?testList")
 				.setLimit(10);
 		Assert.assertEquals(
-				"SELECT tab.UUID, tab.NAME FROM ( SELECT sm.UUID, pl.NAME FROM SpaceMission sm WHERE sm.test = ?test OR sm.testList IN (?testList1, ?testList2) GROUP BY sm.UUID ) tab",
+				"SELECT tab.UUID, tab.TEST, tab.NAME FROM ( SELECT sm.UUID, sm.TEST, pl.NAME FROM SpaceMission sm WHERE sm.test = ?test OR sm.testList IN (?testList1, ?testList2) GROUP BY sm.UUID, sm.TEST, pl.NAME ) tab",
 				testBuilder.build());
 		checkParam("test", "not null", testBuilder);
 		checkParam("testList1", list.get(0), testBuilder);

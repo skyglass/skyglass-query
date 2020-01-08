@@ -17,15 +17,15 @@ public class QueryComposerDistinctTest {
 		String value = "   ";
 		QueryComposer testBuilder = QueryComposer
 				.nativ(MockQueryRequestDto.create(value), "sm")
-				.setDistinct("sm.uuid")
+				.setDistinct()
 				.select("*")
 				.from("SpaceMission sm")
 				.startAndWhere()
 				.appendNullable("sm.test = ?test")
 				.end();
-		Assert.assertEquals("SELECT COUNT(1) FROM SpaceMission sm", testBuilder.buildCountPart());
-		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT DISTINCT sm.uuid AS UUID FROM SpaceMission sm ) tab", testBuilder.buildUuidListPart());
-		Assert.assertEquals("SELECT * FROM SpaceMission sm WHERE sm.uuid IN ('test-list1', 'test-list2')", testBuilder.buildResultFromUuidList(list));
+		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm GROUP BY sm.UUID", testBuilder.buildCountPart());
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm GROUP BY sm.UUID", testBuilder.buildUuidListPart());
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm WHERE sm.UUID IN ('test-list1', 'test-list2')", testBuilder.buildResultFromUuidList(list));
 		checkNoParam("test", testBuilder);
 	}
 
@@ -36,19 +36,19 @@ public class QueryComposerDistinctTest {
 
 		QueryComposer testBuilder = QueryComposer
 				.nativ(MockQueryRequestDto.create(value), "sm")
-				.setDistinct("sm.uuid")
 				.setOrderField("test")
 				.setOrderType(OrderType.Desc)
 				.bindOrder("test", "sm.test")
-				.select("DISTINCT *")
+				.select("*")
+				.setDistinct()
 				.from("SpaceMission sm")
 				.startAndWhere()
 				.startNullablePart("sm.test = ?test")
 				.end();
-		Assert.assertEquals("SELECT DISTINCT * FROM SpaceMission sm ORDER BY LOWER(sm.test) DESC", testBuilder.build());
-		Assert.assertEquals("SELECT COUNT(1) FROM SpaceMission sm", testBuilder.buildCountPart());
-		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT DISTINCT sm.uuid AS UUID FROM SpaceMission sm ORDER BY LOWER(sm.test) DESC ) tab", testBuilder.buildUuidListPart());
-		Assert.assertEquals("SELECT DISTINCT * FROM SpaceMission sm WHERE sm.uuid IN ('test-list1', 'test-list2')", testBuilder.buildResultFromUuidList(list));
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm GROUP BY sm.UUID ORDER BY LOWER(sm.test) DESC", testBuilder.build());
+		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm GROUP BY sm.UUID", testBuilder.buildCountPart());
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm GROUP BY sm.UUID ORDER BY LOWER(sm.test) DESC", testBuilder.buildUuidListPart());
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm WHERE sm.UUID IN ('test-list1', 'test-list2')", testBuilder.buildResultFromUuidList(list));
 		checkNoParam("test", testBuilder);
 	}
 
@@ -59,24 +59,24 @@ public class QueryComposerDistinctTest {
 
 		QueryComposer testBuilder = QueryComposer
 				.nativ(MockQueryRequestDto.createWithList(value, list), "sm")
-				.setDistinct("sm.uuid")
+				.setDistinct()
 				.setDefaultOrder(OrderType.Desc, "sm.test")
-				.select("DISTINCT *")
+				.select("*")
 				.from("SpaceMission sm")
 				.startAndWhere()
 				.__().appendNullable("sm.test = ?test")
 				.__().appendNullable("sm.testList IN ?testList")
 				.end();
 		Assert.assertEquals(
-				"SELECT DISTINCT * FROM SpaceMission sm WHERE sm.test = ?test AND sm.testList IN (?testList1, ?testList2) ORDER BY LOWER(sm.test) DESC",
+				"SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test AND sm.testList IN (?testList1, ?testList2) GROUP BY sm.UUID ORDER BY LOWER(sm.test) DESC",
 				testBuilder.build());
 		Assert.assertEquals(
-				"SELECT COUNT(1) FROM SpaceMission sm WHERE sm.test = ?test AND sm.testList IN (?testList1, ?testList2)",
+				"SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm WHERE sm.test = ?test AND sm.testList IN (?testList1, ?testList2) GROUP BY sm.UUID",
 				testBuilder.buildCountPart());
 		Assert.assertEquals(
-				"SELECT tab.UUID FROM ( SELECT DISTINCT sm.uuid AS UUID FROM SpaceMission sm WHERE sm.test = ?test AND sm.testList IN (?testList1, ?testList2) ORDER BY LOWER(sm.test) DESC ) tab",
+				"SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test AND sm.testList IN (?testList1, ?testList2) GROUP BY sm.UUID ORDER BY LOWER(sm.test) DESC",
 				testBuilder.buildUuidListPart());
-		Assert.assertEquals("SELECT DISTINCT * FROM SpaceMission sm WHERE sm.uuid IN ('test-list1', 'test-list2')", testBuilder.buildResultFromUuidList(list));
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm WHERE sm.UUID IN ('test-list1', 'test-list2')", testBuilder.buildResultFromUuidList(list));
 		checkParam("test", "not null", testBuilder);
 		checkParam("testList1", list.get(0), testBuilder);
 		checkParam("testList2", list.get(1), testBuilder);

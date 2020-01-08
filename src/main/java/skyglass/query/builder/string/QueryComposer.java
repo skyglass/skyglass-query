@@ -37,8 +37,6 @@ public class QueryComposer {
 
 	private StringPartBuilder queryPart = new StringPartBuilder(this, null);
 
-	private String distinctUuidPart;
-
 	private String rootAlias;
 
 	private QueryRequestDTO queryRequest;
@@ -178,8 +176,13 @@ public class QueryComposer {
 		return wherePart.start(where).startOr();
 	}
 
-	public QueryComposer groupBy(String groupBy) {
-		queryComposer.groupBy(groupBy);
+	public QueryComposer groupBy(String groupByString) {
+		queryComposer.groupBy(groupByString);
+		return this;
+	}
+
+	public QueryComposer addGroupBy(String alias, String path) {
+		queryComposer.addGroupBy(alias, path);
 		return this;
 	}
 
@@ -189,11 +192,6 @@ public class QueryComposer {
 
 	public QueryComposer having(String having) {
 		havingPart.build(new StringBuilder(having));
-		return this;
-	}
-
-	public QueryComposer setDistinct(String distinctUuidPart) {
-		this.distinctUuidPart = distinctUuidPart;
 		return this;
 	}
 
@@ -277,13 +275,7 @@ public class QueryComposer {
 			sb.append(" ) " + Constants.OUTER_QUERY_PREFIX);
 			buildOrderByPart(sb, false);
 		} else {
-			if (isUuids && distinctUuidPart != null) {
-				sb.append("SELECT " + Constants.OUTER_QUERY_PREFIX + "." + Constants.UUID + " FROM ( ");
-			}
 			buildInner(sb, isUuids, false, false);
-			if (isUuids && distinctUuidPart != null) {
-				sb.append(" ) " + Constants.OUTER_QUERY_PREFIX);
-			}
 		}
 		return sb.toString();
 	}
@@ -291,7 +283,7 @@ public class QueryComposer {
 	public String buildCountPart() {
 		initComposer();
 		StringBuilder sb = new StringBuilder();
-		if (applyOuterQuery()) {
+		if (applyDistinctCount()) {
 			sb.append("SELECT DISTINCT COUNT(1) OVER ()");
 			buildInner(sb, false, true, false);
 		} else {
@@ -306,7 +298,7 @@ public class QueryComposer {
 		StringBuilder sb = new StringBuilder();
 		buildInner(sb, false, false, true);
 		sb.append(" WHERE ");
-		sb.append(distinctUuidPart);
+		sb.append(rootAlias + "." + Constants.UUID);
 		sb.append(" IN ");
 		build(sb, new StringBuilder(NativeQueryUtil.getInString(uuidList)));
 		return sb.toString();
@@ -443,11 +435,7 @@ public class QueryComposer {
 			if (queryComposer.isApplyOuterQuery(isNativeQuery()) && !isInner) {
 				result = Constants.OUTER_QUERY_PREFIX + "." + Constants.UUID;
 			} else {
-				if (distinctUuidPart != null) {
-					result = "DISTINCT " + distinctUuidPart + " AS " + Constants.UUID;
-				} else {
-					result = rootAlias + "." + Constants.UUID;
-				}
+				result = rootAlias + "." + Constants.UUID;
 			}
 		} else {
 			if (applyOuterQuery() && !isInner) {
@@ -673,6 +661,10 @@ public class QueryComposer {
 	boolean applyOuterQuery() {
 		return queryComposer.isApplyOuterQuery(isNativeQuery())
 				&& QueryRequestUtil.isPaged(queryRequest);
+	}
+	
+	boolean applyDistinctCount() {
+		return queryComposer.isApplyOuterQuery(isNativeQuery());
 	}
 	
 }
