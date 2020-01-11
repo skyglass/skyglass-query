@@ -22,7 +22,9 @@ public class FieldItem {
 	}
 
 	public String getInnerPath(String rootAlias, boolean groupBy) {
-		return getInnerPath(rootAlias) + (!groupBy && useAsAlias ? " AS " + alias : "");
+		String result = getInnerPath(rootAlias);
+		boolean test = (rootAlias + "." + alias).equals(result);
+		return result + (!groupBy && useAsAlias && !test ? " AS " + alias : "");
 	}
 
 	String getInnerPath(String rootAlias) {

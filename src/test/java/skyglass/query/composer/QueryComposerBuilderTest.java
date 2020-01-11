@@ -116,7 +116,7 @@ public class QueryComposerBuilderTest {
 		queryComposer.bindOrder("createdAt", FieldType.Date, "sm.createdAt");
 		queryComposer.bindOrder("planetId", "sm.planetId");
 		queryComposer.bindOrder("planetName", "planetName");
-		queryComposer.bindOrder("planetDescription", "tab.planetDescription");
+		queryComposer.bindOrder("planetDescription");
 		queryComposer.bindOrder("from", "sm.from");
 		queryComposer.bindOrder("destination", "sm.destination");
 		queryComposer.bindOrder("currentPosition", "sm.currentPosition");
@@ -364,7 +364,7 @@ public class QueryComposerBuilderTest {
 
 		QueryRequestDTO queryRequest = MockQueryRequestDto.create("");
 		queryRequest.setSearchTerm("test1");
-		queryRequest.setOrderField("planetName");
+		queryRequest.setOrderField("finalPlanetName");
 
 		String expectedResult = getExpectedResult(queryRequest, false, "user.name", "bparam.value");
 
@@ -378,7 +378,7 @@ public class QueryComposerBuilderTest {
 
 		QueryRequestDTO queryRequest = MockQueryRequestDto.create("");
 		queryRequest.setSearchTerm("test1");
-		queryRequest.setOrderField("planetName");
+		queryRequest.setOrderField("finalPlanetName");
 
 		String expectedResult = getExpectedResult(queryRequest, true, "user.name", "bparam.value");
 
@@ -485,7 +485,8 @@ public class QueryComposerBuilderTest {
 		queryComposer.setDefaultOrder(OrderType.Desc, FieldType.Date, "sm.createdAt");
 		queryComposer.bindOrder("createdAt", FieldType.Date, "sm.createdAt");
 		queryComposer.bindOrder("planetId", "sm.planetId");
-		queryComposer.bindOrder("planetName", "finalPlanetName");
+		queryComposer.bindOrder("planetName");
+		queryComposer.bindOrder("finalPlanetName");
 		queryComposer.bindOrder("planetDescription", "planetDescription");
 		queryComposer.bindOrder("from", "sm.from");
 		queryComposer.bindOrder("destination", "sm.destination");
@@ -595,6 +596,7 @@ public class QueryComposerBuilderTest {
 		orderBuilder.bindOrder("operator", "tab.operator");
 		orderBuilder.bindOrder("createdBy", "tab.createdBy");
 		orderBuilder.bindOrder("planetName", "tab.planetName");
+		orderBuilder.bindOrder("finalPlanetName", "tab.finalPlanetName");
 		orderBuilder.bindOrder("planetDescription", "tab.planetDescription");
 		return " ORDER BY " + QueryOrderUtil.applyOrder(orderBuilder.getOrderFields());
 	}
@@ -609,7 +611,8 @@ public class QueryComposerBuilderTest {
 		orderBuilder.bindOrder("currentPosition", "sm.currentPosition");
 		orderBuilder.bindOrder("operator", "sm.operator");
 		orderBuilder.bindOrder("createdBy", "user.name");
-		orderBuilder.bindOrder("planetName", QueryFunctions.coalesce(QueryTranslationUtil.coalesce("trName"), QueryTranslationUtil.coalesce("trLocalName")));
+		orderBuilder.bindOrder("planetName", QueryTranslationUtil.coalesce("trName"));
+		orderBuilder.bindOrder("finalPlanetName", QueryFunctions.coalesce(QueryTranslationUtil.coalesce("trName"), QueryTranslationUtil.coalesce("trLocalName")));
 		return " ORDER BY " + QueryOrderUtil.applyOrder(orderBuilder.getOrderFields());
 	}
 

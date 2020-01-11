@@ -7,6 +7,8 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import org.apache.commons.lang3.StringUtils;
+
 import skyglass.data.common.model.IdObject;
 import skyglass.query.NativeQueryUtil;
 import skyglass.query.QueryRequestUtil;
@@ -184,6 +186,10 @@ public class QueryComposer {
 	public QueryComposer addGroupBy(String alias, String path) {
 		queryComposer.addGroupBy(alias, path);
 		return this;
+	}
+	
+	public QueryComposer addGroupBy(String alias) {
+		return addGroupBy(alias, alias);
 	}
 
 	public StringPartBuilder startHaving(String having) {
@@ -432,10 +438,12 @@ public class QueryComposer {
 	private void buildSelectPart(StringBuilder sb, boolean isUuids, boolean isInner) {
 		String result = null;
 		if (isUuids) {
-			if (queryComposer.isApplyOuterQuery(isNativeQuery()) && !isInner) {
+			if (applyOuterQuery() && !isInner) {
 				result = Constants.OUTER_QUERY_PREFIX + "." + Constants.UUID;
+			} else if (applyOuterQuery() && isInner) {
+				result = queryComposer.getInnerFields(false);
 			} else {
-				result = rootAlias + "." + Constants.UUID;
+				result = queryComposer.getDistinctUuidFields(false);
 			}
 		} else {
 			if (applyOuterQuery() && !isInner) {
@@ -462,10 +470,14 @@ public class QueryComposer {
 	
 	private void buildGroupByPart(StringBuilder sb, boolean isInner) {		
 		String result = null;
-		if (queryComposer.isDistinct() && isInner) {
+		if (applyOuterQuery() && isInner) {
 			result = queryComposer.getInnerFields(true);
-		}		
-		if (result != null) {
+		} else if (isDistinct() && isInner) {
+			result = queryComposer.getDistinctGroupByFields(true);
+		} else {
+			result = queryComposer.getGroupByFields(true);			
+		}
+		if (StringUtils.isNotBlank(result)) {
 			build(sb, new StringBuilder(" GROUP BY " + result));
 		}
 	}	
@@ -603,6 +615,14 @@ public class QueryComposer {
 		queryComposer.setDefaultOrder(alias, orderType, path);
 		return this;
 	}
+	
+	public QueryComposer bindOrder(String name, FieldType fieldType) {
+		return bindOrder(name, fieldType, name);
+	}
+
+	public QueryComposer bindOrder(String name) {
+		return bindOrder(name, name);
+	}
 
 	public QueryComposer bindOrder(String name, FieldType fieldType, String... path) {
 		queryComposer.bindOrder(name, fieldType, path);
@@ -622,6 +642,10 @@ public class QueryComposer {
 	public QueryComposer addSelect(String alias, String path) {
 		queryComposer.addSelect(alias, path);
 		return this;
+	}
+	
+	public QueryComposer addSelect(String alias) {
+		return addSelect(alias, alias);
 	}
 	
 	public String getCountQueryStr() {
