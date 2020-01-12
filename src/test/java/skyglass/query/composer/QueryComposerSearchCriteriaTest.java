@@ -1,0 +1,66 @@
+package skyglass.query.composer;
+
+import org.junit.Assert;
+import org.junit.Test;
+
+import skyglass.query.builder.result.MockQuery;
+import skyglass.query.builder.string.MockQueryRequestDto;
+import skyglass.query.builder.string.QueryComposer;
+import skyglass.query.builder.string.QueryParam;
+
+public class QueryComposerSearchCriteriaTest {
+	
+	@Test
+	public void testJpaSearch() {
+		String value = "not null";
+
+		QueryComposer testBuilder = QueryComposer
+				.jpa(MockQueryRequestDto.create(value), "u")
+				.setSearchTerm("lastName:doe,age>25")
+				.select("*")
+				.from("User u")
+				.startAndWhere()
+				.addSearch("lastName", "age")
+				.end();
+		Assert.assertEquals("SELECT u FROM User u WHERE ( ( LOWER(u.lastName) LIKE LOWER(:lastName) AND u.age > 25 ) )", testBuilder.build());
+		checkParam("age", 25, testBuilder);
+		checkParam("lastName", "%doe%", testBuilder);
+	}
+	
+	public static void checkParam(String name, Object value, QueryComposer builder) {
+		for (QueryParam param : builder.getParams()) {
+			if (param.getName().equals(name)) {
+				Assert.assertEquals(value, param.getValue());
+				return;
+			}
+		}
+		Assert.fail("parameter was not found");
+	}
+
+	public static void checkNoParam(String name, QueryComposer builder) {
+		for (QueryParam param : builder.getParams()) {
+			if (param.getName().equals(name)) {
+				Assert.fail("parameter was found");
+			}
+		}
+	}
+
+	public static void checkNoParam(String name, MockQuery query) {
+		for (QueryParam param : query.getParams()) {
+			if (param.getName().equals(name)) {
+				Assert.fail("parameter was found");
+			}
+		}
+	}
+
+	public static void checkParam(String name, Object value, MockQuery query) {
+		for (QueryParam param : query.getParams()) {
+			if (param.getName().equals(name)) {
+				Assert.assertEquals(value, param.getValue());
+				return;
+			}
+		}
+		Assert.fail("parameter was not found");
+	}
+
+}

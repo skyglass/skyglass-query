@@ -575,7 +575,15 @@ public class QueryComposerBuilderTest {
 						QueryTranslationUtil.coalesce("trLocalName"),
 						QueryTranslationUtil.coalesce("trLocalDescription"));
 			}
-			searchPart = QueryFunctions.and(searchPart, QuerySearchUtil.applySearch(true, searchBuilder));
+			searchPart = QueryFunctions.or(searchPart, QuerySearchUtil.applySearch(true, searchBuilder));
+		}
+		
+		if (StringUtils.isBlank(searchPart)) {
+			return "";
+		}
+		
+		if (size > 1) {
+			searchPart = "( " + searchPart + " )";
 		}
 
 		return searchPart == null ? "" : ("AND " + searchPart);

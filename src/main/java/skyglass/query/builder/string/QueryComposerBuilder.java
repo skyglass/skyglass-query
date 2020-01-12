@@ -27,6 +27,7 @@ import skyglass.query.builder.OrderField;
 import skyglass.query.builder.OrderType;
 import skyglass.query.builder.QueryRequestDTO;
 import skyglass.query.builder.SearchBuilder;
+import skyglass.query.builder.SearchType;
 import skyglass.query.builder.config.Constants;
 
 public class QueryComposerBuilder {
@@ -199,8 +200,24 @@ public class QueryComposerBuilder {
 		});
 	}
 	
+	public void addSearch(String paramName, String paramValue, SearchType searchType, String... paths) {
+		addSearch(paramName, paramValue, searchType, false, paths);
+	}
+	
 	public void addSearch(String... paths) {
-		addSearchRunner(paths);
+		addSearch(SearchBuilder.SEARCH_TERM_FIELD, null, SearchType.IgnoreCase, false, paths);
+	}
+	
+	public void addTranslatableSearch(String paramName, String paramValue, SearchType searchType, String... paths) {
+		addSearch(paramName, paramValue, searchType, true, paths);
+	}
+	
+	public void addTranslatableSearch(String... paths) {
+		addSearch(SearchBuilder.SEARCH_TERM_FIELD, null, SearchType.IgnoreCase, true, paths);
+	}
+	
+	public void addSearch(String paramName, String paramValue, SearchType searchType, boolean translatable, String... paths) {
+		addSearchRunner(paramName, paramValue, searchType, translatable, paths);
 	}
 
 	public void addAliasResolver(String alias, String path) {
@@ -463,7 +480,7 @@ public class QueryComposerBuilder {
 		});
 	}
 
-	private void addSearchRunner(String... paths) {
+	private void addSearchRunner(String paramName, String paramValue, SearchType searchType, boolean translatable, String... paths) {
 		searchPartInitRunners.add(() -> {
 			for (int j = 0; j < paths.length; j++) {
 				analyzeSearchPath(paths[j]);
@@ -480,20 +497,29 @@ public class QueryComposerBuilder {
 			}
 			_setDistinct(applyOuterQuery || applyOuterQueryOriginal);
 			
-			List<String> searchTerms = CollectionUtils.isEmpty(queryRequest.getSearchTerms())
-					? (StringUtils.isBlank(queryRequest.getSearchTerm())
-							? Collections.emptyList()
-							: Collections.singletonList(queryRequest.getSearchTerm()))
-					: queryRequest.getSearchTerms();
+			List<String> searchTerms = null;
+			if (StringUtils.isNotBlank(paramValue)) {
+				searchTerms = Collections.singletonList(paramValue);
+			} else {
+				searchTerms = CollectionUtils.isEmpty(queryRequest.getSearchTerms())
+						? (StringUtils.isBlank(queryRequest.getSearchTerm())
+								? Collections.emptyList()
+								: Collections.singletonList(queryRequest.getSearchTerm()))
+						: queryRequest.getSearchTerms();
+			}
 			for (int i = 0; i < searchTerms.size(); i++) {
-				String searchTermField = SearchBuilder.SEARCH_TERM_FIELD + Integer.toString(i);
-				List<String> resolvedPathList = new ArrayList<>();
-				for (int j = 0; j < paths.length; j++) {
-					String resolvedSearchPath = resolveSearchPath(paths[j]);
-					resolvedPathList.add(resolvedSearchPath);
+				String searchTermValue = searchTerms.get(0);
+				if (StringUtils.isNotBlank(searchTermValue)) {
+					String searchTermField = paramName + Integer.toString(i);
+					root.setSearchParameter(searchTermField, searchTermValue, searchType);
+					List<String> resolvedPathList = new ArrayList<>();
+					for (int j = 0; j < paths.length; j++) {
+						String resolvedSearchPath = resolveSearchPath(paths[j]);
+						resolvedPathList.add(resolvedSearchPath);
+					}
+					SearchBuilder searchBuilder = new SearchBuilder(queryRequest, searchType, searchTermField, translatable, resolvedPathList.toArray(new String[0]));
+					searchPartSuppliers.add(QuerySearchUtil.applySearch(root.isNativeQuery(), searchBuilder));
 				}
-				SearchBuilder searchBuilder = new SearchBuilder(queryRequest, searchTermField, false, resolvedPathList.toArray(new String[0]));
-				searchPartSuppliers.add(QuerySearchUtil.applySearch(true, searchBuilder));
 			}
 		});
 	}
@@ -713,9 +739,15 @@ public class QueryComposerBuilder {
 	String getSearchPart(boolean whereHasResult) {
 		String result = null;
 		for (String searchPartSupplier : searchPartSuppliers) {
-			result = QueryFunctions.and(result, searchPartSupplier);
+			result = QueryFunctions.or(result, searchPartSupplier);
 		}
-		return result == null ? "" : ((whereHasResult ? " AND " : " WHERE ") + result);
+		if (StringUtils.isBlank(result)) {
+			return "";
+		}
+		if (searchPartSuppliers.size() > 1) {
+			result = "( " + result + " )";
+		}
+		return (whereHasResult ? " AND " : " WHERE ") + result;
 	}
 
 	private void initPart() {

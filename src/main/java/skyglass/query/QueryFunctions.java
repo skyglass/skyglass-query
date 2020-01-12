@@ -57,7 +57,15 @@ public class QueryFunctions {
 	}
 
 	public static String and(String queryStr1, String queryStr2) {
-		return StringUtils.isNotBlank(queryStr1) ? (queryStr1 + " AND " + queryStr2) : queryStr2;
+		return join(queryStr1, queryStr2, " AND ");
+	}
+	
+	public static String or(String queryStr1, String queryStr2) {
+		return join(queryStr1, queryStr2, " OR ");
+	}
+	
+	public static String join(String queryStr1, String queryStr2, String delimiter) {
+		return StringUtils.isNotBlank(queryStr1) ? (queryStr1 + delimiter + queryStr2) : queryStr2;
 	}
 
 	public static <T extends Enum<T>> String ordinalToString(Enum<T>[] enumValues, String path) {

@@ -90,7 +90,7 @@ public class QueryParamProcessor {
 		return matches;
 	}
 
-	public static String processPart(QueryComposer root, StringPartBuilder builder, String paramName, String part, Object value) {
+	public static String processPart(QueryComposer root, QueryParamBuilder builder, String paramName, String part, Object value) {
 		if (builder.isCollection(value)) {
 			return replaceListPart(root, builder, paramName, part, (Collection<?>) value);
 		}

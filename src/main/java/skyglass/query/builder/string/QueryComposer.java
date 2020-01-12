@@ -16,6 +16,7 @@ import skyglass.query.builder.FieldType;
 import skyglass.query.builder.OrderType;
 import skyglass.query.builder.QueryRequestDTO;
 import skyglass.query.builder.QueryResult;
+import skyglass.query.builder.SearchType;
 import skyglass.query.builder.config.Constants;
 import skyglass.query.builder.result.QueryManager;
 
@@ -424,7 +425,7 @@ public class QueryComposer {
 		return queryManager.convertNativeList(this, dtoSupplier, dtoDto2Converter);
 	}
 
-	Collection<QueryParam> getParams() {
+	public Collection<QueryParam> getParams() {
 		return params.values();
 	}
 
@@ -574,6 +575,21 @@ public class QueryComposer {
 	
 	public QueryComposer addSearch(String... paths) {
 		queryComposer.addSearch(paths);
+		return this;
+	}
+	
+	public QueryComposer addSearch(String paramName, String paramValue, SearchType searchType, String... paths) {
+		queryComposer.addSearch(paramName, paramValue, searchType, paths);
+		return this;
+	}
+	
+	public QueryComposer addTranslatableSearch(String... paths) {
+		queryComposer.addTranslatableSearch(paths);
+		return this;
+	}
+	
+	public QueryComposer addTranslatableSearch(String paramName, String paramValue, SearchType searchType, String... paths) {
+		queryComposer.addTranslatableSearch(paramName, paramValue, searchType, paths);
 		return this;
 	}
 
@@ -726,6 +742,21 @@ public class QueryComposer {
 	
 	boolean isShowUuidAlias() {
 		return !uuidField.equalsIgnoreCase(uuidAlias);
+	}
+	
+	void  setSearchParameter(String name, String value, SearchType searchType) {
+		if (!isStringEmpty(value)) {
+			value = SearchType.getExpression(searchType, value);
+		}
+		setParameter(name, value);
+	}
+	
+	private void setParameter(String name, Object value) {
+		params.put(name, QueryParam.create(name, value));
+	}
+	
+	private boolean isStringEmpty(String value) {
+		return StringUtils.isBlank(value);
 	}
 	
 }

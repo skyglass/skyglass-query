@@ -3,17 +3,13 @@ package skyglass.query.builder.string;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import skyglass.query.builder.SearchBuilder;
 import skyglass.query.builder.SearchType;
 
 public class StringPartBuilder extends QueryParamBuilder {
-
-	public static final String SEARCH_TERM_FIELD = "searchTerm";
 
 	private static final String OR_SUFFIX = " )";
 
@@ -447,28 +443,24 @@ public class StringPartBuilder extends QueryParamBuilder {
 		return skipIfFalse();
 	}
 
-	public StringPartBuilder addTranslatableSearch(String... searchFields) {
-		return addSearch(SEARCH_TERM_FIELD, QueryParamProcessor.parseSearchTerm(root), SearchType.IgnoreCase, true, searchFields);
-	}
-
-	public StringPartBuilder addTranslatableSearch(SearchType searchType, String... searchFields) {
-		return addSearch(SEARCH_TERM_FIELD, QueryParamProcessor.parseSearchTerm(root), searchType, true, searchFields);
-	}
-
-	public StringPartBuilder addSearch(SearchType searchType, String... searchFields) {
-		return addSearch(SEARCH_TERM_FIELD, QueryParamProcessor.parseSearchTerm(root), searchType, false, searchFields);
-	}
-
 	public StringPartBuilder addSearch(String... searchFields) {
-		return addSearch(SEARCH_TERM_FIELD, QueryParamProcessor.parseSearchTerm(root), SearchType.IgnoreCase, false, searchFields);
+		root.addSearch(searchFields);
+		return this;
 	}
-
-	public StringPartBuilder addTranslatableSearch(String paramName, String paramValue, SearchType searchType, String... searchFields) {
-		return addSearch(paramName, paramValue, searchType, true, searchFields);
-	}
-
+	
 	public StringPartBuilder addSearch(String paramName, String paramValue, SearchType searchType, String... searchFields) {
-		return addSearch(paramName, paramValue, searchType, false, searchFields);
+		root.addSearch(paramName, paramValue, searchType, searchFields);
+		return this;
+	}
+	
+	public StringPartBuilder addTranslatableSearch(String... searchFields) {
+		root.addTranslatableSearch(searchFields);
+		return this;
+	}
+	
+	public StringPartBuilder addTranslatableSearch(String paramName, String paramValue, SearchType searchType, String... searchFields) {
+		root.addTranslatableSearch(paramName, paramValue, searchType, searchFields);
+		return this;
 	}
 
 	private StringPartBuilder endOr() {
@@ -516,20 +508,47 @@ public class StringPartBuilder extends QueryParamBuilder {
 	}
 
 	private void doAppend(StringBuilder part) {
-		if (StringUtils.isNotBlank(delimiter) && sb.length() > 0 && part != null && part.length() > 0
+		if (StringUtils.isNotBlank(delimiter) && sb.length() > 0 && notBlank(part)
 				&& delimiterStart) {
 			sb.append(delimiter);
 		}
 		doAppendWithoutDelimiter(part);
-		if (StringUtils.isNotBlank(delimiter) && sb.length() > 0 && part != null && part.length() > 0) {
+		if (StringUtils.isNotBlank(delimiter) && sb.length() > 0 && notBlank(part)) {
 			delimiterStart = true;
 		}
 	}
 
 	private void doAppendWithoutDelimiter(StringBuilder part) {
-		if (part != null && part.length() > 0) {
+		if (notBlank(part)) {
 			sb.append(part);
 		}
+	}
+	
+	private boolean notBlank(StringBuilder part) {
+		if (part == null) {
+			return false;
+		}
+		boolean containsStart = false;
+		boolean containsEnd = false;
+		for (int i = 0; i < part.length(); i++) {
+			char c = part.charAt(i);
+			if (c != ' ' && c != ')' && c != '(') {
+				return true;
+			}
+			if (c == '(') {
+				containsStart = true;
+			}
+			if (c == ')') {
+				containsEnd = true;
+			}
+		}
+		if (containsStart && containsEnd) {
+			return false;
+		}
+		if (containsStart || containsEnd) {
+			return true;
+		}
+		return false; 
 	}
 
 	private boolean isTrueCondition(Collection<QueryParam> params) {
@@ -581,26 +600,6 @@ public class StringPartBuilder extends QueryParamBuilder {
 		return this;
 	}
 
-	private StringPartBuilder addSearch(String paramName, String paramValue, SearchType searchType, boolean translatable, String... searchFields) {
-		setSearchParameter(paramName, paramValue, searchType);
-		append(QueryProcessor.applySearch(root.getQueryRequest(), searchType, paramName, translatable, root.isNativeQuery(), searchFields));
-		return this;
-	}
-
-	StringPartBuilder buildSearch(List<SearchParameter> parameters, SearchBuilder searchBuilder) {
-		for (SearchParameter searchParameter : parameters) {
-			setSearchParameter(searchParameter.getParamName(), searchParameter.getValue(), searchParameter.getSearchType());
-		}
-		append(QueryProcessor.applySearch(root.isNativeQuery(), searchBuilder));
-		return this;
-	}
-
-	private StringPartBuilder setSearchParameter(String name, String value, SearchType searchType) {
-		if (!isStringEmpty(value)) {
-			value = SearchType.getExpression(searchType, value);
-		}
-		return setParameter(name, value);
-	}
 
 	protected boolean isAlreadyBuilt() {
 		return alreadyBuilt;

@@ -34,7 +34,7 @@ public class SearchBuilder {
 		this(queryRequest, SearchType.IgnoreCase, SEARCH_TERM_FIELD, translatable, searchFields);
 	}
 
-	private SearchBuilder(QueryRequestDTO queryRequest, SearchType searchType, String searchTermField, boolean translatable, String... searchFields) {
+	public SearchBuilder(QueryRequestDTO queryRequest, SearchType searchType, String searchTermField, boolean translatable, String... searchFields) {
 		this.searchType = searchType;
 		this.queryRequest = queryRequest;
 		this.searchTermField = searchTermField;
