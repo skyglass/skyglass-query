@@ -144,7 +144,7 @@ class QueryResultConverter<T, DTO, DTO2> extends QueryResultBuilder<T> {
 	private String getAlias(SelectField selectField) {
 		String result = selectField.getAlias();
 		if (Constants.UUID.equals(result)) {
-			return Constants.JPA_UUID;
+			return Constants.UUID_ALIAS;
 		}
 		return result;
 	}

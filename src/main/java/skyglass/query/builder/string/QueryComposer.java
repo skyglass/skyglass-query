@@ -48,6 +48,12 @@ public class QueryComposer {
 	private QueryComposerBuilder queryComposer;
 	
 	private boolean hasCustomWherePart;
+	
+	private String uuidField = Constants.UUID;
+	
+	private String uuidAlias = Constants.UUID_ALIAS;
+	
+	private boolean skipUuid = false;
 
 	QueryComposer(QueryRequestDTO queryRequest, String rootAlias, boolean isNative) {
 		init(rootAlias, isNative);
@@ -304,7 +310,7 @@ public class QueryComposer {
 		StringBuilder sb = new StringBuilder();
 		buildInner(sb, false, false, true);
 		sb.append(" WHERE ");
-		sb.append(rootAlias + "." + Constants.UUID);
+		sb.append(rootAlias + "." + getUuidField());
 		sb.append(" IN ");
 		build(sb, new StringBuilder(NativeQueryUtil.getInString(uuidList)));
 		return sb.toString();
@@ -439,7 +445,7 @@ public class QueryComposer {
 		String result = null;
 		if (isUuids) {
 			if (applyOuterQuery() && !isInner) {
-				result = Constants.OUTER_QUERY_PREFIX + "." + Constants.UUID;
+				result = Constants.OUTER_QUERY_PREFIX + "." + getUuidField();
 			} else if (applyOuterQuery() && isInner) {
 				result = queryComposer.getInnerFields(false);
 			} else {
@@ -638,14 +644,29 @@ public class QueryComposer {
 		queryComposer.select(selectString);
 		return this;
 	}
+	
+	public QueryComposer addSelect(String alias) {
+		return addSelect(alias, alias);
+	}
 
 	public QueryComposer addSelect(String alias, String path) {
 		queryComposer.addSelect(alias, path);
 		return this;
 	}
 	
-	public QueryComposer addSelect(String alias) {
-		return addSelect(alias, alias);
+	public QueryComposer setUuidField(String uuidField) {
+		this.uuidField = uuidField;
+		return this;
+	}
+	
+	public QueryComposer setUuidAlias(String uuidAlias) {
+		this.uuidAlias = uuidAlias;
+		return this;
+	}
+	
+	public QueryComposer skipUuid() {
+		this.skipUuid = true;
+		return this;
 	}
 	
 	public String getCountQueryStr() {
@@ -689,6 +710,22 @@ public class QueryComposer {
 	
 	boolean applyDistinctCount() {
 		return queryComposer.isApplyOuterQuery(isNativeQuery());
+	}
+	
+	String getUuidField() {
+		return uuidField;
+	}
+	
+	String getUuidAlias() {
+		return uuidAlias;
+	}
+	
+	boolean isSkipUuid() {
+		return skipUuid;
+	}
+	
+	boolean isShowUuidAlias() {
+		return !uuidField.equalsIgnoreCase(uuidAlias);
 	}
 	
 }

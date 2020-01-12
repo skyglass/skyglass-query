@@ -448,6 +448,94 @@ public class QueryComposerWithRequestValuesTest {
 		Assert.assertEquals("SELECT sm.UUID, g.field AS groupBy FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field ORDER BY LOWER(g.field2) DESC", testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
+	
+	@Test
+	public void testNullableNotNullQuery1OrderByAliasSearch1() {
+		String value = "not null";
+
+		QueryRequestDTO request = MockQueryMapRequestDto.create(value);
+		request.setOrderField("search");
+		request.setOrderType(OrderType.Desc);
+		QueryComposer testBuilder = QueryComposer
+				.nativ(request, "sm")
+				.select("*")
+				.add("FROM SpaceMission sm")
+				.addConditional("LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid", "search")
+				.addConditionalWhere("sm.test = ?test", "search")
+				.addSearch("search")
+				.bindOrder("search", "g.field2");
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test ORDER BY LOWER(g.field2) DESC", testBuilder.build());
+		Assert.assertEquals("SELECT COUNT(1) FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test", testBuilder.buildCountPart());
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test ORDER BY LOWER(g.field2) DESC", testBuilder.buildUuidListPart());
+		checkParam("test", "not null", testBuilder);
+	}
+	
+	@Test
+	public void testNullableNotNullQuery1OrderByAliasSearch1Found() {
+		String value = "not null";
+
+		QueryRequestDTO request = MockQueryMapRequestDto.create(value);
+		request.setOrderField("search");
+		request.setOrderType(OrderType.Desc);
+		request.setSearchTerm("test");
+		QueryComposer testBuilder = QueryComposer
+				.nativ(request, "sm")
+				.select("*")
+				.add("FROM SpaceMission sm")
+				.addConditional("LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid", "search")
+				.addConditionalWhere("sm.test = ?test", "search")
+				.addSearch("search")
+				.bindOrder("search", "g.field2");
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( ( LOWER(g.field2) LIKE LOWER(?searchTerm0) ) ) ORDER BY LOWER(g.field2) DESC", testBuilder.build());
+		Assert.assertEquals("SELECT COUNT(1) FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( ( LOWER(g.field2) LIKE LOWER(?searchTerm0) ) )", testBuilder.buildCountPart());
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( ( LOWER(g.field2) LIKE LOWER(?searchTerm0) ) ) ORDER BY LOWER(g.field2) DESC", testBuilder.buildUuidListPart());
+		checkParam("test", "not null", testBuilder);
+	}
+	
+	@Test
+	public void testNullableNotNullQuery1OrderByAliasSearch2() {
+		String value = "not null";
+
+		QueryRequestDTO request = MockQueryMapRequestDto.create(value);
+		request.setOrderField("search");
+		request.setOrderType(OrderType.Desc);
+		QueryComposer testBuilder = QueryComposer
+				.nativ(request, "sm")
+				.select("*")
+				.add("FROM SpaceMission sm")
+				.addConditional("LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid", "search")
+				.addConditionalWhere("sm.test = ?test", "search2")
+				.addAliasResolver("search2", "sm.found")
+				.addSearch("search", "search2")
+				.bindOrder("search", "g.field2");
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test ORDER BY LOWER(g.field2) DESC", testBuilder.build());
+		Assert.assertEquals("SELECT COUNT(1) FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test", testBuilder.buildCountPart());
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test ORDER BY LOWER(g.field2) DESC", testBuilder.buildUuidListPart());
+		checkParam("test", "not null", testBuilder);
+	}
+	
+	@Test
+	public void testNullableNotNullQuery1OrderByAliasSearch2Found() {
+		String value = "not null";
+
+		QueryRequestDTO request = MockQueryMapRequestDto.create(value);
+		request.setOrderField("search");
+		request.setOrderType(OrderType.Desc);
+		request.setSearchTerm("test");
+		QueryComposer testBuilder = QueryComposer
+				.nativ(request, "sm")
+				.select("*")
+				.add("FROM SpaceMission sm")
+				.addConditional("LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid", "search")
+				.addConditionalWhere("sm.test = ?test", "search2")
+				.addAliasResolver("search2", "sm.found")
+				.addSearch("search", "search2")
+				.bindOrder("search", "g.field2");
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( ( LOWER(g.field2) LIKE LOWER(?searchTerm0) OR LOWER(sm.found) LIKE LOWER(?searchTerm0) ) ) ORDER BY LOWER(g.field2) DESC", testBuilder.build());
+		Assert.assertEquals("SELECT COUNT(1) FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( ( LOWER(g.field2) LIKE LOWER(?searchTerm0) OR LOWER(sm.found) LIKE LOWER(?searchTerm0) ) )", testBuilder.buildCountPart());
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( ( LOWER(g.field2) LIKE LOWER(?searchTerm0) OR LOWER(sm.found) LIKE LOWER(?searchTerm0) ) ) ORDER BY LOWER(g.field2) DESC", testBuilder.buildUuidListPart());
+		checkParam("test", "not null", testBuilder);
+	}
 
 
 	@Test

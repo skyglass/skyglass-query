@@ -3,8 +3,6 @@ package skyglass.query.builder.result;
 import java.util.Date;
 
 public class MockDTO {
-	
-	private String uuid;
 
 	private String test;
 
@@ -42,14 +40,6 @@ public class MockDTO {
 
 	public void setTestEnum(MockEnum testEnum) {
 		this.testEnum = testEnum;
-	}
-
-	public String getUuid() {
-		return uuid;
-	}
-
-	public void setUuid(String uuid) {
-		this.uuid = uuid;
 	}
 
 }

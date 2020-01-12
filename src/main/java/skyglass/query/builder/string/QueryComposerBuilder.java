@@ -654,7 +654,7 @@ public class QueryComposerBuilder {
 	
 	String getDistinctGroupByFields(boolean groupBy) {
 		StringBuilder sb = new StringBuilder();
-		sb.append(getRootSelect());
+		sb.append(getRootSelect(groupBy));
 
 		for (FieldItem fieldItem : selectFieldMap.values()) {
 			if (!getUuid().equalsIgnoreCase(fieldItem.getAlias())) {
@@ -673,7 +673,7 @@ public class QueryComposerBuilder {
 	
 	String getDistinctUuidFields(boolean groupBy) {
 		StringBuilder sb = new StringBuilder();
-		sb.append(getRootSelect());
+		sb.append(getRootSelect(groupBy));
 		
 		String groupByFields = getGroupByFields(groupBy);
 		if (StringUtils.isNotBlank(groupByFields)) {
@@ -698,10 +698,9 @@ public class QueryComposerBuilder {
 	
 	List<SelectField> getSelectFields() {	
 		List<SelectField> result = new ArrayList<>();
-		SelectField selectField = new SelectField(getUuid(), rootAlias + "." + getUuid());
-		result.add(selectField);
+		addRootSelect(result);
 		for (FieldItem fieldItem : selectFieldMap.values()) {
-			selectField = new SelectField(fieldItem.getAlias(), fieldItem.getInnerPath(rootAlias));
+			SelectField selectField = new SelectField(fieldItem.getAlias(), fieldItem.getInnerPath(rootAlias));
 			result.add(selectField);
 		}
 		return result;
@@ -882,16 +881,28 @@ public class QueryComposerBuilder {
 		return applyOuterQuery && isNative;
 	}
 	
-	private String getRootSelect() {
-		if (root.isNativeQuery()) {
-			return rootAlias + "." + getUuid();
+	private String getRootSelect(boolean groupBy) {
+		String result = "";
+		if (root.isNativeQuery() && !root.isSkipUuid()) {
+			result = rootAlias + "." + getUuid();
+			if (!groupBy && root.isShowUuidAlias()) {
+				result += " AS " + root.getUuidAlias();
+			}
 		} else {
-			return rootAlias;
+			result = rootAlias;
 		}
+		return result;
+	}
+	
+	private void addRootSelect(List<SelectField> selectFields) {
+		if (root.isNativeQuery() && !root.isSkipUuid()) {
+			SelectField selectField = new SelectField(getUuid(), rootAlias + "." + getUuid());
+			selectFields.add(selectField);
+		} 
 	}
 	
 	private String getUuid() {
-		return root.isNativeQuery() ? Constants.UUID : Constants.JPA_UUID;
+		return root.getUuidField();
 	}
 	
 	private String resolveAlias(String alias) {
