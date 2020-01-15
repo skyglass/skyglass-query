@@ -1,4 +1,4 @@
-package skyglass.query.builder.string;
+package skyglass.query.builder.composer;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -7,6 +7,8 @@ import java.util.List;
 import org.junit.Assert;
 import org.junit.Test;
 
+import skyglass.query.builder.composer.QueryComposer;
+import skyglass.query.builder.composer.QueryParam;
 import skyglass.query.builder.result.MockQuery;
 
 public class QueryComposerWithRequestTest {

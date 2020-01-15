@@ -17,9 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import skyglass.data.common.model.IdObject;
 import skyglass.query.builder.QueryResult;
-import skyglass.query.builder.string.JpaQueryResultProvider;
-import skyglass.query.builder.string.NativeQueryResultProvider;
-import skyglass.query.builder.string.QueryComposer;
+import skyglass.query.builder.composer.JpaQueryResultProvider;
+import skyglass.query.builder.composer.NativeQueryResultProvider;
+import skyglass.query.builder.composer.QueryComposer;
 
 @Repository
 @Transactional(propagation = Propagation.MANDATORY)

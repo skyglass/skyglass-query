@@ -4,7 +4,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import skyglass.query.builder.string.QueryParam;
+import skyglass.query.builder.composer.QueryParam;
 
 public class MockQuery {
 

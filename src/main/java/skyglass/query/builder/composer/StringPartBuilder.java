@@ -1,4 +1,4 @@
-package skyglass.query.builder.string;
+package skyglass.query.builder.composer;
 
 import java.util.Arrays;
 import java.util.Collection;

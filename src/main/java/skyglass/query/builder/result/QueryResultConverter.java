@@ -13,9 +13,9 @@ import org.apache.commons.collections.CollectionUtils;
 
 import skyglass.query.EnumUtil;
 import skyglass.query.builder.QueryResult;
+import skyglass.query.builder.composer.QueryComposer;
+import skyglass.query.builder.composer.SelectField;
 import skyglass.query.builder.config.Constants;
-import skyglass.query.builder.string.QueryComposer;
-import skyglass.query.builder.string.SelectField;
 
 class QueryResultConverter<T, DTO, DTO2> extends QueryResultBuilder<T> {
 

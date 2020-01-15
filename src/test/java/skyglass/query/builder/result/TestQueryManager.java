@@ -5,7 +5,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import skyglass.query.builder.QueryResult;
-import skyglass.query.builder.string.QueryComposer;
+import skyglass.query.builder.composer.QueryComposer;
 
 public class TestQueryManager {
 

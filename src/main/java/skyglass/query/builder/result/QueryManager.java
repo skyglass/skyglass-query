@@ -11,7 +11,7 @@ import javax.persistence.Query;
 
 import skyglass.data.common.model.IdObject;
 import skyglass.query.builder.QueryResult;
-import skyglass.query.builder.string.QueryComposer;
+import skyglass.query.builder.composer.QueryComposer;
 
 public interface QueryManager {
 

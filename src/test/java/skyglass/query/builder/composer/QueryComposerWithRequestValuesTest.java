@@ -1,4 +1,4 @@
-package skyglass.query.builder.string;
+package skyglass.query.builder.composer;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -9,6 +9,8 @@ import org.junit.Test;
 
 import skyglass.query.builder.OrderType;
 import skyglass.query.builder.QueryRequestDTO;
+import skyglass.query.builder.composer.QueryComposer;
+import skyglass.query.builder.composer.QueryParam;
 import skyglass.query.builder.result.MockQuery;
 
 public class QueryComposerWithRequestValuesTest {
@@ -36,7 +38,7 @@ public class QueryComposerWithRequestValuesTest {
 				.select("*")
 				.add("FROM SpaceMission sm")
 				.addConditionalWhere("sm.test = ?test", "order")
-				.bindOrder("order", "sm.order");
+				.bindOrder("order");
 		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test ORDER BY LOWER(sm.order) ASC", testBuilder.build());
 		checkParam("test", "not null", testBuilder);
 	}
@@ -52,7 +54,7 @@ public class QueryComposerWithRequestValuesTest {
 				.select("*")
 				.add("FROM SpaceMission sm")
 				.addDistinctConditionalWhere("sm.test = ?test", "order")
-				.bindOrder("order", "sm.order");
+				.bindOrder("order");
 		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test GROUP BY sm.UUID ORDER BY LOWER(sm.order) ASC", testBuilder.build());
 		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm WHERE sm.test = ?test GROUP BY sm.UUID", testBuilder.buildCountPart());
 		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test GROUP BY sm.UUID ORDER BY LOWER(sm.order) ASC", testBuilder.buildUuidListPart());
@@ -71,7 +73,7 @@ public class QueryComposerWithRequestValuesTest {
 				.select("*")
 				.add("FROM SpaceMission sm")
 				.addDistinctConditionalWhere("sm.test = ?test", "order")
-				.bindOrder("order", "sm.order")
+				.bindOrder("order")
 				.setLimit(10);
 		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT sm.UUID, sm.order FROM SpaceMission sm WHERE sm.test = ?test GROUP BY sm.UUID, sm.order ) tab ORDER BY LOWER(tab.order) DESC", testBuilder.build());
 		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm WHERE sm.test = ?test GROUP BY sm.UUID, sm.order", testBuilder.buildCountPart());
@@ -94,7 +96,7 @@ public class QueryComposerWithRequestValuesTest {
 				.add("FROM SpaceMission sm")
 				.addConditional("LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid", "groupBy")
 				.addDistinctConditionalWhere("sm.test = ?test", "order")
-				.bindOrder("order", "sm.order")
+				.bindOrder("order")
 				.setLimit(10);
 		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT sm.UUID, sm.groupBy, sm.order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, sm.groupBy, sm.order ) tab ORDER BY LOWER(tab.order) DESC", testBuilder.build());
 		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, sm.groupBy, sm.order", testBuilder.buildCountPart());
@@ -486,9 +488,9 @@ public class QueryComposerWithRequestValuesTest {
 				.addConditionalWhere("sm.test = ?test", "search")
 				.addSearch("search")
 				.bindOrder("search", "g.field2");
-		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( ( LOWER(g.field2) LIKE LOWER(?searchTerm0) ) ) ORDER BY LOWER(g.field2) DESC", testBuilder.build());
-		Assert.assertEquals("SELECT COUNT(1) FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( ( LOWER(g.field2) LIKE LOWER(?searchTerm0) ) )", testBuilder.buildCountPart());
-		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( ( LOWER(g.field2) LIKE LOWER(?searchTerm0) ) ) ORDER BY LOWER(g.field2) DESC", testBuilder.buildUuidListPart());
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( LOWER(g.field2) LIKE LOWER(?searchTerm0) ) ORDER BY LOWER(g.field2) DESC", testBuilder.build());
+		Assert.assertEquals("SELECT COUNT(1) FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( LOWER(g.field2) LIKE LOWER(?searchTerm0) )", testBuilder.buildCountPart());
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( LOWER(g.field2) LIKE LOWER(?searchTerm0) ) ORDER BY LOWER(g.field2) DESC", testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
 	
@@ -531,9 +533,9 @@ public class QueryComposerWithRequestValuesTest {
 				.addAliasResolver("search2", "sm.found")
 				.addSearch("search", "search2")
 				.bindOrder("search", "g.field2");
-		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( ( LOWER(g.field2) LIKE LOWER(?searchTerm0) OR LOWER(sm.found) LIKE LOWER(?searchTerm0) ) ) ORDER BY LOWER(g.field2) DESC", testBuilder.build());
-		Assert.assertEquals("SELECT COUNT(1) FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( ( LOWER(g.field2) LIKE LOWER(?searchTerm0) OR LOWER(sm.found) LIKE LOWER(?searchTerm0) ) )", testBuilder.buildCountPart());
-		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( ( LOWER(g.field2) LIKE LOWER(?searchTerm0) OR LOWER(sm.found) LIKE LOWER(?searchTerm0) ) ) ORDER BY LOWER(g.field2) DESC", testBuilder.buildUuidListPart());
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( LOWER(g.field2) LIKE LOWER(?searchTerm0) OR LOWER(sm.found) LIKE LOWER(?searchTerm0) ) ORDER BY LOWER(g.field2) DESC", testBuilder.build());
+		Assert.assertEquals("SELECT COUNT(1) FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( LOWER(g.field2) LIKE LOWER(?searchTerm0) OR LOWER(sm.found) LIKE LOWER(?searchTerm0) )", testBuilder.buildCountPart());
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( LOWER(g.field2) LIKE LOWER(?searchTerm0) OR LOWER(sm.found) LIKE LOWER(?searchTerm0) ) ORDER BY LOWER(g.field2) DESC", testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
 

@@ -3,7 +3,7 @@ package skyglass.query.builder.result;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import skyglass.query.builder.string.QueryComposer;
+import skyglass.query.builder.composer.QueryComposer;
 
 class DtoDtoConverter<DTO1, DTO2> extends QueryResultConverter<Object[], DTO1, DTO2> {
 

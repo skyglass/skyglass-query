@@ -5,7 +5,7 @@ import java.util.List;
 
 import skyglass.query.builder.QueryRequestDTO;
 import skyglass.query.builder.QueryResult;
-import skyglass.query.builder.string.QueryComposer;
+import skyglass.query.builder.composer.QueryComposer;
 
 public class QueryResultBuilder<T> {
 

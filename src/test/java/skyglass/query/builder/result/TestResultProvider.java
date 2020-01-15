@@ -3,8 +3,8 @@ package skyglass.query.builder.result;
 import java.util.List;
 import java.util.function.Supplier;
 
+import skyglass.query.builder.composer.QueryComposer;
 import skyglass.query.builder.result.QueryResultProvider;
-import skyglass.query.builder.string.QueryComposer;
 
 public class TestResultProvider<T> implements QueryResultProvider<T> {
 

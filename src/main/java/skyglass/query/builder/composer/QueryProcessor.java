@@ -1,4 +1,4 @@
-package skyglass.query.builder.string;
+package skyglass.query.builder.composer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,6 +12,7 @@ import skyglass.query.builder.OrderField;
 import skyglass.query.builder.QueryRequestDTO;
 import skyglass.query.builder.SearchBuilder;
 import skyglass.query.builder.SearchType;
+import skyglass.query.builder.composer.search.SearchTerm;
 
 public class QueryProcessor {
 
@@ -63,12 +64,14 @@ public class QueryProcessor {
 		return QueryOrderUtil.applyOrder(orderFields);
 	}
 
-	public static String applySearch(QueryRequestDTO queryRequest, SearchType searchType, boolean translatable, boolean nativeQuery, String... searchFields) {
-		return QuerySearchUtil.applySearch(queryRequest, searchType, translatable, nativeQuery, searchFields);
+	public static String applySearch(QueryRequestDTO queryRequest, SearchTerm searchTerm, SearchType searchType, 
+			boolean translatable, boolean nativeQuery, String... searchFields) {
+		return QuerySearchUtil.applySearch(queryRequest, searchTerm, searchType, translatable, nativeQuery, searchFields);
 	}
 	
-	public static String applySearch(QueryRequestDTO queryRequest, SearchType searchType, String searchTermField, boolean translatable, boolean nativeQuery, String... searchFields) {
-		return QuerySearchUtil.applySearch(queryRequest, searchType, searchTermField, translatable, nativeQuery, searchFields);
+	public static String applySearch(QueryRequestDTO queryRequest, SearchTerm searchTerm, SearchType searchType, 
+			String searchTermField, boolean translatable, boolean nativeQuery, String... searchFields) {
+		return QuerySearchUtil.applySearch(queryRequest, searchTerm, searchType, searchTermField, translatable, nativeQuery, searchFields);
 	}
 
 	public static String applySearch(boolean nativeQuery, SearchBuilder searchBuilder) {

@@ -3,10 +3,10 @@ package skyglass.query.composer;
 import org.junit.Assert;
 import org.junit.Test;
 
+import skyglass.query.builder.composer.MockQueryRequestDto;
+import skyglass.query.builder.composer.QueryComposer;
+import skyglass.query.builder.composer.QueryParam;
 import skyglass.query.builder.result.MockQuery;
-import skyglass.query.builder.string.MockQueryRequestDto;
-import skyglass.query.builder.string.QueryComposer;
-import skyglass.query.builder.string.QueryParam;
 
 public class QueryComposerSearchCriteriaTest {
 	
@@ -22,7 +22,7 @@ public class QueryComposerSearchCriteriaTest {
 				.startAndWhere()
 				.addSearch("lastName", "age")
 				.end();
-		Assert.assertEquals("SELECT u FROM User u WHERE ( ( LOWER(u.lastName) LIKE LOWER(:lastName) AND u.age > 25 ) )", testBuilder.build());
+		Assert.assertEquals("SELECT u FROM User u WHERE ( LOWER(u.lastName) LIKE LOWER(:lastName) AND u.age > 25 )", testBuilder.build());
 		checkParam("age", 25, testBuilder);
 		checkParam("lastName", "%doe%", testBuilder);
 	}

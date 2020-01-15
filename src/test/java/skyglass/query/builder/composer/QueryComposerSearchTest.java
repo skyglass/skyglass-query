@@ -1,9 +1,11 @@
-package skyglass.query.builder.string;
+package skyglass.query.builder.composer;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import skyglass.query.builder.SearchType;
+import skyglass.query.builder.composer.QueryComposer;
+import skyglass.query.builder.composer.QueryParam;
 import skyglass.query.builder.result.MockQuery;
 
 public class QueryComposerSearchTest {
@@ -21,7 +23,7 @@ public class QueryComposerSearchTest {
 				.appendNullable("sm.test = ?test")
 				.addSearch("sm.test1", "sm.test2")
 				.end();
-		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test AND ( ( LOWER(sm.test1) LIKE LOWER(?searchTerm0) OR LOWER(sm.test2) LIKE LOWER(?searchTerm0) ) )", testBuilder.build());
+		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test AND ( LOWER(sm.test1) LIKE LOWER(?searchTerm0) OR LOWER(sm.test2) LIKE LOWER(?searchTerm0) )", testBuilder.build());
 		checkParam("test", "not null", testBuilder);
 		checkParam("searchTerm0", "%findme%", testBuilder);
 	}
@@ -39,7 +41,7 @@ public class QueryComposerSearchTest {
 				.appendNullable("sm.test = :test")
 				.addSearch("sm.test1", "sm.test2")
 				.end();
-		Assert.assertEquals("SELECT sm FROM SpaceMission sm WHERE sm.test = :test AND ( ( LOWER(sm.test1) LIKE LOWER(:searchTerm0) OR LOWER(sm.test2) LIKE LOWER(:searchTerm0) ) )", testBuilder.build());
+		Assert.assertEquals("SELECT sm FROM SpaceMission sm WHERE sm.test = :test AND ( LOWER(sm.test1) LIKE LOWER(:searchTerm0) OR LOWER(sm.test2) LIKE LOWER(:searchTerm0) )", testBuilder.build());
 		checkParam("test", "not null", testBuilder);
 		checkParam("searchTerm0", "%findme%", testBuilder);
 	}
@@ -59,10 +61,10 @@ public class QueryComposerSearchTest {
 				.addTranslatableSearch("sm.test1", "sm.test2")
 				.end();
 		Assert.assertEquals(
-				"SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test AND ( ( LOWER(sm.test1.en) LIKE LOWER(?searchTerm0) OR LOWER(sm.test1.de) LIKE LOWER(?searchTerm0) OR LOWER(sm.test1.cn) LIKE LOWER(?searchTerm0) OR LOWER(sm.test1.jp) LIKE LOWER(?searchTerm0) "
+				"SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test AND ( LOWER(sm.test1.en) LIKE LOWER(?searchTerm0) OR LOWER(sm.test1.de) LIKE LOWER(?searchTerm0) OR LOWER(sm.test1.cn) LIKE LOWER(?searchTerm0) OR LOWER(sm.test1.jp) LIKE LOWER(?searchTerm0) "
 						+ "OR LOWER(sm.test1.es) LIKE LOWER(?searchTerm0) OR LOWER(sm.test1.fr) LIKE LOWER(?searchTerm0) OR LOWER(sm.test1.pt) LIKE LOWER(?searchTerm0) "
 						+ "OR LOWER(sm.test1.it) LIKE LOWER(?searchTerm0) OR LOWER(sm.test2.en) LIKE LOWER(?searchTerm0) OR LOWER(sm.test2.de) LIKE LOWER(?searchTerm0) OR LOWER(sm.test2.cn) LIKE LOWER(?searchTerm0) OR LOWER(sm.test2.jp) LIKE LOWER(?searchTerm0) OR LOWER(sm.test2.es) "
-						+ "LIKE LOWER(?searchTerm0) OR LOWER(sm.test2.fr) LIKE LOWER(?searchTerm0) OR LOWER(sm.test2.pt) LIKE LOWER(?searchTerm0) OR LOWER(sm.test2.it) LIKE LOWER(?searchTerm0) ) )",
+						+ "LIKE LOWER(?searchTerm0) OR LOWER(sm.test2.fr) LIKE LOWER(?searchTerm0) OR LOWER(sm.test2.pt) LIKE LOWER(?searchTerm0) OR LOWER(sm.test2.it) LIKE LOWER(?searchTerm0) )",
 				testBuilder.build());
 		checkParam("test", "not null", testBuilder);
 		checkParam("searchTerm0", "%findme%", testBuilder);
@@ -83,7 +85,7 @@ public class QueryComposerSearchTest {
 				.addSearch("sm.test1.es", "sm.test2.es")
 				.end();
 		Assert.assertEquals(
-				"SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test AND ( ( LOWER(sm.test1.es) LIKE LOWER(?searchTerm0) OR LOWER(sm.test2.es) LIKE LOWER(?searchTerm0) ) )",
+				"SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test AND ( LOWER(sm.test1.es) LIKE LOWER(?searchTerm0) OR LOWER(sm.test2.es) LIKE LOWER(?searchTerm0) )",
 				testBuilder.build());
 		checkParam("test", "not null", testBuilder);
 		checkParam("searchTerm0", "%findme%", testBuilder);
@@ -106,7 +108,7 @@ public class QueryComposerSearchTest {
 				.__().addSearch("searchTerm2", "findme2", SearchType.StartsIgnoreCase, "sm.test3")
 				.end();
 		Assert.assertEquals(
-				"SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test AND ( ( ( LOWER(sm.test1.es) LIKE LOWER(?searchTerm0) OR LOWER(sm.test2.es) LIKE LOWER(?searchTerm0) ) ) OR ( ( LOWER(sm.test3) LIKE LOWER(?searchTerm20) ) ) )",
+				"SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test AND ( LOWER(sm.test1.es) LIKE LOWER(?searchTerm0) OR LOWER(sm.test2.es) LIKE LOWER(?searchTerm0) ) AND ( LOWER(sm.test3) LIKE LOWER(?searchTerm20) )",
 				testBuilder.build());
 		checkParam("test", "not null", testBuilder);
 		checkParam("searchTerm0", "%findme%", testBuilder);

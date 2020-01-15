@@ -1,4 +1,4 @@
-package skyglass.query.builder.string;
+package skyglass.query.builder.composer;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -355,6 +355,8 @@ public class QueryComposer {
 			}
 			build(sb, queryParts);
 			
+			String andPart = null;
+			String orPart = null;
 			if (wherePart.hasResult()) {
 				if (!hasCustomWherePart()) {
 					sb.append(" WHERE ");
@@ -362,10 +364,14 @@ public class QueryComposer {
 					sb.append(" AND ");					
 				}
 				build(sb, wherePart.getResult());
-				build(sb, new StringBuilder(queryComposer.getSearchPart(true)));
+				andPart = queryComposer.getAndSearchPart(true);
+				orPart = queryComposer.getOrSearchPart(true);
 			} else {
-				build(sb, new StringBuilder(queryComposer.getSearchPart(hasCustomWherePart())));	
+				andPart = queryComposer.getAndSearchPart(hasCustomWherePart());
+				orPart = queryComposer.getOrSearchPart(hasCustomWherePart());
 			}
+			build(sb, new StringBuilder(andPart));
+			build(sb, new StringBuilder(orPart));
 			buildGroupByPart(sb, true);
 			if (havingPart.hasResult()) {
 				sb.append(" HAVING ");
@@ -639,7 +645,8 @@ public class QueryComposer {
 	}
 	
 	public QueryComposer bindOrder(String name, FieldType fieldType) {
-		return bindOrder(name, fieldType, name);
+		queryComposer.bindOrder(name, fieldType);
+		return this;
 	}
 
 	public QueryComposer bindOrder(String name) {
@@ -744,7 +751,7 @@ public class QueryComposer {
 		return !uuidField.equalsIgnoreCase(uuidAlias);
 	}
 	
-	void  setSearchParameter(String name, String value, SearchType searchType) {
+	public void  setSearchParameter(String name, String value, SearchType searchType) {
 		if (!isStringEmpty(value)) {
 			value = SearchType.getExpression(searchType, value);
 		}

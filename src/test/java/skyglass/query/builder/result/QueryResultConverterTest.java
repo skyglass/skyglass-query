@@ -10,7 +10,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import skyglass.query.DateUtil;
-import skyglass.query.builder.string.QueryComposer;
+import skyglass.query.builder.composer.QueryComposer;
 
 public class QueryResultConverterTest {
 

@@ -2,7 +2,7 @@ package skyglass.query.builder.result;
 
 import java.util.List;
 
-import skyglass.query.builder.string.QueryComposer;
+import skyglass.query.builder.composer.QueryComposer;
 
 public interface QueryResultProvider<T> {
 
