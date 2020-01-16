@@ -1,5 +1,7 @@
 package skyglass.query.builder;
 
+import skyglass.query.builder.composer.search.SearchTerm;
+
 public enum SearchType {
 
 	IgnoreCase, StartsIgnoreCase;
@@ -8,8 +10,11 @@ public enum SearchType {
 		return true;
 	}
 
-	public static String getExpression(SearchType searchType, String value) {
-		return searchType == SearchType.StartsIgnoreCase ? ("%" + value) : ("%" + value + "%");
+	public static Object getExpression(SearchTerm searchTerm, SearchType searchType) {
+		if (!searchTerm.getOperator().isText()) {
+			return searchTerm.getValue();
+		}
+		return searchType == SearchType.StartsIgnoreCase ? ("%" + searchTerm.getValue()) : ("%" + searchTerm.getValue() + "%");
 	}
 
 }

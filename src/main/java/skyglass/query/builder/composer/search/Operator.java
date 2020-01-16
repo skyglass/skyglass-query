@@ -28,8 +28,16 @@ public enum Operator {
 	}
 	
 	public String getSqlOperator() {
-		if (this == Operator.Like) return "LIKE";
+		if (isText()) return "LIKE";
 		return this.symbol;
+	}
+	
+	public boolean isText() {
+		return this == Operator.Like;
+	}
+	
+	public boolean isInteger() {
+		return this == Operator.Less || this == Operator.More;
 	}
 
 

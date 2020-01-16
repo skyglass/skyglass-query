@@ -27,6 +27,7 @@ import skyglass.query.builder.OrderField;
 import skyglass.query.builder.OrderType;
 import skyglass.query.builder.QueryRequestDTO;
 import skyglass.query.builder.SearchBuilder;
+import skyglass.query.builder.SearchPath;
 import skyglass.query.builder.SearchType;
 import skyglass.query.builder.composer.search.Combination;
 import skyglass.query.builder.composer.search.SearchTerm;
@@ -490,10 +491,10 @@ public class QueryComposerBuilder {
 
 	private void addSearchRunner(String paramName, String paramValue, SearchType searchType, boolean translatable, String... paths) {
 		searchPartInitRunners.add(() -> {
-			List<String> resolvedPathList = new ArrayList<>();
+			List<SearchPath> resolvedPathList = new ArrayList<>();
 			for (int j = 0; j < paths.length; j++) {
-				String resolvedSearchPath = resolveSearchPath(paths[j]);
-				resolvedPathList.add(resolvedSearchPath);
+				Pair<String, String> resolvedSearchPath = resolveSearchPath(paths[j]);
+				resolvedPathList.add(new SearchPath(resolvedSearchPath.getLeft(), resolvedSearchPath.getRight()));
 			}
 			boolean applyOuterQueryOriginal = applyOuterQuery;
 			_setDistinct(false);
@@ -522,20 +523,20 @@ public class QueryComposerBuilder {
 			List<SearchTerm> orResult = orSearch(result);
 			int i = 0;
 			for (SearchTerm searchTerm: andResult) {
-				if (StringUtils.isNotBlank(searchTerm.getValue())) {
-					String p = paramName + Integer.toString(i);
+				if (StringUtils.isNotBlank(searchTerm.getStringValue())) {
+					String p = searchTerm.hasField() ? searchTerm.getField() : (paramName + Integer.toString(i));
 					i++;
 					SearchBuilder searchBuilder = new SearchBuilder(root, queryRequest, searchTerm, searchType, p, 
-							translatable, resolvedPathList.toArray(new String[0]));
+							translatable, resolvedPathList.toArray(new SearchPath[0]));
 					searchPartAndSuppliers.add(QuerySearchUtil.applySearch(root.isNativeQuery(), searchBuilder));
 				}
 			}
 			for (SearchTerm searchTerm: orResult) {
-				if (StringUtils.isNotBlank(searchTerm.getValue())) {
-					String p = paramName + Integer.toString(i);
+				if (StringUtils.isNotBlank(searchTerm.getStringValue())) {
+					String p = searchTerm.hasField() ? searchTerm.getField() : (paramName + Integer.toString(i));
 					i++;
 					SearchBuilder searchBuilder = new SearchBuilder(root, queryRequest, searchTerm, searchType, p, 
-							translatable, resolvedPathList.toArray(new String[0]));
+							translatable, resolvedPathList.toArray(new SearchPath[0]));
 					searchPartOrSuppliers.add(QuerySearchUtil.applySearch(root.isNativeQuery(), searchBuilder));
 				}
 			}
@@ -861,23 +862,23 @@ public class QueryComposerBuilder {
 		return QueryRequestUtil.isPaged(queryRequest) ? " LIMIT ?limit OFFSET ?offset" : "";
 	}
 
-	private String resolveSearchPath(String path) {
-		String result = null;
-		FieldItem fieldItem = fieldPathMap.get(path);
-		if (fieldItem == null) {
-			fieldItem = fieldMap.get(path);
-		}
+	private Pair<String, String> resolveSearchPath(String path) {
+		String resultPath = null;
+		String resultAlias = null;
 		String[] pathParts = path.split("\\.");
-		String test = resolveAlias(path);
-		if (pathParts.length == 1 && test == null) {
-			result = getRootPath(path);
-		} else if (pathParts.length == 1 && test != null) {
-			result = test;
+		if (pathParts.length == 1) {
+			resultAlias = path;
+			String test = resolveAlias(path);
+			if (test == null) {
+				resultPath = getRootPath(path);
+			} else {
+				resultPath = test;
+			}
 		} else {
-			result = path;
+			resultPath = path;
+			resultAlias = pathParts[pathParts.length - 1];
 		}
-		return result;
-
+		return Pair.of(resultAlias, resultPath);
 	}
 
 	private String resolvePath(String alias, String path) {

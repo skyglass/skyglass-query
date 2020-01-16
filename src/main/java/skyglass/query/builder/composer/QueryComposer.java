@@ -17,6 +17,7 @@ import skyglass.query.builder.OrderType;
 import skyglass.query.builder.QueryRequestDTO;
 import skyglass.query.builder.QueryResult;
 import skyglass.query.builder.SearchType;
+import skyglass.query.builder.composer.search.SearchTerm;
 import skyglass.query.builder.config.Constants;
 import skyglass.query.builder.result.QueryManager;
 
@@ -751,19 +752,16 @@ public class QueryComposer {
 		return !uuidField.equalsIgnoreCase(uuidAlias);
 	}
 	
-	public void  setSearchParameter(String name, String value, SearchType searchType) {
-		if (!isStringEmpty(value)) {
-			value = SearchType.getExpression(searchType, value);
+	public void  setSearchParameter(String name, SearchTerm searchTerm, SearchType searchType) {
+		Object value = searchTerm.getValue();
+		if (searchTerm.isNotStringValueEmpty()) {
+			value = SearchType.getExpression(searchTerm, searchType);
 		}
 		setParameter(name, value);
 	}
 	
 	private void setParameter(String name, Object value) {
 		params.put(name, QueryParam.create(name, value));
-	}
-	
-	private boolean isStringEmpty(String value) {
-		return StringUtils.isBlank(value);
 	}
 	
 }
