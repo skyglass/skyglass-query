@@ -66,18 +66,15 @@ public class QueryParamBuilder {
 		params.add(QueryParam.create(name, value));
 	}
 	
-	boolean setNonEmptyParams(QueryComposer root, boolean wherePart) {
-		boolean addWhere = false;
+	void setNonEmptyParams(QueryComposer root, boolean wherePart) {
 		for (QueryParam queryParam : params) {
 			if (!isEmpty(queryParam.getValue())) {
 				root.setParam(queryParam);
 				if (!root.hasCustomWherePart() && wherePart) {
 					root.setCustomWherePart(true);
-					addWhere = true;
 				}
 			}
 		}
-		return addWhere;
 	}
 
 }

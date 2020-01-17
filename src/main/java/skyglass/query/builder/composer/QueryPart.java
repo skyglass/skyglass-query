@@ -4,7 +4,7 @@ import org.apache.commons.lang3.StringUtils;
 
 class QueryPart {
 
-	private String queryPart;
+	private QueryPartString queryPart;
 	
 	private QueryParamBuilder paramBuilder;
 
@@ -14,11 +14,11 @@ class QueryPart {
 		}
 		this.paramBuilder = new QueryParamBuilder();
 		queryPart = QueryParamProcessor.parseParams(root, this.paramBuilder, queryPart);
-		boolean addWhere = this.paramBuilder.setNonEmptyParams(root, wherePart);
-		this.queryPart = addDelimiter(queryPart, delimiter, wherePart, addWhere);
+		this.paramBuilder.setNonEmptyParams(root, wherePart);
+		this.queryPart = addDelimiter(queryPart, delimiter, wherePart);
 	}
 
-	public String getQueryPart() {
+	public QueryPartString getQueryPart() {
 		return queryPart;
 	}
 	
@@ -26,14 +26,14 @@ class QueryPart {
 		return !paramBuilder.hasEmptyParamValue();
 	}
 	
-	private String addDelimiter(String queryPart, String delimiter, boolean wherePart, boolean addWhere) {
-		if (wherePart && addWhere) {
-			return "WHERE " + queryPart;
+	private QueryPartString addDelimiter(String queryPart, String delimiter, boolean wherePart) {
+		String firstDelimiter = null;
+		String nextDelimiter = null;
+		if (wherePart) {
+			firstDelimiter = "WHERE ";
+			nextDelimiter = (StringUtils.isBlank(delimiter) ? "AND" : delimiter) + " ";
 		}
-		if (wherePart && !addWhere) {
-			return (StringUtils.isBlank(delimiter) ? "AND" : delimiter) + " " + queryPart;
-		}
-		return queryPart;
+		return new QueryPartString(firstDelimiter, nextDelimiter, queryPart, wherePart);
 	}
-
+	
 }

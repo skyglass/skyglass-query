@@ -43,13 +43,13 @@ public class QueryComposerBuilder {
 
 	private boolean applyOuterQuery;
 
-	private Map<String, Set<String>> queryMap;
+	private Map<QueryPartString, Set<String>> queryMap;
 
 	private Collection<QueryPart> queryParts;
 
 	private List<FieldItem> fieldItems;
 
-	private Map<String, FieldItem> fieldMap;
+	private Map<String, FieldItem> fieldMap = new HashMap<>();
 
 	private Map<String, FieldItem> fieldPathMap;
 
@@ -357,7 +357,7 @@ public class QueryComposerBuilder {
 	
 	private void addQueryPart(String queryPart, boolean distinct, String delimiter, boolean wherePart, String... aliases) {
 		QueryPart result = new QueryPart(root, queryPart, distinct, delimiter, wherePart);
-		queryParts.add(result);
+		queryParts.add(result);	
 		for (String alias : aliases) {
 			queryMap.computeIfAbsent(result.getQueryPart(), a -> new HashSet<>()).add(alias);
 		}
@@ -777,7 +777,7 @@ public class QueryComposerBuilder {
 		return result;
 	}
 
-	List<String> resolveInnerFrom() {
+	List<QueryPartString> resolveInnerFrom() {
 		return queryParts.stream().filter(s -> shouldBeAdded(s)).map(s -> s.getQueryPart()).collect(Collectors.toList());
 	}
 

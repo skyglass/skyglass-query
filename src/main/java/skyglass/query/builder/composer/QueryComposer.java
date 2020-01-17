@@ -349,20 +349,31 @@ public class QueryComposer {
 
 		if (!fromUuidList) {
 			StringBuilder queryParts = new StringBuilder();
-			List<String> parts = queryComposer.resolveInnerFrom();
-			for (String queryPart : parts) {
-				queryParts.append(" ");
-				queryParts.append(queryPart);
+			List<QueryPartString> parts = queryComposer.resolveInnerFrom();
+			boolean first = true;
+			boolean hasWherePart = false;
+			for (QueryPartString queryPart : parts) {
+				queryParts.append(" ");	
+				if (first && queryPart.getFirstDelimiter() != null) {
+					first = false;
+					queryParts.append(queryPart.getFirstDelimiter());					
+				} else if (queryPart.getDelimiter() != null) {
+					queryParts.append(queryPart.getDelimiter());	
+				} 
+				if (!hasWherePart && queryPart.isWherePart()) {
+					hasWherePart = true;
+				}
+				queryParts.append(queryPart.getPart());
 			}
 			build(sb, queryParts);
 			
 			String andPart = null;
 			String orPart = null;
-			if (wherePart.hasResult()) {
-				if (!hasCustomWherePart()) {
+			if (hasWherePart || wherePart.hasResult() || hasCustomWherePart()) {
+				if (!hasCustomWherePart() && !hasWherePart) {
 					sb.append(" WHERE ");
-				} else {
-					sb.append(" AND ");					
+				} else if (wherePart.hasResult()) {
+					sb.append(" AND ");		
 				}
 				build(sb, wherePart.getResult());
 				andPart = queryComposer.getAndSearchPart(true);
