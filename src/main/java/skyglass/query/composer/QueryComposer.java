@@ -12,7 +12,9 @@ import org.apache.commons.lang3.StringUtils;
 import skyglass.data.common.model.IdObject;
 import skyglass.query.composer.bean.QueryManager;
 import skyglass.query.composer.config.Constants;
+import skyglass.query.composer.search.SearchProcessor;
 import skyglass.query.composer.search.SearchTerm;
+import skyglass.query.composer.search.SearchType;
 import skyglass.query.composer.util.NativeQueryUtil;
 import skyglass.query.composer.util.QueryRequestUtil;
 
@@ -41,17 +43,17 @@ public class QueryComposer {
 	private QueryRequestDTO queryRequest;
 
 	private QueryType queryType;
-	
+
 	private QueryComposerBuilder queryComposer;
-	
+
 	private boolean hasCustomWherePart;
-	
+
 	private String uuidField = Constants.UUID;
-	
+
 	private String uuidAlias = Constants.UUID_ALIAS;
-	
+
 	private boolean skipUuid = false;
-	
+
 	private boolean composerAlreadyStarted;
 
 	QueryComposer(QueryRequestDTO queryRequest, String rootAlias, boolean isNative) {
@@ -59,7 +61,7 @@ public class QueryComposer {
 		this.queryRequest = queryRequest == null ? new QueryRequestDTO() : queryRequest;
 		this.queryComposer = new QueryComposerBuilder(this, this.queryRequest, rootAlias);
 	}
-	
+
 	QueryComposer(QueryRequestDTO queryRequest, String rootAlias) {
 		this(queryRequest, rootAlias, true);
 	}
@@ -67,19 +69,19 @@ public class QueryComposer {
 	QueryComposer(String rootAlias, boolean isNative) {
 		this(null, rootAlias, isNative);
 	}
-	
+
 	private void init(String rootAlias, boolean isNative) {
 		this.rootAlias = rootAlias;
 		this.queryType = isNative ? QueryType.Native : QueryType.Jpa;
 	}
-	
+
 	void initComposer() {
 		if (!composerAlreadyStarted) {
 			queryComposer.resetAndInit();
 			this.composerAlreadyStarted = true;
 		}
 	}
-	
+
 	//does nothing, only for indentation
 	public QueryComposer ___________________() {
 		return this;
@@ -89,7 +91,7 @@ public class QueryComposer {
 		QueryComposer result = new QueryComposer(rootAlias, true);
 		return result;
 	}
-	
+
 	public static QueryComposer nativ(QueryRequestDTO request, String rootAlias) {
 		QueryComposer result = new QueryComposer(request, rootAlias, true);
 		return result;
@@ -124,7 +126,7 @@ public class QueryComposer {
 		queryPart.build(new StringBuilder(part));
 		return this;
 	}
-	
+
 	Object getParamValue(String paramName) {
 		QueryParam queryParam = params.get(paramName);
 		if (queryParam != null) {
@@ -157,7 +159,7 @@ public class QueryComposer {
 			params.put(param.getName(), newParam);
 		}
 	}
-	
+
 	private Object getRequestParamValue(String paramName) {
 		return QueryParamProcessor.getSimpleProperty(getQueryRequest(), paramName);
 	}
@@ -228,7 +230,7 @@ public class QueryComposer {
 		queryComposer.addGroupBy(alias, path);
 		return this;
 	}
-	
+
 	public QueryComposer addGroupBy(String alias) {
 		return addGroupBy(alias, alias);
 	}
@@ -303,7 +305,7 @@ public class QueryComposer {
 		queryComposer.setDefaultOrder(orderType, orderFields);
 		return this;
 	}
-	
+
 	public QueryComposer restart() {
 		this.queryComposer.resetAndInit();
 		return this;
@@ -312,11 +314,11 @@ public class QueryComposer {
 	public String build() {
 		return build(false);
 	}
-	
+
 	public String buildUuidListPart() {
 		return build(true);
 	}
-	
+
 	private String build(boolean isUuids) {
 		initComposer();
 		StringBuilder sb = new StringBuilder();
@@ -331,7 +333,7 @@ public class QueryComposer {
 		}
 		return sb.toString();
 	}
-	
+
 	public String buildCountPart() {
 		initComposer();
 		StringBuilder sb = new StringBuilder();
@@ -344,7 +346,7 @@ public class QueryComposer {
 		}
 		return sb.toString();
 	}
-	
+
 	public String buildResultFromUuidList(List<String> uuidList) {
 		initComposer();
 		StringBuilder sb = new StringBuilder();
@@ -355,9 +357,7 @@ public class QueryComposer {
 		build(sb, new StringBuilder(NativeQueryUtil.getInString(uuidList)));
 		return sb.toString();
 	}
-	
 
-	
 	private void buildInner(StringBuilder sb, boolean isUuids, boolean isCount, boolean fromUuidList) {
 		if (!isCount) {
 			buildSelectPart(sb, isUuids, true);
@@ -391,27 +391,27 @@ public class QueryComposer {
 			boolean first = true;
 			boolean hasWherePart = false;
 			for (QueryPartString queryPart : parts) {
-				queryParts.append(" ");	
+				queryParts.append(" ");
 				if (first && queryPart.getFirstDelimiter() != null) {
 					first = false;
-					queryParts.append(queryPart.getFirstDelimiter());					
+					queryParts.append(queryPart.getFirstDelimiter());
 				} else if (queryPart.getDelimiter() != null) {
-					queryParts.append(queryPart.getDelimiter());	
-				} 
+					queryParts.append(queryPart.getDelimiter());
+				}
 				if (!hasWherePart && queryPart.isWherePart()) {
 					hasWherePart = true;
 				}
 				queryParts.append(queryPart.getPart());
 			}
 			build(sb, queryParts);
-			
+
 			String andPart = null;
 			String orPart = null;
 			if (hasWherePart || wherePart.hasResult() || hasCustomWherePart()) {
 				if (!hasCustomWherePart() && !hasWherePart) {
 					sb.append(" WHERE ");
 				} else if (wherePart.hasResult()) {
-					sb.append(" AND ");		
+					sb.append(" AND ");
 				}
 				build(sb, wherePart.getResult());
 				andPart = queryComposer.getAndSearchPart(true);
@@ -497,7 +497,7 @@ public class QueryComposer {
 		initComposer();
 		return queryComposer.getSelectFields();
 	}
-	
+
 	private void buildSelectPart(StringBuilder sb, boolean isUuids, boolean isInner) {
 		String result = null;
 		if (isUuids) {
@@ -515,12 +515,12 @@ public class QueryComposer {
 				result = queryComposer.getInnerFields(false);
 			}
 		}
-		
+
 		if (result != null) {
 			build(sb, new StringBuilder("SELECT " + result));
 		}
 	}
-	
+
 	private void buildOrderByPart(StringBuilder sb, boolean isInner) {
 		String result = null;
 		if (!applyOuterQuery() || !isInner) {
@@ -530,30 +530,30 @@ public class QueryComposer {
 			build(sb, new StringBuilder(" ORDER BY " + result));
 		}
 	}
-	
-	private void buildGroupByPart(StringBuilder sb, boolean isInner) {		
+
+	private void buildGroupByPart(StringBuilder sb, boolean isInner) {
 		String result = null;
 		if (applyOuterQuery() && isInner) {
 			result = queryComposer.getInnerFields(true);
 		} else if (isDistinct() && isInner) {
 			result = queryComposer.getDistinctGroupByFields(true);
 		} else {
-			result = queryComposer.getGroupByFields(true);			
+			result = queryComposer.getGroupByFields(true);
 		}
 		if (StringUtils.isNotBlank(result)) {
 			build(sb, new StringBuilder(" GROUP BY " + result));
 		}
-	}	
-	
+	}
+
 	public QueryComposer setDistinct() {
 		queryComposer.setDistinct();
 		return this;
 	}
-	
+
 	void _setDistinct(boolean distinct) {
 		queryComposer._setDistinct(distinct);
 	}
-	
+
 	public QueryComposer setDistinct(boolean distinct) {
 		queryComposer.setDistinct(distinct);
 		return this;
@@ -563,27 +563,27 @@ public class QueryComposer {
 		queryComposer.add(queryPart);
 		return this;
 	}
-	
+
 	public QueryComposer addWhere(String queryPart) {
 		queryComposer.addWhere(queryPart);
 		return this;
 	}
-	
+
 	public QueryComposer addOrWhere(String queryPart) {
 		queryComposer.addOrWhere(queryPart);
 		return this;
 	}
-	
+
 	public QueryComposer addDistinctWhere(String queryPart) {
 		queryComposer.addDistinctWhere(queryPart);
 		return this;
 	}
-	
+
 	public QueryComposer addDistinctOrWhere(String queryPart) {
 		queryComposer.addDistinctOrWhere(queryPart);
 		return this;
 	}
-	
+
 	public QueryComposer addConditionalWhere(String queryPart, String... aliases) {
 		queryComposer.addConditionalWhere(queryPart, aliases);
 		return this;
@@ -592,8 +592,8 @@ public class QueryComposer {
 	public QueryComposer addDistinctConditionalWhere(String queryPart, String... aliases) {
 		queryComposer.addDistinctConditionalWhere(queryPart, aliases);
 		return this;
-	}	
-	
+	}
+
 	public QueryComposer addConditionalOrWhere(String queryPart, String... aliases) {
 		queryComposer.addConditionalOrWhere(queryPart, aliases);
 		return this;
@@ -628,22 +628,22 @@ public class QueryComposer {
 		queryComposer.addConditional(queryPart, distinct, aliases);
 		return this;
 	}
-	
+
 	public QueryComposer addSearch(String... paths) {
 		queryComposer.addSearch(paths);
 		return this;
 	}
-	
+
 	public QueryComposer addSearch(String paramName, String paramValue, SearchType searchType, String... paths) {
 		queryComposer.addSearch(paramName, paramValue, searchType, paths);
 		return this;
 	}
-	
+
 	public QueryComposer addTranslatableSearch(String... paths) {
 		queryComposer.addTranslatableSearch(paths);
 		return this;
 	}
-	
+
 	public QueryComposer addTranslatableSearch(String paramName, String paramValue, SearchType searchType, String... paths) {
 		queryComposer.addTranslatableSearch(paramName, paramValue, searchType, paths);
 		return this;
@@ -653,7 +653,7 @@ public class QueryComposer {
 		queryComposer.addAliasResolver(alias, path);
 		return this;
 	}
-	
+
 	public QueryComposer addDefaultOrder(OrderType orderType, FieldType fieldType, String... path) {
 		queryComposer.addDefaultOrder(orderType, fieldType, path);
 		return this;
@@ -673,7 +673,7 @@ public class QueryComposer {
 		queryComposer.addDefaultOrder(alias, orderType, path);
 		return this;
 	}
-	
+
 	public QueryComposer setDefaultOrder(OrderType orderType, FieldType fieldType, String... path) {
 		queryComposer.setDefaultOrder(orderType, fieldType, path);
 		return this;
@@ -693,7 +693,7 @@ public class QueryComposer {
 		queryComposer.setDefaultOrder(alias, orderType, path);
 		return this;
 	}
-	
+
 	public QueryComposer bindOrder(String name, FieldType fieldType) {
 		queryComposer.bindOrder(name, fieldType);
 		return this;
@@ -712,12 +712,12 @@ public class QueryComposer {
 		queryComposer.bindOrder(name, path);
 		return this;
 	}
-	
+
 	public QueryComposer select(String selectString) {
 		queryComposer.select(selectString);
 		return this;
 	}
-	
+
 	public QueryComposer addSelect(String alias) {
 		return addSelect(alias, alias);
 	}
@@ -726,30 +726,30 @@ public class QueryComposer {
 		queryComposer.addSelect(alias, path);
 		return this;
 	}
-	
+
 	public QueryComposer setUuidField(String uuidField) {
 		this.uuidField = uuidField;
 		return this;
 	}
-	
+
 	public QueryComposer setUuidAlias(String uuidAlias) {
 		this.uuidAlias = uuidAlias;
 		return this;
 	}
-	
+
 	public QueryComposer skipUuid() {
 		this.skipUuid = true;
 		return this;
 	}
-	
+
 	public String getCountQueryStr() {
 		return buildCountPart();
 	}
 
 	public String getQueryStr() {
 		return build();
-	}		
-	
+	}
+
 	private void build(StringBuilder result, StringBuilder part) {
 		if (part != null && part.length() > 0) {
 			result.append(part);
@@ -759,62 +759,62 @@ public class QueryComposer {
 	public QueryRequestDTO getQueryRequest() {
 		return queryRequest;
 	}
-	
+
 	boolean shouldBeAdded(Collection<String> aliases) {
 		return queryComposer.shouldBeAdded(aliases);
 	}
-	
+
 	boolean shouldBeAdded(boolean isDistinct, Collection<String> aliases) {
 		return queryComposer.shouldBeAdded(isDistinct, aliases);
 	}
-	
+
 	FieldItem getFieldItem(String alias) {
 		return queryComposer.getFieldItem(alias);
 	}
-	
+
 	void setCustomWherePart(boolean hasCustomWherePart) {
 		this.hasCustomWherePart = hasCustomWherePart;
 	}
-	
+
 	boolean hasCustomWherePart() {
 		return this.hasCustomWherePart;
 	}
-	
+
 	boolean applyOuterQuery() {
 		return queryComposer.isApplyOuterQuery(isNativeQuery())
 				&& QueryRequestUtil.isPaged(queryRequest);
 	}
-	
+
 	boolean applyDistinctCount() {
 		return queryComposer.isApplyOuterQuery(isNativeQuery());
 	}
-	
+
 	String getUuidField() {
 		return uuidField;
 	}
-	
+
 	String getUuidAlias() {
 		return uuidAlias;
 	}
-	
+
 	boolean isSkipUuid() {
 		return skipUuid;
 	}
-	
+
 	boolean isShowUuidAlias() {
 		return !uuidField.equalsIgnoreCase(uuidAlias);
 	}
-	
-	public void  setSearchParameter(String name, SearchTerm searchTerm, SearchType searchType) {
+
+	public void setSearchParameter(String name, SearchTerm searchTerm, SearchType searchType) {
 		Object value = searchTerm.getValue();
 		if (searchTerm.isNotStringValueEmpty()) {
-			value = SearchType.getExpression(searchTerm, searchType);
+			value = SearchProcessor.getExpression(searchTerm, searchType);
 		}
 		setParameter(name, value);
 	}
-	
+
 	private void setParameter(String name, Object value) {
 		params.put(name, QueryParam.create(name, value));
 	}
-	
+
 }

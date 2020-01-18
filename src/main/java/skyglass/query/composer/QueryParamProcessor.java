@@ -144,7 +144,7 @@ public class QueryParamProcessor {
 			System.out.println(test);
 		}
 	}
-	
+
 	public static Object getSimpleProperty(QueryRequestDTO queryRequest, String paramName) {
 		Object result = null;
 		try {
@@ -153,7 +153,18 @@ public class QueryParamProcessor {
 			//continue
 		}
 		if (result == null) {
-			result = queryRequest.get(paramName); 
+			result = queryRequest.get(paramName);
+		}
+		return result;
+	}
+
+	@SuppressWarnings("unchecked")
+	public static <T> T getPropertyValue(Object object, String paramName, Class<T> clazz) {
+		T result = null;
+		try {
+			result = (T) PropertyUtils.getSimpleProperty(object, paramName);
+		} catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+			//continue
 		}
 		return result;
 	}

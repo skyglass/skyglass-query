@@ -5,8 +5,8 @@ import org.junit.Test;
 
 import skyglass.query.composer.QueryComposer;
 import skyglass.query.composer.QueryParam;
-import skyglass.query.composer.SearchType;
 import skyglass.query.composer.result.MockQuery;
+import skyglass.query.composer.search.SearchType;
 
 public class QueryComposerSearchTest {
 

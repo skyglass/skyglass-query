@@ -6,6 +6,8 @@ import java.util.Collection;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
+import skyglass.query.composer.search.SearchType;
+
 public class StringPartBuilder extends QueryParamBuilder {
 
 	private static final String OR_SUFFIX = " )";

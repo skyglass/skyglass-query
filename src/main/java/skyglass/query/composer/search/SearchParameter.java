@@ -1,4 +1,4 @@
-package skyglass.query.composer;
+package skyglass.query.composer.search;
 
 public class SearchParameter {
 

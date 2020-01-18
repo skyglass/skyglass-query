@@ -1,6 +1,6 @@
-package skyglass.query.composer;
+package skyglass.query.composer.search;
 
-import skyglass.query.composer.search.Operator;
+import skyglass.query.composer.FieldResolver;
 
 /**
  * This class contains information on how to build correspondent LIKE part in WHERE clause
@@ -8,8 +8,8 @@ import skyglass.query.composer.search.Operator;
  * 
  */
 public class SearchField {
-	
-	private Operator operator;
+
+	private SearchOperator operator;
 
 	private FieldResolver fieldResolver;
 
@@ -21,7 +21,7 @@ public class SearchField {
 
 	private String lang;
 
-	public SearchField(Operator operator, FieldResolver fieldResolver, String paramName, 
+	public SearchField(SearchOperator operator, FieldResolver fieldResolver, String paramName,
 			SearchType searchType, boolean translatable, String lang) {
 		this.operator = operator;
 		this.fieldResolver = fieldResolver;
@@ -30,7 +30,7 @@ public class SearchField {
 		this.translatable = translatable;
 		this.lang = lang;
 	}
-	
+
 	public FieldResolver getFieldResolver() {
 		return fieldResolver;
 	}
@@ -61,14 +61,13 @@ public class SearchField {
 
 	public boolean isIgnoreCase() {
 		return SearchType.isIgnoreCase(searchType)
-				&& (operator == Operator.Like
-				 || operator == Operator.Equal);
+				&& operator.isText();
 	}
 
 	public String getLang() {
 		return lang;
 	}
-	
+
 	public String getOperator() {
 		return operator.getSqlOperator();
 	}

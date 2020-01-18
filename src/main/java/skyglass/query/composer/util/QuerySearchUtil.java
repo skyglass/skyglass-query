@@ -7,10 +7,10 @@ import java.util.stream.Stream;
 import skyglass.query.composer.FieldResolver;
 import skyglass.query.composer.QueryRequestDTO;
 import skyglass.query.composer.SearchBuilder;
-import skyglass.query.composer.SearchField;
-import skyglass.query.composer.SearchType;
 import skyglass.query.composer.config.Language;
+import skyglass.query.composer.search.SearchField;
 import skyglass.query.composer.search.SearchTerm;
+import skyglass.query.composer.search.SearchType;
 
 public class QuerySearchUtil {
 	

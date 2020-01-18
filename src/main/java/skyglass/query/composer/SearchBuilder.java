@@ -5,7 +5,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import skyglass.query.composer.search.SearchField;
+import skyglass.query.composer.search.SearchPath;
 import skyglass.query.composer.search.SearchTerm;
+import skyglass.query.composer.search.SearchType;
 
 /**
  * This class allows to build search fields from QueryRequestDTO in a declarative way.

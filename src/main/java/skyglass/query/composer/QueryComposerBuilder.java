@@ -19,7 +19,10 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import skyglass.query.composer.config.Constants;
 import skyglass.query.composer.search.Combination;
+import skyglass.query.composer.search.SearchPath;
+import skyglass.query.composer.search.SearchProcessor;
 import skyglass.query.composer.search.SearchTerm;
+import skyglass.query.composer.search.SearchType;
 import skyglass.query.composer.util.QueryFunctions;
 import skyglass.query.composer.util.QueryOrderUtil;
 import skyglass.query.composer.util.QueryRequestUtil;
@@ -30,7 +33,7 @@ public class QueryComposerBuilder {
 	private static final Pattern ALIAS_REGEX_PATTERN = Pattern.compile("\\$\\{(.*?)\\}");
 
 	private QueryRequestDTO queryRequest;
-	
+
 	private QueryComposer root;
 
 	private boolean applyOuterQuery;
@@ -48,13 +51,13 @@ public class QueryComposerBuilder {
 	private Map<String, String> aliasResolverMap = new HashMap<>();
 
 	private Map<String, FieldItem> selectFieldMap;
-	
+
 	private Map<String, FieldItem> groupByFieldMap;
 
 	private Map<String, FieldItem> orderFieldMap;
 
 	private List<String> searchPartAndSuppliers;
-	
+
 	private List<String> searchPartOrSuppliers;
 
 	private List<Runnable> searchPartInitRunners = new ArrayList<>();
@@ -64,28 +67,28 @@ public class QueryComposerBuilder {
 	private List<Runnable> defaultOrderBuilderRunners = new ArrayList<>();
 
 	private List<Runnable> selectBuilderRunners = new ArrayList<>();
-	
+
 	private List<Runnable> groupByBuilderRunners = new ArrayList<>();
 
 	private List<Runnable> queryPartBuilderRunners = new ArrayList<>();
-	
+
 	private List<Runnable> initRunners = new ArrayList<>();
-	
+
 	private OrderBuilder orderBuilder;
 
 	private String rootAlias;
-	
+
 	private String customOrderByPart;
-	
+
 	private boolean forceDistinct;
-	
+
 	QueryComposerBuilder(QueryComposer root, QueryRequestDTO queryRequest, String rootAlias) {
 		this.root = root;
 		this.queryRequest = queryRequest;
 		this.orderBuilder = new OrderBuilder(queryRequest);
 		this.rootAlias = rootAlias;
 	}
-	
+
 	public boolean isDistinct() {
 		return this.applyOuterQuery;
 	}
@@ -95,19 +98,19 @@ public class QueryComposerBuilder {
 			_forceDistinct(true);
 		});
 	}
-	
+
 	public void setDistinct(boolean distinct) {
 		initRunners.add(() -> {
 			_forceDistinct(distinct);
 		});
 	}
-	
+
 	void _setDistinct(boolean distinct) {
 		if (!forceDistinct) {
 			this.applyOuterQuery = distinct;
 		}
 	}
-	
+
 	void _forceDistinct(boolean distinct) {
 		this.applyOuterQuery = distinct;
 		if (distinct) {
@@ -122,31 +125,31 @@ public class QueryComposerBuilder {
 	public void addDistinct(String queryPart) {
 		add(queryPart, true);
 	}
-	
+
 	public void addWhere(String queryPart) {
 		addWhere(queryPart, null, false);
 	}
-	
+
 	public void addOrWhere(String queryPart) {
 		addWhere(queryPart, "OR", false);
 	}
-	
+
 	public void addDistinctWhere(String queryPart) {
 		addWhere(queryPart, null, true);
 	}
-	
+
 	public void addDistinctOrWhere(String queryPart) {
 		addWhere(queryPart, "OR", true);
 	}
-	
+
 	public void addConditionalWhere(String queryPart, String... aliases) {
 		addConditionalWhere(queryPart, null, aliases);
 	}
 
 	public void addDistinctConditionalWhere(String queryPart, String... aliases) {
 		addDistinctConditionalWhere(queryPart, null, aliases);
-	}	
-	
+	}
+
 	public void addConditionalOrWhere(String queryPart, String... aliases) {
 		addConditionalWhere(queryPart, "OR", aliases);
 	}
@@ -154,13 +157,13 @@ public class QueryComposerBuilder {
 	public void addDistinctConditionalOrWhere(String queryPart, String... aliases) {
 		addDistinctConditionalWhere(queryPart, "OR", aliases);
 	}
-	
+
 	private void addWhere(String queryPart, String delimiter, boolean distinct) {
 		queryPartBuilderRunners.add(() -> {
 			doAddWhere(queryPart, delimiter, distinct);
 		});
 	}
-	
+
 	private void addConditionalWhere(String queryPart, String delimiter, String... aliases) {
 		queryPartBuilderRunners.add(() -> {
 			doAddWhereConditional(queryPart, delimiter, false, aliases);
@@ -171,7 +174,7 @@ public class QueryComposerBuilder {
 		queryPartBuilderRunners.add(() -> {
 			doAddWhereConditional(queryPart, delimiter, true, aliases);
 		});
-	}	
+	}
 
 	public void add(String queryPart, boolean distinct) {
 		queryPartBuilderRunners.add(() -> {
@@ -196,23 +199,23 @@ public class QueryComposerBuilder {
 			doAddConditional(queryPart, distinct, aliases);
 		});
 	}
-	
+
 	public void addSearch(String paramName, String paramValue, SearchType searchType, String... paths) {
 		addSearch(paramName, paramValue, searchType, false, paths);
 	}
-	
+
 	public void addSearch(String... paths) {
 		addSearch(SearchBuilder.SEARCH_TERM_PARAM_NAME, null, SearchType.IgnoreCase, false, paths);
 	}
-	
+
 	public void addTranslatableSearch(String paramName, String paramValue, SearchType searchType, String... paths) {
 		addSearch(paramName, paramValue, searchType, true, paths);
 	}
-	
+
 	public void addTranslatableSearch(String... paths) {
 		addSearch(SearchBuilder.SEARCH_TERM_PARAM_NAME, null, SearchType.IgnoreCase, true, paths);
 	}
-	
+
 	public void addSearch(String paramName, String paramValue, SearchType searchType, boolean translatable, String... paths) {
 		addSearchRunner(paramName, paramValue, searchType, translatable, paths);
 	}
@@ -222,7 +225,7 @@ public class QueryComposerBuilder {
 			aliasResolverMap.put(alias, resolveAliasPath(path));
 		});
 	}
-	
+
 	private void tryAliasResolver(String alias, String... paths) {
 		if (paths.length != 1) {
 			return;
@@ -237,8 +240,7 @@ public class QueryComposerBuilder {
 			addAliasResolver(alias, path);
 		}
 	}
-	
-	
+
 	public void addDefaultOrder(OrderType orderType, FieldType fieldType, String... path) {
 		addDefaultOrderRunner(orderType, fieldType, true, path);
 	}
@@ -253,9 +255,8 @@ public class QueryComposerBuilder {
 
 	public void addDefaultOrder(String alias, OrderType orderType, String... path) {
 		addDefaultOrderRunner(orderType, null, alias, true, path);
-	}	
-	
-	
+	}
+
 	public void setDefaultOrder(OrderType orderType, FieldType fieldType, String... path) {
 		addDefaultOrderRunner(orderType, fieldType, false, path);
 	}
@@ -271,7 +272,7 @@ public class QueryComposerBuilder {
 	public void setDefaultOrder(String alias, OrderType orderType, String... path) {
 		addDefaultOrderRunner(orderType, null, alias, false, path);
 	}
-	
+
 	public void bindOrder(String name, FieldType fieldType) {
 		bindOrder(name, fieldType, name);
 	}
@@ -283,7 +284,7 @@ public class QueryComposerBuilder {
 	public void bindOrder(String name, String... path) {
 		addBindOrderRunner(name, null, path);
 	}
-	
+
 	public void select(String selectString) {
 		selectBuilderRunners.add(() -> {
 			doAddSelect(selectString);
@@ -296,16 +297,16 @@ public class QueryComposerBuilder {
 			doAddSelect(alias, path);
 		});
 	}
-	
+
 	void resetAndInit() {
 		reset();
 		init();
 	}
-	
+
 	public List<OrderField> getOrderFields() {
 		return orderBuilder.getOrderFields();
 	}
-	
+
 	private void reset() {
 		applyOuterQuery = false;
 		forceDistinct = false;
@@ -320,17 +321,17 @@ public class QueryComposerBuilder {
 		orderFieldMap = new LinkedHashMap<>();
 		searchPartAndSuppliers = new ArrayList<>();
 		searchPartOrSuppliers = new ArrayList<>();
-		
+
 	}
 
 	private void doAdd(String queryPart, boolean distinct) {
 		addQueryPart(queryPart, distinct, null, false);
 	}
-	
+
 	private void doAddWhere(String queryPart, String delimiter, boolean distinct) {
 		addQueryPart(queryPart, distinct, delimiter, true);
 	}
-	
+
 	private void doAddWhereConditional(String queryPart, String delimiter, boolean distinct, String... aliases) {
 		addQueryPart(queryPart, distinct, delimiter, true, aliases);
 	}
@@ -346,25 +347,25 @@ public class QueryComposerBuilder {
 	private void doAddConditional(String queryPart, boolean distinct, String... aliases) {
 		addQueryPart(queryPart, distinct, null, false, aliases);
 	}
-	
+
 	private void addQueryPart(String queryPart, boolean distinct, String delimiter, boolean wherePart, String... aliases) {
 		QueryPart result = new QueryPart(root, queryPart, distinct, delimiter, wherePart);
-		queryParts.add(result);	
+		queryParts.add(result);
 		for (String alias : aliases) {
 			queryMap.computeIfAbsent(result.getQueryPart(), a -> new HashSet<>()).add(alias);
 		}
 		if (aliases.length == 0) {
 			queryMap.computeIfAbsent(result.getQueryPart(), a -> new HashSet<>()).add(getUuid());
-		}		
+		}
 	}
-	
+
 	private boolean shouldBeAdded(QueryPart queryPart) {
 		Collection<String> aliases = queryMap.get(queryPart.getQueryPart());
 		boolean result1 = shouldBeAdded(isDistinct(), aliases);
 		boolean result2 = queryPart.hasNoEmptyParamValues();
 		return result1 && result2;
 	}
-	
+
 	public boolean shouldBeAdded(Collection<String> aliases) {
 		if (CollectionUtils.isEmpty(aliases)) {
 			return false;
@@ -387,7 +388,7 @@ public class QueryComposerBuilder {
 		}
 		return result;
 	}
-	
+
 	FieldItem getFieldItem(String alias) {
 		if (StringUtils.isBlank(alias)) {
 			return null;
@@ -401,7 +402,7 @@ public class QueryComposerBuilder {
 		}
 		return result;
 	}
-	
+
 	public boolean shouldBeAdded(boolean isDistinct, Collection<String> aliases) {
 		boolean result = shouldBeAdded(aliases);
 		if (result && isDistinct) {
@@ -513,7 +514,7 @@ public class QueryComposerBuilder {
 				//applyOuterSearch = true;
 			}
 			_setDistinct(applyOuterQuery || applyOuterQueryOriginal);
-			
+
 			List<String> searchTerms = null;
 			if (StringUtils.isNotBlank(paramValue)) {
 				searchTerms = Collections.singletonList(paramValue);
@@ -524,56 +525,38 @@ public class QueryComposerBuilder {
 								: Collections.singletonList(queryRequest.getSearchTerm()))
 						: queryRequest.getSearchTerms();
 			}
-			List<SearchTerm> result = parseSearch(searchTerms);
+			List<SearchTerm> result = SearchProcessor.parseSearch(searchTerms);
 			List<SearchTerm> andResult = andSearch(result);
 			List<SearchTerm> orResult = orSearch(result);
 			int i = 0;
-			for (SearchTerm searchTerm: andResult) {
+			for (SearchTerm searchTerm : andResult) {
 				if (StringUtils.isNotBlank(searchTerm.getStringValue())) {
 					String p = searchTerm.hasField() ? searchTerm.getField() : (paramName + Integer.toString(i));
 					i++;
-					SearchBuilder searchBuilder = new SearchBuilder(root, queryRequest, searchTerm, searchType, p, 
+					SearchBuilder searchBuilder = new SearchBuilder(root, queryRequest, searchTerm, searchType, p,
 							translatable, resolvedPathList.toArray(new SearchPath[0]));
 					searchPartAndSuppliers.add(QuerySearchUtil.applySearch(root.isNativeQuery(), searchBuilder));
 				}
 			}
-			for (SearchTerm searchTerm: orResult) {
+			for (SearchTerm searchTerm : orResult) {
 				if (StringUtils.isNotBlank(searchTerm.getStringValue())) {
 					String p = searchTerm.hasField() ? searchTerm.getField() : (paramName + Integer.toString(i));
 					i++;
-					SearchBuilder searchBuilder = new SearchBuilder(root, queryRequest, searchTerm, searchType, p, 
+					SearchBuilder searchBuilder = new SearchBuilder(root, queryRequest, searchTerm, searchType, p,
 							translatable, resolvedPathList.toArray(new SearchPath[0]));
 					searchPartOrSuppliers.add(QuerySearchUtil.applySearch(root.isNativeQuery(), searchBuilder));
 				}
 			}
 		});
 	}
-	
+
 	private List<SearchTerm> andSearch(List<SearchTerm> searchTerms) {
 		return searchTerms.stream().filter(s -> s.getCombination() == Combination.And).collect(Collectors.toList());
 	}
-	
+
 	private List<SearchTerm> orSearch(List<SearchTerm> searchTerms) {
 		return searchTerms.stream().filter(s -> s.getCombination() == Combination.Or).collect(Collectors.toList());
 	}
-	
-    private List<SearchTerm> parseSearch(List<String> searchTerms) {
-        List<SearchTerm> result = new ArrayList<>();
-        for (String searchTerm: searchTerms) {
-            Pattern pattern = Pattern.compile("(\\w+?)(:|<|>)(\\w+?)(,|\\|)");
-            Matcher matcher = pattern.matcher(searchTerm + ",");
-            boolean found = false;
-            while (matcher.find()) {
-            	found = true;
-                result.add(new SearchTerm(matcher.group(1), 
-                  matcher.group(2), matcher.group(3), matcher.group(4)));
-            }
-            if (!found) {
-            	result.add(new SearchTerm(searchTerm));
-            }
-        }
-        return result;
-    }
 
 	private void addOrderFieldResolver(String path, String innerPath) {
 		addOrderFieldResolver(null, path, innerPath);
@@ -586,7 +569,7 @@ public class QueryComposerBuilder {
 	private void addSelectFieldResolver(String alias, String path, String innerPath) {
 		addFieldResolver(alias, path, innerPath, false, true, false);
 	}
-	
+
 	private void addGroupByFieldResolver(String alias, String path, String innerPath) {
 		addFieldResolver(alias, path, innerPath, false, false, true);
 	}
@@ -631,7 +614,7 @@ public class QueryComposerBuilder {
 			groupByFieldMap.put(alias, fieldItem);
 		}
 	}
-	
+
 	private FieldItemType getFieldItemType(boolean orderField, boolean selectField, boolean groupByField) {
 		if (orderField) {
 			return FieldItemType.OrderBy;
@@ -670,7 +653,7 @@ public class QueryComposerBuilder {
 			addSelectFieldResolver(alias, path, path);
 		}
 	}
-	
+
 	private void doAddGroupBy(String groupByString) {
 		if (StringUtils.isEmpty(groupByString)) {
 			return;
@@ -697,7 +680,7 @@ public class QueryComposerBuilder {
 	private void doAddSelect(String alias, String path) {
 		addSelectFieldResolver(alias, path, path);
 	}
-	
+
 	private void doAddGroupBy(String alias, String path) {
 		addGroupByFieldResolver(alias, path, path);
 	}
@@ -711,7 +694,6 @@ public class QueryComposerBuilder {
 		initOrderByPart();
 	}
 
-
 	String getOuterSelectFields() {
 		StringBuilder sb = new StringBuilder();
 		sb.append(Constants.OUTER_QUERY_PREFIX + "." + getUuid());
@@ -724,15 +706,15 @@ public class QueryComposerBuilder {
 
 		return sb.toString();
 	}
-	
+
 	String getInnerFields(boolean groupBy) {
 		StringBuilder sb = new StringBuilder();
 		sb.append(getDistinctGroupByFields(groupBy));
-		
+
 		if (root.applyOuterQuery()) {
 			for (FieldItem fieldItem : orderFieldMap.values()) {
 				if (fieldItem != null && !getUuid().equalsIgnoreCase(fieldItem.getAlias()) && selectFieldMap.get(fieldItem.getAlias()) == null
-						 && groupByFieldMap.get(fieldItem.getAlias()) == null) {
+						&& groupByFieldMap.get(fieldItem.getAlias()) == null) {
 					sb.append(", ");
 					sb.append(fieldItem.getInnerPath(rootAlias, groupBy));
 				}
@@ -741,7 +723,7 @@ public class QueryComposerBuilder {
 
 		return sb.toString();
 	}
-	
+
 	String getDistinctGroupByFields(boolean groupBy) {
 		StringBuilder sb = new StringBuilder();
 		String rootSelect = getRootSelect(groupBy);
@@ -752,12 +734,12 @@ public class QueryComposerBuilder {
 				sb.append(fieldItem.getInnerPath(rootAlias, groupBy));
 			}
 		}
-		
+
 		String groupByFields = getGroupByFields(groupBy);
 		if (StringUtils.isNotBlank(groupByFields)) {
 			sb.append(groupByFields);
 		}
-		
+
 		if (root.isSkipUuid() && sb.length() > 0) {
 			sb.deleteCharAt(0);
 			sb.deleteCharAt(0);
@@ -766,11 +748,11 @@ public class QueryComposerBuilder {
 
 		return rootSelect + sb.toString();
 	}
-	
+
 	String getDistinctUuidFields(boolean groupBy) {
 		StringBuilder sb = new StringBuilder();
 		sb.append(getRootSelect(groupBy));
-		
+
 		String groupByFields = getGroupByFields(groupBy);
 		if (StringUtils.isNotBlank(groupByFields)) {
 			sb.append(groupByFields);
@@ -778,7 +760,7 @@ public class QueryComposerBuilder {
 
 		return sb.toString();
 	}
-	
+
 	String getGroupByFields(boolean groupBy) {
 		StringBuilder sb = new StringBuilder();
 
@@ -791,8 +773,8 @@ public class QueryComposerBuilder {
 
 		return sb.toString();
 	}
-	
-	List<SelectField> getSelectFields() {	
+
+	List<SelectField> getSelectFields() {
 		List<SelectField> result = new ArrayList<>();
 		addRootSelect(result);
 		for (FieldItem fieldItem : selectFieldMap.values()) {
@@ -816,7 +798,7 @@ public class QueryComposerBuilder {
 		}
 		return (whereHasResult ? " AND " : " WHERE ") + result;
 	}
-	
+
 	String getOrSearchPart(boolean whereHasResult) {
 		String result = null;
 		for (String searchPartSupplier : searchPartOrSuppliers) {
@@ -842,7 +824,7 @@ public class QueryComposerBuilder {
 			selectBuilderRunner.run();
 		}
 	}
-	
+
 	private void initGroupByPart() {
 		for (Runnable groupByBuilderRunner : groupByBuilderRunners) {
 			groupByBuilderRunner.run();
@@ -869,16 +851,16 @@ public class QueryComposerBuilder {
 			orderBuilderRunner.run();
 		}
 	}
-	
+
 	String getOrderByPart() {
 		return QueryOrderUtil.applyOrder(orderBuilder.getOrderFields());
 	}
 
 	String getBasicOrderByPart(String searchPart) {
-		return (searchPart.length() == 0 || searchPart.substring(searchPart.length() - 1).equals(" ") ? "" : " ") 
+		return (searchPart.length() == 0 || searchPart.substring(searchPart.length() - 1).equals(" ") ? "" : " ")
 				+ "ORDER BY " + QueryOrderUtil.applyOrder(orderBuilder.getOrderFields());
 	}
-	
+
 	String getOuterOrderByPart() {
 		return " ORDER BY " + QueryOrderUtil.applyOrder(orderBuilder.getOrderFields());
 	}
@@ -920,7 +902,7 @@ public class QueryComposerBuilder {
 		}
 		return root.applyOuterQuery() ? (Constants.OUTER_QUERY_PREFIX + "." + alias) : path;
 	}
-	
+
 	private String resolveInnerPath(String alias, String path) {
 		String[] pathParts = path.split("\\.");
 		String test = resolveAlias(alias);
@@ -946,18 +928,18 @@ public class QueryComposerBuilder {
 		}
 		return false;
 	}
-	
+
 	void orderBy(String customOrderByPart) {
 		this.customOrderByPart = customOrderByPart;
 	}
-	
+
 	String buildOrderByResult() {
-		if (customOrderByPart == null &&  CollectionUtils.isEmpty(orderBuilder.getOrderFields())) {
+		if (customOrderByPart == null && CollectionUtils.isEmpty(orderBuilder.getOrderFields())) {
 			return "";
 		}
 		return " ORDER BY " + (customOrderByPart == null ? QueryOrderUtil.applyOrder(orderBuilder.getOrderFields()) : customOrderByPart);
 	}
-	
+
 	public void groupBy(String groupByString) {
 		setDistinct();
 		groupByBuilderRunners.add(() -> {
@@ -972,7 +954,7 @@ public class QueryComposerBuilder {
 			doAddGroupBy(alias, path);
 		});
 	}
-	
+
 	String buildGroupByResult() {
 		String groupByPart = isDistinct() ? getInnerFields(true) : getGroupByFields(true);
 		if (StringUtils.isBlank(groupByPart)) {
@@ -980,11 +962,11 @@ public class QueryComposerBuilder {
 		}
 		return " GROUP BY " + groupByPart;
 	}
-	
+
 	boolean isApplyOuterQuery(boolean isNative) {
 		return applyOuterQuery && isNative;
 	}
-	
+
 	private String getRootSelect(boolean groupBy) {
 		String result = "";
 		if (root.isNativeQuery()) {
@@ -997,22 +979,22 @@ public class QueryComposerBuilder {
 		}
 		return result;
 	}
-	
+
 	private void addRootSelect(List<SelectField> selectFields) {
 		if (root.isNativeQuery() && !root.isSkipUuid()) {
 			SelectField selectField = new SelectField(getUuid(), rootAlias + "." + getUuid());
 			selectFields.add(selectField);
-		} 
+		}
 	}
-	
+
 	private String getUuid() {
 		return root.getUuidField();
 	}
-	
+
 	private String resolveAlias(String alias) {
-		return aliasResolverMap.get(alias);	
+		return aliasResolverMap.get(alias);
 	}
-	
+
 	private String getRootPath(String alias) {
 		return rootAlias + "." + alias;
 	}

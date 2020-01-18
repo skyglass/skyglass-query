@@ -7,6 +7,7 @@ import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import skyglass.query.composer.search.SearchTerm;
+import skyglass.query.composer.search.SearchType;
 import skyglass.query.composer.util.QueryOrderUtil;
 import skyglass.query.composer.util.QuerySearchUtil;
 
