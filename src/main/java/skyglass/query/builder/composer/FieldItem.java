@@ -9,8 +9,11 @@ public class FieldItem {
 	private boolean addRootAlias;
 	
 	private boolean useAsAlias;
+	
+	private FieldItemType fieldItemType;
 
-	public FieldItem(String alias, String innerAlias, String path, String innerPath) {
+	public FieldItem(FieldItemType fieldItemType, String alias, String innerAlias, String path, String innerPath) {
+		this.fieldItemType = fieldItemType;
 		this.alias = alias;
 		this.innerPath = innerPath;
 		this.addRootAlias = innerPath.equals(alias);
@@ -29,6 +32,10 @@ public class FieldItem {
 
 	String getInnerPath(String rootAlias) {
 		return addRootAlias ? (rootAlias + "." + alias) : innerPath;
+	}
+	
+	public boolean hasValue() {
+		return fieldItemType == FieldItemType.Search;
 	}
 
 }

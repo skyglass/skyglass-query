@@ -396,6 +396,20 @@ public class QueryComposerBuilder {
 		return result;
 	}
 	
+	FieldItem getFieldItem(String alias) {
+		if (StringUtils.isBlank(alias)) {
+			return null;
+		}
+		FieldItem result = fieldMap.get(alias);
+		if (result == null) {
+			String aliasResolver = resolveAlias(alias);
+			if (aliasResolver != null) {
+				result = fieldPathMap.get(aliasResolver);
+			}
+		}
+		return result;
+	}
+	
 	public boolean shouldBeAdded(boolean isDistinct, Collection<String> aliases) {
 		boolean result = shouldBeAdded(aliases);
 		if (result && isDistinct) {
@@ -610,7 +624,7 @@ public class QueryComposerBuilder {
 		innerPath = resolveInnerPath(innerAlias, innerPath);
 		FieldItem fieldItem = fieldMap.get(alias);
 		if (fieldItem == null) {
-			fieldItem = new FieldItem(alias, innerAlias, path, innerPath);
+			fieldItem = new FieldItem(getFieldItemType(orderField, selectField, groupByField), alias, innerAlias, path, innerPath);
 			fieldItems.add(fieldItem);
 			fieldMap.put(alias, fieldItem);
 			fieldPathMap.put(path, fieldItem);
@@ -624,6 +638,19 @@ public class QueryComposerBuilder {
 		if (groupByField) {
 			groupByFieldMap.put(alias, fieldItem);
 		}
+	}
+	
+	private FieldItemType getFieldItemType(boolean orderField, boolean selectField, boolean groupByField) {
+		if (orderField) {
+			return FieldItemType.OrderBy;
+		}
+		if (selectField) {
+			return FieldItemType.Select;
+		}
+		if (groupByField) {
+			return FieldItemType.GroupBy;
+		}
+		return FieldItemType.Search;
 	}
 
 	private void doAddSelect(String selectString) {
@@ -725,7 +752,7 @@ public class QueryComposerBuilder {
 	
 	String getDistinctGroupByFields(boolean groupBy) {
 		StringBuilder sb = new StringBuilder();
-		sb.append(getRootSelect(groupBy));
+		String rootSelect = getRootSelect(groupBy);
 
 		for (FieldItem fieldItem : selectFieldMap.values()) {
 			if (!getUuid().equalsIgnoreCase(fieldItem.getAlias())) {
@@ -738,8 +765,14 @@ public class QueryComposerBuilder {
 		if (StringUtils.isNotBlank(groupByFields)) {
 			sb.append(groupByFields);
 		}
+		
+		if (root.isSkipUuid() && sb.length() > 0) {
+			sb.deleteCharAt(0);
+			sb.deleteCharAt(0);
+			return sb.toString();
+		}
 
-		return sb.toString();
+		return rootSelect + sb.toString();
 	}
 	
 	String getDistinctUuidFields(boolean groupBy) {
@@ -962,7 +995,7 @@ public class QueryComposerBuilder {
 	
 	private String getRootSelect(boolean groupBy) {
 		String result = "";
-		if (root.isNativeQuery() && !root.isSkipUuid()) {
+		if (root.isNativeQuery()) {
 			result = rootAlias + "." + getUuid();
 			if (!groupBy && root.isShowUuidAlias()) {
 				result += " AS " + root.getUuidAlias();

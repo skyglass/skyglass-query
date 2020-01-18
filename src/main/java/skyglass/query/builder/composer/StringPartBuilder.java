@@ -64,7 +64,7 @@ public class StringPartBuilder extends QueryParamBuilder {
 
 	protected StringPartBuilder build(StringBuilder part, StringBuilder alternativePart, Collection<QueryParam> params,
 			boolean buildAll) {
-		if (!alreadyBuilt) {
+		if (!isAlreadyBuilt()) {
 			if (isFalseCondition(params)) {
 				if (buildAll) {
 					return parentBuildAll(null, alternativePart, null);
@@ -72,7 +72,7 @@ public class StringPartBuilder extends QueryParamBuilder {
 				return parentAppendStringBuilder(alternativePart, null);
 			}
 			doAppend(part);
-			alreadyBuilt = true;
+			setAlreadyBuilt(true);
 			return parent(sb, params, buildAll);
 		}
 		return parent(buildAll);
@@ -359,9 +359,9 @@ public class StringPartBuilder extends QueryParamBuilder {
 	}
 
 	public StringBuilder getResult() {
-		if (!alreadyBuilt) {
+		if (!isAlreadyBuilt()) {
 			build(null, null);
-			alreadyBuilt = true;
+			setAlreadyBuilt(true);
 		}
 		return sb;
 	}
@@ -563,9 +563,16 @@ public class StringPartBuilder extends QueryParamBuilder {
 			return false;
 		}
 		for (QueryParam queryParam : params) {
-			if (queryParam instanceof AliasParam
-					&& !root.shouldBeAdded(distinct, Collections.singletonList(queryParam.getName()))) {
-				return true;
+			if (queryParam instanceof AliasParam) {
+				FieldItem fieldItem = root.getFieldItem(queryParam.getName());
+				if (fieldItem == null) {
+					return true;
+				} else if (fieldItem.hasValue()) {
+					Object value = root.getParamValue(queryParam.getName());
+					if (isEmpty(value)) {
+						return true;
+					}
+				}
 			} else if (isEmpty(queryParam.getValue())) {
 				return true;
 			}
@@ -602,7 +609,12 @@ public class StringPartBuilder extends QueryParamBuilder {
 
 
 	protected boolean isAlreadyBuilt() {
+		root.initComposer();
 		return alreadyBuilt;
+	}
+	
+	protected void setAlreadyBuilt(boolean alreadyBuilt) {
+		this.alreadyBuilt = alreadyBuilt;
 	}
 
 }

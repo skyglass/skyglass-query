@@ -56,6 +56,8 @@ public class QueryComposer {
 	private String uuidAlias = Constants.UUID_ALIAS;
 	
 	private boolean skipUuid = false;
+	
+	private boolean composerAlreadyStarted;
 
 	QueryComposer(QueryRequestDTO queryRequest, String rootAlias, boolean isNative) {
 		init(rootAlias, isNative);
@@ -76,8 +78,11 @@ public class QueryComposer {
 		this.queryType = isNative ? QueryType.Native : QueryType.Jpa;
 	}
 	
-	private void initComposer() {
-		queryComposer.resetAndInit();
+	protected void initComposer() {
+		if (!composerAlreadyStarted) {
+			queryComposer.resetAndInit();
+			this.composerAlreadyStarted = true;
+		}
 	}
 
 	//does nothing, only for indentation
@@ -124,9 +129,42 @@ public class QueryComposer {
 		queryPart.build(new StringBuilder(part));
 		return this;
 	}
+	
+	Object getParamValue(String paramName) {
+		QueryParam queryParam = params.get(paramName);
+		if (queryParam != null) {
+			return queryParam.getValue();
+		} else {
+			return getRequestParamValue(paramName);
+		}
+	}
 
 	public void setParam(QueryParam param) {
-		params.put(param.getName(), param);
+		QueryParam oldParam = params.get(param.getName());
+		QueryParam newParam = null;
+		if (oldParam == null || oldParam instanceof AliasParam) {
+			if (param instanceof AliasParam) {
+				Object value = getRequestParamValue(param.getName());
+				if (value != null) {
+					newParam = new QueryParam(param.getName(), value);
+				} else if (oldParam == null) {
+					newParam = param;
+				} else {
+					newParam = oldParam;
+				}
+			} else if (oldParam == null) {
+				newParam = param;
+			} else {
+				newParam = oldParam;
+			}
+		}
+		if (newParam != null) {
+			params.put(param.getName(), newParam);
+		}
+	}
+	
+	private Object getRequestParamValue(String paramName) {
+		return QueryParamProcessor.getSimpleProperty(getQueryRequest(), paramName);
 	}
 
 	public QueryComposer from(String from) {
@@ -730,6 +768,10 @@ public class QueryComposer {
 		return queryComposer.shouldBeAdded(isDistinct, aliases);
 	}
 	
+	FieldItem getFieldItem(String alias) {
+		return queryComposer.getFieldItem(alias);
+	}
+	
 	void setCustomWherePart(boolean hasCustomWherePart) {
 		this.hasCustomWherePart = hasCustomWherePart;
 	}
@@ -773,6 +815,10 @@ public class QueryComposer {
 	
 	private void setParameter(String name, Object value) {
 		params.put(name, QueryParam.create(name, value));
+	}
+	
+	public void restartComposer() {
+		this.queryComposer.resetAndInit();
 	}
 	
 }

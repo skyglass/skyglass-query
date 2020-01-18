@@ -13,9 +13,9 @@ class QueryPart {
 			root._setDistinct(true);
 		}
 		this.paramBuilder = new QueryParamBuilder();
-		queryPart = QueryParamProcessor.parseParams(root, this.paramBuilder, queryPart);
+		String parsed = QueryParamProcessor.parseParams(root, this.paramBuilder, queryPart);
 		this.paramBuilder.setNonEmptyParams(root, wherePart);
-		this.queryPart = addDelimiter(queryPart, delimiter, wherePart);
+		this.queryPart = addDelimiter(parsed, delimiter, wherePart);
 	}
 
 	public QueryPartString getQueryPart() {

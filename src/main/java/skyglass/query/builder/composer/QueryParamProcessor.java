@@ -147,7 +147,7 @@ public class QueryParamProcessor {
 		}
 	}
 	
-	private static Object getSimpleProperty(QueryRequestDTO queryRequest, String paramName) {
+	public static Object getSimpleProperty(QueryRequestDTO queryRequest, String paramName) {
 		Object result = null;
 		try {
 			result = PropertyUtils.getSimpleProperty(queryRequest, paramName);
