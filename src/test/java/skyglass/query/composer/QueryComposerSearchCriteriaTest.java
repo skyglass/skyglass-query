@@ -3,10 +3,9 @@ package skyglass.query.composer;
 import org.junit.Assert;
 import org.junit.Test;
 
-import skyglass.query.builder.composer.MockQueryRequestDto;
-import skyglass.query.builder.composer.QueryComposer;
-import skyglass.query.builder.composer.QueryParam;
-import skyglass.query.builder.result.MockQuery;
+import skyglass.query.composer.QueryComposer;
+import skyglass.query.composer.QueryParam;
+import skyglass.query.composer.result.MockQuery;
 
 public class QueryComposerSearchCriteriaTest {
 	
@@ -17,12 +16,11 @@ public class QueryComposerSearchCriteriaTest {
 		QueryComposer testBuilder = QueryComposer
 				.jpa(MockQueryRequestDto.create(value), "u")
 				.setSearchTerm("lastName:doe,age>25")
-				.select("*")
 				.from("User u")
 				.startAndWhere()
 				.addSearch("lastName", "age")
 				.end();
-		Assert.assertEquals("SELECT u FROM User u WHERE ( LOWER(u.lastName) LIKE LOWER(:lastName) ) AND ( u.age > :age )", testBuilder.build());
+		Assert.assertEquals("SELECT u FROM User u WHERE ( LOWER(u.lastName) LIKE LOWER(:lastName) ) AND ( u.age >= :age )", testBuilder.build());
 		checkParam("age", 25, testBuilder);
 		checkParam("lastName", "%doe%", testBuilder);
 	}
@@ -39,7 +37,7 @@ public class QueryComposerSearchCriteriaTest {
 				.addAliasResolver("last", "u.lastName")
 				.addSearch("last", "age")
 				.addConditionalWhere("test = u.test", "last");
-		Assert.assertEquals("SELECT u FROM User u WHERE test = u.test AND ( LOWER(u.lastName) LIKE LOWER(:last) ) AND ( u.age > :age )", testBuilder.build());
+		Assert.assertEquals("SELECT u FROM User u WHERE test = u.test AND ( LOWER(u.lastName) LIKE LOWER(:last) ) AND ( u.age >= :age )", testBuilder.build());
 		checkParam("age", 25, testBuilder);
 		checkParam("last", "%doe%", testBuilder);
 	}
@@ -59,7 +57,7 @@ public class QueryComposerSearchCriteriaTest {
 					.addAliases("last")
 					.append("test = u.test")
 				.end();
-		Assert.assertEquals("SELECT u FROM User u WHERE test = u.test AND ( LOWER(u.lastName) LIKE LOWER(:last) ) AND ( u.age > :age )", testBuilder.build());
+		Assert.assertEquals("SELECT u FROM User u WHERE test = u.test AND ( LOWER(u.lastName) LIKE LOWER(:last) ) AND ( u.age >= :age )", testBuilder.build());
 		checkParam("age", 25, testBuilder);
 		checkParam("last", "%doe%", testBuilder);
 	}
@@ -78,7 +76,7 @@ public class QueryComposerSearchCriteriaTest {
 				.startAndWhere()
 					.appendNullable("test = u.test", "test")
 				.end();
-		Assert.assertEquals("SELECT u FROM User u WHERE test = u.test AND ( u.age > :age )", testBuilder.build());
+		Assert.assertEquals("SELECT u FROM User u WHERE test = u.test AND ( u.age >= :age )", testBuilder.build());
 		checkParam("age", 25, testBuilder);
 		checkParam("test", "not null", testBuilder);
 	}
@@ -98,7 +96,7 @@ public class QueryComposerSearchCriteriaTest {
 					.addAliases("test")
 					.append("test = u.test")
 				.end();
-		Assert.assertEquals("SELECT u FROM User u WHERE test = u.test AND ( LOWER(u.lastName) LIKE LOWER(:test) ) AND ( u.age > :age )", testBuilder.build());
+		Assert.assertEquals("SELECT u FROM User u WHERE test = u.test AND ( LOWER(u.lastName) LIKE LOWER(:test) ) AND ( u.age >= :age )", testBuilder.build());
 		checkParam("age", 25, testBuilder);
 		checkParam("test", "%doe%", testBuilder);
 	}
@@ -117,7 +115,7 @@ public class QueryComposerSearchCriteriaTest {
 				.startAndWhere()
 					.appendNullable("test = u.test", "test")
 				.end();
-		Assert.assertEquals("SELECT u FROM User u WHERE ( u.age > :age )", testBuilder.build());
+		Assert.assertEquals("SELECT u FROM User u WHERE ( u.age >= :age )", testBuilder.build());
 		checkParam("age", 25, testBuilder);
 		checkNoParam("test", testBuilder);
 	}
@@ -137,7 +135,7 @@ public class QueryComposerSearchCriteriaTest {
 					.addAliases("test")
 					.append("test = u.test")
 				.end();
-		Assert.assertEquals("SELECT u FROM User u WHERE test = u.test AND ( LOWER(u.lastName) LIKE LOWER(:test) ) AND ( u.age > :age )", testBuilder.build());
+		Assert.assertEquals("SELECT u FROM User u WHERE test = u.test AND ( LOWER(u.lastName) LIKE LOWER(:test) ) AND ( u.age >= :age )", testBuilder.build());
 		checkParam("age", 25, testBuilder);
 		checkParam("test", "%doe%", testBuilder);
 	}
@@ -157,7 +155,7 @@ public class QueryComposerSearchCriteriaTest {
 					.addAliases("test")
 					.append("test = u.test")
 				.end();
-		Assert.assertEquals("SELECT u.UUID FROM User u WHERE test = u.test AND ( LOWER(u.lastName) LIKE LOWER(?test) ) AND ( u.age > ?age )", testBuilder.build());
+		Assert.assertEquals("SELECT u.UUID FROM User u WHERE test = u.test AND ( LOWER(u.lastName) LIKE LOWER(?test) ) AND ( u.age >= ?age )", testBuilder.build());
 		checkParam("age", 25, testBuilder);
 		checkParam("test", "%doe%", testBuilder);
 	}
@@ -178,7 +176,7 @@ public class QueryComposerSearchCriteriaTest {
 					.addAliases("test")
 					.append("test = u.test")
 				.end();
-		Assert.assertEquals("SELECT u.name FROM User u WHERE test = u.test AND ( LOWER(u.lastName) LIKE LOWER(?test) ) AND ( u.age > ?age )", testBuilder.build());
+		Assert.assertEquals("SELECT u.name FROM User u WHERE test = u.test AND ( LOWER(u.lastName) LIKE LOWER(?test) ) AND ( u.age >= ?age )", testBuilder.build());
 		checkParam("age", 25, testBuilder);
 		checkParam("test", "%doe%", testBuilder);
 	}
@@ -196,7 +194,7 @@ public class QueryComposerSearchCriteriaTest {
 				.addAliasResolver("test", "u.lastName")
 				.addSearch("test", "age")
 				.addWhere("test = u.test");
-		Assert.assertEquals("SELECT u.name FROM User u WHERE test = u.test AND ( LOWER(u.lastName) LIKE LOWER(?test) ) AND ( u.age > ?age )", testBuilder.build());
+		Assert.assertEquals("SELECT u.name FROM User u WHERE test = u.test AND ( LOWER(u.lastName) LIKE LOWER(?test) ) AND ( u.age >= ?age )", testBuilder.build());
 		checkParam("age", 25, testBuilder);
 		checkParam("test", "%doe%", testBuilder);
 	}

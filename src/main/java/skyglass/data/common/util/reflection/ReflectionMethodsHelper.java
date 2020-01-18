@@ -169,5 +169,10 @@ public class ReflectionMethodsHelper {
     public static Object getFieldValue(Object obj, String name) {
         return getFieldValue(obj, name, true);
     }
+    
+    @SuppressWarnings("unchecked")
+	public static <T> T getPropertyValue(Object obj, String name, Class<T> clazz) {
+        return (T)getFieldValue(obj, name, true);
+    }
 
 }

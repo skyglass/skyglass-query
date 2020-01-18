@@ -8,20 +8,14 @@ import org.apache.commons.lang3.StringUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
-import skyglass.query.QueryFunctions;
-import skyglass.query.QueryOrderUtil;
-import skyglass.query.QueryRequestUtil;
-import skyglass.query.QuerySearchUtil;
-import skyglass.query.QueryTranslationUtil;
-import skyglass.query.builder.FieldType;
-import skyglass.query.builder.OrderBuilder;
-import skyglass.query.builder.OrderType;
-import skyglass.query.builder.QueryRequestDTO;
-import skyglass.query.builder.SearchBuilder;
-import skyglass.query.builder.composer.MockQueryRequestDto;
-import skyglass.query.builder.composer.QueryComposer;
-import skyglass.query.builder.composer.QueryComposerBuilder;
-import skyglass.query.builder.composer.search.SearchTerm;
+import skyglass.query.composer.QueryComposer;
+import skyglass.query.composer.QueryComposerBuilder;
+import skyglass.query.composer.search.SearchTerm;
+import skyglass.query.composer.util.QueryFunctions;
+import skyglass.query.composer.util.QueryOrderUtil;
+import skyglass.query.composer.util.QueryRequestUtil;
+import skyglass.query.composer.util.QuerySearchUtil;
+import skyglass.query.composer.util.QueryTranslationUtil;
 
 public class QueryComposerBuilderTest {
 
@@ -46,6 +40,7 @@ public class QueryComposerBuilderTest {
 		queryComposer.addAliasResolver("localName", QueryTranslationUtil.coalesce(queryRequest.getLang(), "trName"));
 		queryComposer.addAliasResolver("localPlanetName", QueryTranslationUtil.coalesce(queryRequest.getLang(), "trLocalName"));
 		queryComposer.addAliasResolver("planetName", QueryFunctions.coalesce("${localName}", "${localPlanetName}"));
+		queryComposer.restart();
 		result = queryComposer.getQueryStr();
 		expectedResult = getExpectedResult1(queryRequest, QueryFunctions.coalesce(
 				QueryTranslationUtil.coalesce(queryRequest.getLang(), "trName"), 
@@ -55,16 +50,18 @@ public class QueryComposerBuilderTest {
 		
 		
 		queryRequest.setOrderField("createdBy");
+		queryComposer.restart();
 		result = queryComposer.getQueryStr();
 		expectedResult = getExpectedResult1(queryRequest, "user.name", "createdBy");
 		Assert.assertEquals(expectedResult, result);
 		
-		queryRequest.setOrderField("planetName");
+		queryRequest.setOrderField("planetName");		
 		queryRequest.setLang("de");
 		queryComposer.addAliasResolver("planetDescription", QueryTranslationUtil.coalesce(queryRequest.getLang(), "trDescription"));
 		queryComposer.addAliasResolver("localName", QueryTranslationUtil.coalesce(queryRequest.getLang(), "trName"));
 		queryComposer.addAliasResolver("localPlanetName", QueryTranslationUtil.coalesce(queryRequest.getLang(), "trLocalName"));
 		queryComposer.addAliasResolver("planetName", QueryFunctions.coalesce("${localName}", "${localPlanetName}"));
+		queryComposer.restart();
 		result = queryComposer.getQueryStr();
 		expectedResult = getExpectedResult1(queryRequest, QueryFunctions.coalesce(
 				QueryTranslationUtil.coalesce(queryRequest.getLang(), "trName"), 
@@ -77,6 +74,7 @@ public class QueryComposerBuilderTest {
 		queryRequest.setLimit(-1);
 		queryComposer.setDistinct(false);
 		expectedResult = getExpectedResult2(queryRequest, "user.name", "createdBy");
+		queryComposer.restart();
 		result = queryComposer.getQueryStr();
 		Assert.assertEquals(expectedResult, result);
 		
@@ -87,6 +85,7 @@ public class QueryComposerBuilderTest {
 				QueryTranslationUtil.coalesce(queryRequest.getLang(), "trName"), 
 				QueryTranslationUtil.coalesce(queryRequest.getLang(), "trLocalName")), 
 				"planetName");
+		queryComposer.restart();
 		result = queryComposer.getQueryStr();
 		Assert.assertEquals(expectedResult, result);
 	}
