@@ -389,32 +389,21 @@ public class QueryComposer {
 			StringBuilder queryParts = new StringBuilder();
 			List<QueryPartString> parts = queryComposer.resolveInnerFrom();
 			String orPart = queryComposer.getOrSearchPart();
-			if (StringUtils.isNotBlank(orPart)) {
-				parts.add(QueryPartString.getWhereAndQueryPart(orPart));
-			}
 			String andPart = queryComposer.getAndSearchPart();
-			if (StringUtils.isNotBlank(andPart)) {
-				if (StringUtils.isNotBlank(orPart)) {
-					parts.add(QueryPartString.getWhereOrQueryPart(andPart));
-				} else {
-					parts.add(QueryPartString.getWhereAndQueryPart(andPart));
-				}
-			}
+
 			boolean first = true;
 			boolean hasWherePart = false;
 			for (QueryPartString queryPart : parts) {
-				queryParts.append(" ");
-				if (first && queryPart.getFirstDelimiter() != null) {
-					first = false;
-					queryParts.append(queryPart.getFirstDelimiter());
-				} else if (queryPart.getDelimiter() != null) {
-					queryParts.append(queryPart.getDelimiter());
-				}
 				if (!hasWherePart && queryPart.isWherePart()) {
 					hasWherePart = true;
+					first = appendSearchWhereParts(first, queryParts, orPart, andPart);
 				}
-				queryParts.append(queryPart.getPart());
+				first = appendQueryPart(first, queryPart, queryParts);
 			}
+			if (!hasWherePart) {
+				first = appendSearchWhereParts(first, queryParts, orPart, andPart);
+			}
+			hasWherePart = hasWherePart || StringUtils.isNotBlank(orPart) || StringUtils.isNotBlank(andPart);
 			build(sb, queryParts);
 
 			if (hasWherePart || wherePart.hasResult() || hasCustomWherePart()) {
@@ -434,6 +423,35 @@ public class QueryComposer {
 				buildOrderByPart(sb, true);
 			}
 		}
+	}
+
+	private boolean appendSearchWhereParts(boolean first, StringBuilder queryParts, String orPart, String andPart) {
+		if (StringUtils.isNotBlank(orPart)) {
+			QueryPartString orQueryPart = QueryPartString.getWhereAndQueryPart(orPart);
+			first = appendQueryPart(first, orQueryPart, queryParts);
+		}
+		if (StringUtils.isNotBlank(andPart)) {
+			QueryPartString andQueryPart = null;
+			if (StringUtils.isNotBlank(orPart)) {
+				andQueryPart = QueryPartString.getWhereOrQueryPart(andPart);
+			} else {
+				andQueryPart = QueryPartString.getWhereAndQueryPart(andPart);
+			}
+			first = appendQueryPart(first, andQueryPart, queryParts);
+		}
+		return first;
+	}
+
+	private boolean appendQueryPart(boolean first, QueryPartString queryPart, StringBuilder queryParts) {
+		queryParts.append(" ");
+		if (first && queryPart.getFirstDelimiter() != null) {
+			first = false;
+			queryParts.append(queryPart.getFirstDelimiter());
+		} else if (queryPart.getDelimiter() != null) {
+			queryParts.append(queryPart.getDelimiter());
+		}
+		queryParts.append(queryPart.getPart());
+		return first;
 	}
 
 	public String buildPart() {

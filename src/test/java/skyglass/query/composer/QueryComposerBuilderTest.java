@@ -136,14 +136,15 @@ public class QueryComposerBuilderTest {
 				+ (orderAlias.equals("planetName") ? "JOIN TranslatedField trName ON trName.UUID = pl.nameI18n_UUID " : "")
 				+ "JOIN USER user ON sm.CREATEDBY_UUID = user.uuid "
 				+ "LEFT JOIN TranslatedField trDescription ON trDescription.UUID = pl.descriptionI18n_UUID "
-				+ "WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate AND "
+				+ "WHERE "
 				+ "( LOWER(sm.planetId) LIKE LOWER(?searchTerm0) OR LOWER(sm.from) LIKE LOWER(?searchTerm0) "
 				+ "OR LOWER(sm.destination) LIKE LOWER(?searchTerm0) OR LOWER(sm.operator) LIKE LOWER(?searchTerm0) "
 				+ "OR LOWER(user.name) LIKE LOWER(?searchTerm0) OR LOWER(" + QueryTranslationUtil.coalesce(queryRequest.getLang(), "trDescription")
 				+ ") LIKE LOWER(?searchTerm0) "
 				+ "OR LOWER(" + QueryFunctions.ordinalToString(Direction.values(), "sm.direction")
-				+ ") LIKE LOWER(?searchTerm0) "
-				+ ") GROUP BY sm.UUID, "
+				+ ") LIKE LOWER(?searchTerm0) )"
+				+ " AND sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate"
+				+ " GROUP BY sm.UUID, "
 				+ orderField
 				+ " ) tab"
 				+ getOrderByPart(queryRequest);
@@ -157,14 +158,15 @@ public class QueryComposerBuilderTest {
 				+ (orderAlias.equals("planetName") ? "JOIN TranslatedField trName ON trName.UUID = pl.nameI18n_UUID " : "")
 				+ "JOIN USER user ON sm.CREATEDBY_UUID = user.uuid "
 				+ "LEFT JOIN TranslatedField trDescription ON trDescription.UUID = pl.descriptionI18n_UUID "
-				+ "WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate AND "
+				+ "WHERE "
 				+ "( LOWER(sm.planetId) LIKE LOWER(?searchTerm0) OR LOWER(sm.from) LIKE LOWER(?searchTerm0) "
 				+ "OR LOWER(sm.destination) LIKE LOWER(?searchTerm0) OR LOWER(sm.operator) LIKE LOWER(?searchTerm0) "
 				+ "OR LOWER(user.name) LIKE LOWER(?searchTerm0) OR LOWER(" + QueryTranslationUtil.coalesce(queryRequest.getLang(), "trDescription")
 				+ ") LIKE LOWER(?searchTerm0) "
 				+ "OR LOWER(" + QueryFunctions.ordinalToString(Direction.values(), "sm.direction")
-				+ ") LIKE LOWER(?searchTerm0) "
-				+ ") ORDER BY LOWER("
+				+ ") LIKE LOWER(?searchTerm0) )"
+				+ " AND sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate"
+				+ " ORDER BY LOWER("
 				+ orderField + ") ASC";
 		return expectedResult;
 	}
@@ -181,8 +183,8 @@ public class QueryComposerBuilderTest {
 
 		String expectedResult = "SELECT COUNT(1) FROM SPACEMISSION sm "
 				+ "JOIN USER user ON sm.CREATEDBY_UUID = user.uuid "
-				+ "WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate AND "
-				+ "LOWER(user.name) LIKE LOWER(?searchTerm0)";
+				+ "WHERE "
+				+ "LOWER(user.name) LIKE LOWER(?searchTerm0) AND sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate";
 
 		QueryComposer queryComposer = QueryComposer.nativ(queryRequest, "sm");
 
@@ -256,13 +258,13 @@ public class QueryComposerBuilderTest {
 
 		String expectedResult = "SELECT sm.UUID FROM SPACEMISSION sm "
 				+ "JOIN USER user ON sm.CREATEDBY_UUID = user.uuid "
-				+ "LEFT JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate";
+				+ "LEFT JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID WHERE ";
 
 		String searchTermField = SearchBuilder.SEARCH_TERM_PARAM_NAME + "0";
 		SearchBuilder searchBuilder = new SearchBuilder(null, queryRequest, defaultSearchTerm(), searchTermField, false, "user.name", "bparam.value");
 		String searchPart = QuerySearchUtil.applySearch(true, searchBuilder);
 
-		expectedResult += " AND " + searchPart + " ORDER BY sm.createdAt DESC";
+		expectedResult += searchPart + " AND sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate ORDER BY sm.createdAt DESC";
 
 		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"), false, false, "sm.UUID");
 		queryComposer.addAliasResolver("createdBy", "user.name");
@@ -311,13 +313,13 @@ public class QueryComposerBuilderTest {
 		String expectedResult = "SELECT sm.UUID FROM SPACEMISSION sm "
 				+ "JOIN USER user ON sm.CREATEDBY_UUID = user.uuid "
 				+ "LEFT JOIN TranslatedField trDescription ON trDescription.UUID = pl.descriptionI18n_UUID "
-				+ "LEFT JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate";
+				+ "LEFT JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID WHERE ";
 
 		String searchTermField = SearchBuilder.SEARCH_TERM_PARAM_NAME + "0";
 		SearchBuilder searchBuilder = new SearchBuilder(null, queryRequest, defaultSearchTerm(), searchTermField, false, "user.name", "bparam.value");
 		String searchPart = QuerySearchUtil.applySearch(true, searchBuilder);
 
-		expectedResult += " AND " + searchPart + " ORDER BY "
+		expectedResult += searchPart + " AND sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate ORDER BY "
 				+ QueryFunctions.lower(QueryTranslationUtil.coalesce("trDescription")) + " ASC";
 
 		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("createdBy", "bparamValue"), false, false, "sm.UUID");
@@ -394,13 +396,13 @@ public class QueryComposerBuilderTest {
 
 		String expectedResult = "SELECT sm.UUID FROM SPACEMISSION sm "
 				+ "JOIN USER user ON sm.CREATEDBY_UUID = user.uuid LEFT JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID "
-				+ "WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate";
+				+ "WHERE ";
 
 		String searchTermField = SearchBuilder.SEARCH_TERM_PARAM_NAME + "0";
 		SearchBuilder searchBuilder = new SearchBuilder(null, queryRequest, defaultSearchTerm(), searchTermField, false, "bparam.value");
 		String searchPart = QuerySearchUtil.applySearch(true, searchBuilder);
 
-		expectedResult += " AND " + searchPart + " ORDER BY LOWER(user.name) ASC";
+		expectedResult += searchPart + " AND sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate ORDER BY LOWER(user.name) ASC";
 
 		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("bparamValue"), false, false, "sm.uuid");
 		queryComposer.addAliasResolver("createdBy", "user.name");
@@ -419,13 +421,13 @@ public class QueryComposerBuilderTest {
 
 		String expectedResult = "SELECT COUNT(1) FROM SPACEMISSION sm "
 				+ "JOIN USER user ON sm.CREATEDBY_UUID = user.uuid LEFT JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID "
-				+ "WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate";
+				+ "WHERE ";
 
 		String searchTermField = SearchBuilder.SEARCH_TERM_PARAM_NAME + "0";
 		SearchBuilder searchBuilder = new SearchBuilder(null, queryRequest, defaultSearchTerm(), searchTermField, false, "bparam.value");
 		String searchPart = QuerySearchUtil.applySearch(true, searchBuilder);
 
-		expectedResult += " AND " + searchPart;
+		expectedResult += searchPart + " AND sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate";
 
 		QueryComposer queryComposer = createQueryComposer(queryRequest, q -> q.addSearch("bparamValue"), false, false, "sm.uuid");
 		queryComposer.addAliasResolver("createdBy", "user.name");
@@ -533,15 +535,14 @@ public class QueryComposerBuilderTest {
 				+ "LEFT JOIN TranslatedField trLocalName ON trLocalName.UUID = pi.nameI18n_UUID "
 				+ "LEFT JOIN BASICPARAMETER bparam ON bparam.SPACEMISSION_UUID = sm.UUID ";
 
-		String whereQueryStr = "WHERE sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate ";
+		String whereQueryStr = "WHERE " + getSearchPart(queryRequest, searchFields) + " AND sm.createdAt >= ?fromDate AND sm.createdAt <= ?toDate";
 
 		String queryCompositeStr = null;
 
 		String selectOuterQueryCompositeStr = "SELECT tab.UUID, tab.planetId, tab.from, tab.destination, tab.currentPosition, tab.operator, tab.createdBy, tab.bparamValue, tab.direction, tab.finalPlanetName, tab.finalPlanetDescription, tab.planetName, tab.planetDescription, tab.localPlanetName, tab.localPlanetDescription, tab.createdAt ";
 
 		String fromQueryStr = fromBasicQueryStr
-				+ whereQueryStr
-				+ getSearchPart(queryRequest, searchFields);
+				+ whereQueryStr;
 
 		queryCompositeStr = fromQueryStr + getBasicOrderByPart(queryRequest) + getPagedPart(queryRequest);
 
@@ -579,7 +580,7 @@ public class QueryComposerBuilderTest {
 			return "";
 		}
 
-		return searchPart == null ? "" : ("AND " + searchPart);
+		return searchPart == null ? "" : (searchPart);
 	}
 
 	private String getPagedPart(QueryRequestDTO request) {
