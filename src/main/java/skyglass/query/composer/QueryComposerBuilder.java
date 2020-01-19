@@ -788,7 +788,7 @@ public class QueryComposerBuilder {
 		return queryParts.stream().filter(s -> shouldBeAdded(s)).map(s -> s.getQueryPart()).collect(Collectors.toList());
 	}
 
-	String getAndSearchPart(boolean whereHasResult) {
+	String getAndSearchPart() {
 		String result = null;
 		for (String searchPartSupplier : searchPartAndSuppliers) {
 			result = QueryFunctions.and(result, searchPartSupplier);
@@ -796,10 +796,10 @@ public class QueryComposerBuilder {
 		if (StringUtils.isBlank(result)) {
 			return "";
 		}
-		return (whereHasResult ? " AND " : " WHERE ") + result;
+		return result;
 	}
 
-	String getOrSearchPart(boolean whereHasResult) {
+	String getOrSearchPart() {
 		String result = null;
 		for (String searchPartSupplier : searchPartOrSuppliers) {
 			result = QueryFunctions.or(result, searchPartSupplier);
@@ -810,7 +810,7 @@ public class QueryComposerBuilder {
 		if (searchPartOrSuppliers.size() > 1) {
 			result = "( " + result + " )";
 		}
-		return (whereHasResult ? " AND " : " WHERE ") + result;
+		return result;
 	}
 
 	private void initPart() {

@@ -22,7 +22,7 @@ import skyglass.query.metadata.jpa.JpaMetadataHelper;
 @SuppressWarnings("unchecked")
 public abstract class BaseJpaGenericService {
 
-	@PersistenceContext(unitName = "platform")
+	@PersistenceContext
 	protected EntityManager entityManager;
 
 	@Autowired

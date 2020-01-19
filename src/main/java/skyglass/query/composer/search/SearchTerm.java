@@ -6,24 +6,37 @@ public class SearchTerm {
 
 	private String field;
 
+	private String alias;
+
 	private SearchOperator operator;
 
 	private Object value;
 
+	private String stringValue;
+
 	private Combination combination;
 
+	private SearchValueType valueType;
+
 	public SearchTerm(String value) {
-		this(null, null, null, value, null, null);
+		this(null, null, null, value, null);
 	}
 
-	public SearchTerm(String field, String operator, String prefix, Object value, String suffix, String combination) {
+	public SearchTerm(String field, String alias, String operator, String value, String combination) {
 		this.field = field;
+		this.alias = alias;
 		this.operator = StringUtils.isBlank(operator) ? SearchOperator.Like : SearchOperator.from(operator);
 		this.combination = StringUtils.isBlank(combination) ? Combination.And : Combination.from(combination);
 
 		if (this.operator == SearchOperator.Equal) { // the operation may be complex operation
-			final boolean startWithAsterisk = prefix != null && prefix.contains(SearchOperator.ZERO_OR_MORE_REGEX);
-			final boolean endWithAsterisk = suffix != null && suffix.contains(SearchOperator.ZERO_OR_MORE_REGEX);
+			final boolean startWithAsterisk = value.startsWith(SearchOperator.ZERO_OR_MORE_REGEX);
+			if (startWithAsterisk) {
+				value = value.substring(1);
+			}
+			final boolean endWithAsterisk = value.endsWith(SearchOperator.ZERO_OR_MORE_REGEX);
+			if (endWithAsterisk) {
+				value = value.substring(0, value.length() - 1);
+			}
 
 			if (startWithAsterisk && endWithAsterisk) {
 				this.operator = SearchOperator.Contains;
@@ -34,11 +47,16 @@ public class SearchTerm {
 			}
 		}
 
+		this.stringValue = value;
 		this.value = resolveValue(value, this.operator);
 	}
 
 	public String getField() {
 		return field;
+	}
+
+	public String getAlias() {
+		return alias;
 	}
 
 	public SearchOperator getOperator() {
@@ -50,7 +68,7 @@ public class SearchTerm {
 	}
 
 	public String getStringValue() {
-		return value == null ? null : value.toString();
+		return stringValue;
 	}
 
 	public boolean isNotStringValueEmpty() {
@@ -65,15 +83,28 @@ public class SearchTerm {
 		return field != null;
 	}
 
-	private Object resolveValue(Object value, SearchOperator operator) {
-		if (isNotStringValueEmpty() && operator.isInteger()) {
-			try {
-				return Integer.parseInt(getStringValue());
-			} catch (NumberFormatException e) {
+	private Object resolveValue(String value, SearchOperator operator) {
+		this.valueType = SearchValueType.Text;
+		Object result = value;
+		if (isNotStringValueEmpty()) {
+			if (operator.isNumeric() || operator == SearchOperator.Equal) {
+				try {
+					result = Integer.parseInt(value);
+					this.valueType = SearchValueType.Integer;
+				} catch (NumberFormatException e) {
 
+				}
 			}
 		}
-		return value;
+		return result;
+	}
+
+	public void adaptCombination(Combination combination) {
+		this.combination = combination;
+	}
+
+	public boolean isNumeric() {
+		return this.valueType.isNumeric();
 	}
 
 }

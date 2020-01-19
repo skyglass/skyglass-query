@@ -48,7 +48,7 @@ public class QueryParamProcessor {
 					part = replaceListPart(root, builder, param.getName(), part, collection);
 					builder._doSetParameters(root, param.getName(), collection);
 				} else {
-					builder._doSetParameter(param.getName(), param.getValue());
+					builder._doSetParameterValue(param.getName(), param.getValue());
 				}
 			}
 		}

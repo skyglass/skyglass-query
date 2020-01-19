@@ -11,11 +11,6 @@ import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import javax.persistence.Query;
 
-import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
-
-import skyglass.data.common.model.IdObject;
 import skyglass.query.composer.JpaQueryResultProvider;
 import skyglass.query.composer.NativeQueryResultProvider;
 import skyglass.query.composer.QueryComposer;
@@ -26,9 +21,7 @@ import skyglass.query.composer.result.EntityDtoConverter;
 import skyglass.query.composer.result.QueryResultBuilder;
 import skyglass.query.composer.result.QueryResultProvider;
 
-@Repository
-@Transactional(propagation = Propagation.MANDATORY)
-public class QueryManagerImpl implements QueryManager {
+public abstract class BaseQueryManagerImpl implements QueryManager {
 
 	@PersistenceContext
 	private EntityManager entityManager;

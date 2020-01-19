@@ -388,6 +388,18 @@ public class QueryComposer {
 		if (!fromUuidList) {
 			StringBuilder queryParts = new StringBuilder();
 			List<QueryPartString> parts = queryComposer.resolveInnerFrom();
+			String orPart = queryComposer.getOrSearchPart();
+			if (StringUtils.isNotBlank(orPart)) {
+				parts.add(QueryPartString.getWhereAndQueryPart(orPart));
+			}
+			String andPart = queryComposer.getAndSearchPart();
+			if (StringUtils.isNotBlank(andPart)) {
+				if (StringUtils.isNotBlank(orPart)) {
+					parts.add(QueryPartString.getWhereOrQueryPart(andPart));
+				} else {
+					parts.add(QueryPartString.getWhereAndQueryPart(andPart));
+				}
+			}
 			boolean first = true;
 			boolean hasWherePart = false;
 			for (QueryPartString queryPart : parts) {
@@ -405,8 +417,6 @@ public class QueryComposer {
 			}
 			build(sb, queryParts);
 
-			String andPart = null;
-			String orPart = null;
 			if (hasWherePart || wherePart.hasResult() || hasCustomWherePart()) {
 				if (!hasCustomWherePart() && !hasWherePart) {
 					sb.append(" WHERE ");
@@ -414,14 +424,7 @@ public class QueryComposer {
 					sb.append(" AND ");
 				}
 				build(sb, wherePart.getResult());
-				andPart = queryComposer.getAndSearchPart(true);
-				orPart = queryComposer.getOrSearchPart(true);
-			} else {
-				andPart = queryComposer.getAndSearchPart(hasCustomWherePart());
-				orPart = queryComposer.getOrSearchPart(hasCustomWherePart());
 			}
-			build(sb, new StringBuilder(andPart));
-			build(sb, new StringBuilder(orPart));
 			buildGroupByPart(sb, true);
 			if (havingPart.hasResult()) {
 				sb.append(" HAVING ");

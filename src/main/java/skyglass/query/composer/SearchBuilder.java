@@ -20,15 +20,15 @@ public class SearchBuilder {
 	public static final String SEARCH_TERM_PARAM_NAME = "searchTerm";
 
 	private List<SearchField> searchFields = new ArrayList<>();
-	
+
 	private QueryRequestDTO queryRequest;
 
 	private SearchType searchType;
-	
+
 	private String paramName;
-	
+
 	private SearchTerm searchTerm;
-	
+
 	private static SearchPath[] toSearchPath(String[] arr) {
 		return Arrays.asList(arr).stream().map(s -> new SearchPath(s, s)).collect(Collectors.toList()).toArray(new SearchPath[0]);
 	}
@@ -45,27 +45,28 @@ public class SearchBuilder {
 		this(root, queryRequest, searchTerm, SearchType.IgnoreCase, SEARCH_TERM_PARAM_NAME, translatable, toSearchPath(searchFields));
 	}
 
-	public SearchBuilder(QueryComposer root, QueryRequestDTO queryRequest, SearchTerm searchTerm, SearchType searchType, String paramName, boolean translatable, SearchPath... searchFields) {
+	public SearchBuilder(QueryComposer root, QueryRequestDTO queryRequest, SearchTerm searchTerm,
+			SearchType searchType, String paramName, boolean translatable, SearchPath... searchPaths) {
 		this.searchType = searchType;
 		this.queryRequest = queryRequest;
 		this.paramName = paramName;
 		this.searchTerm = searchTerm;
 		if (searchTerm.hasField()) {
-			for (SearchPath searchField: searchFields) {
-				if (searchField.getAlias().equals(searchTerm.getField())
-						|| searchField.getPath().equals(searchTerm.getField())) {
+			for (SearchPath searchPath : searchPaths) {
+				if (searchPath.getAlias().equals(searchTerm.getAlias())
+						|| searchPath.getPath().equals(searchTerm.getAlias())) {
 					if (root != null) {
 						root.setSearchParameter(paramName, searchTerm, searchType);
 					}
-					this.searchFields.add(new SearchField(searchTerm.getOperator(), new FieldResolver(searchField.getPath()), paramName, searchType, translatable, queryRequest.getLang()));					
+					this.searchFields.add(new SearchField(searchTerm, new FieldResolver(searchPath.getPath()), paramName, searchType, translatable, queryRequest.getLang()));
 				}
 			}
 		} else {
 			if (root != null) {
 				root.setSearchParameter(paramName, searchTerm, searchType);
 			}
-			this.searchFields.add(new SearchField(searchTerm.getOperator(), new FieldResolver(
-					Arrays.asList(searchFields).stream().map(s -> s.getPath()).collect(Collectors.toList()).toArray(new String[0])), 
+			this.searchFields.add(new SearchField(searchTerm, new FieldResolver(
+					Arrays.asList(searchPaths).stream().map(s -> s.getPath()).collect(Collectors.toList()).toArray(new String[0])),
 					paramName, searchType, translatable, queryRequest.getLang()));
 		}
 	}
@@ -87,7 +88,7 @@ public class SearchBuilder {
 	}
 
 	private SearchBuilder addSearch(SearchType searchType, boolean translatable, String... searchFields) {
-		this.searchFields.add(new SearchField(searchTerm.getOperator(), new FieldResolver(searchFields), paramName, searchType, translatable, queryRequest.getLang()));
+		this.searchFields.add(new SearchField(searchTerm, new FieldResolver(searchFields), paramName, searchType, translatable, queryRequest.getLang()));
 		return this;
 	}
 

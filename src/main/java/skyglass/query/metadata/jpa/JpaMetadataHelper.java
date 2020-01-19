@@ -20,9 +20,9 @@ import skyglass.query.metadata.MetadataHelper;
  */
 public class JpaMetadataHelper implements MetadataHelper {
 
-	public static JpaMetadataHelper getInstanceForMetamodel(Metamodel metamodel) {
+	public static JpaMetadataHelper getInstance(EntityManagerFactory entityManagerFactory) {
 		JpaMetadataHelper instance = new JpaMetadataHelper();
-		instance.metamodel = metamodel;
+		instance.metamodel = entityManagerFactory.getMetamodel();
 		return instance;
 	}
 

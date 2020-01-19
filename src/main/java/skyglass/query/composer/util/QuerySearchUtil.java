@@ -13,7 +13,7 @@ import skyglass.query.composer.search.SearchTerm;
 import skyglass.query.composer.search.SearchType;
 
 public class QuerySearchUtil {
-	
+
 	private static final List<String> LANGUAGES = Stream.of(Language.values()).map(e -> e.getLanguageCode()).collect(Collectors.toList());
 
 	public static String applySearch(QueryRequestDTO queryRequest, SearchTerm searchTerm, boolean nativeQuery, String... searchFields) {
@@ -35,9 +35,10 @@ public class QuerySearchUtil {
 	public static String applySearch(QueryRequestDTO queryRequest, SearchTerm searchTerm, SearchType searchType, boolean translatable, boolean nativeQuery, String... searchFields) {
 		return applySearch(queryRequest, searchTerm, searchType, SearchBuilder.SEARCH_TERM_PARAM_NAME, translatable, nativeQuery, searchFields);
 	}
-	
-	public static String applySearch(QueryRequestDTO queryRequest, SearchTerm searchTerm, SearchType searchType, String searchTermField, boolean translatable, boolean nativeQuery, String... searchFields) {
-		SearchField search = new SearchField(searchTerm.getOperator(), new FieldResolver(searchFields), searchTermField, searchType, translatable, queryRequest.getLang());
+
+	public static String applySearch(QueryRequestDTO queryRequest, SearchTerm searchTerm, SearchType searchType, String searchTermField, boolean translatable, boolean nativeQuery,
+			String... searchFields) {
+		SearchField search = new SearchField(searchTerm, new FieldResolver(searchFields), searchTermField, searchType, translatable, queryRequest.getLang());
 		return applySearch(nativeQuery, search);
 	}
 
@@ -93,7 +94,10 @@ public class QuerySearchUtil {
 
 	private static String getSearchTerm(SearchField searchField, boolean nativeQuery) {
 		StringBuilder builder = new StringBuilder();
-		builder.append("( ");
+		boolean appendPars = searchField.getFieldResolver().getResolvers().size() > 1;
+		if (appendPars) {
+			builder.append("( ");
+		}
 		String parameterChar = nativeQuery ? "?" : ":";
 		boolean first = true;
 		for (String fieldResolver : searchField.getFieldResolver().getResolvers()) {
@@ -122,7 +126,9 @@ public class QuerySearchUtil {
 				}
 			}
 		}
-		builder.append(" )");
+		if (appendPars) {
+			builder.append(" )");
+		}
 		return builder.toString();
 	}
 

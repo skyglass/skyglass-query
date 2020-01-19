@@ -11,69 +11,85 @@ import skyglass.data.service.generic.jpa.BaseJpaGenericService;
 
 public abstract class BaseGenericService extends BaseJpaGenericService implements IBaseGenericService {
 
-	@PersistenceContext(unitName = "platform")
+	@PersistenceContext
 	protected EntityManager entityManager;
 
+	@Override
 	public <T> int countAll(Class<T> type) {
 		return _count(type);
 	}
 
+	@Override
 	public <T> T findByName(Class<T> type, String name) {
-		return (T) _findByName(type, name);
+		return _findByName(type, name);
 	}
 
+	@Override
 	public <T> T findById(Class<T> type, Serializable id) {
-		return (T) _getById(type, id);
+		return _getById(type, id);
 	}
 
+	@Override
 	public <T> T[] findByIds(Class<T> type, Serializable... ids) {
 		return _getByIds(type, ids);
 	}
 
+	@Override
 	public <T> List<T> findAll(Class<T> type) {
 		return _all(type);
 	}
 
+	@Override
 	public void flush() {
 		_flush();
 	}
 
+	@Override
 	public <T> T getReference(Class<T> type, Serializable id) {
 		return _load(type, id);
 	}
 
+	@Override
 	public <T> T[] getReferences(Class<T> type, Serializable... ids) {
 		return _load(type, ids);
 	}
 
+	@Override
 	public boolean isAttached(Object entity) {
 		return _sessionContains(entity);
 	}
 
+	@Override
 	public void refresh(Object... entities) {
 		_refresh(entities);
 	}
 
+	@Override
 	public boolean remove(Object entity) {
 		return _deleteEntity(entity);
 	}
 
+	@Override
 	public void remove(Object... entities) {
 		_deleteEntities(entities);
 	}
 
+	@Override
 	public <T> boolean removeById(Class<T> type, Serializable id) {
 		return _deleteById(type, id);
 	}
 
+	@Override
 	public <T> void removeByIds(Class<T> type, Serializable... ids) {
 		_deleteById(type, ids);
 	}
 
+	@Override
 	public Object save(Object entity) {
 		return _saveOrUpdateIsNew(entity);
 	}
 
+	@Override
 	public boolean[] save(Object... entities) {
 		return _saveOrUpdateIsNew(entities);
 	}

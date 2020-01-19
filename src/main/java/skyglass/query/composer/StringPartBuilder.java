@@ -2,6 +2,8 @@ package skyglass.query.composer;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -19,7 +21,7 @@ public class StringPartBuilder extends QueryParamBuilder {
 	private StringBuilder sb = new StringBuilder();
 
 	private boolean condition = true;
-	
+
 	private boolean distinct;
 
 	private boolean alreadyBuilt;
@@ -41,16 +43,16 @@ public class StringPartBuilder extends QueryParamBuilder {
 	}
 
 	protected StringPartBuilder build(StringBuilder part) {
-		return build(part, null, params, false);
+		return build(part, null, _getParams(), false);
 	}
 
 	protected StringPartBuilder build(StringBuilder part, StringBuilder alternativePart) {
-		return build(part, alternativePart, params, false);
+		return build(part, alternativePart, _getParams(), false);
 	}
 
 	protected StringPartBuilder buildAll(StringBuilder part, StringBuilder alternativePart,
 			Collection<QueryParam> childParams) {
-		return build(part, alternativePart, combine(params, childParams), true);
+		return build(part, alternativePart, combine(_getParams(), childParams), true);
 	}
 
 	protected StringPartBuilder parentBuildAll(StringBuilder part, StringBuilder alternativePart,
@@ -160,20 +162,20 @@ public class StringPartBuilder extends QueryParamBuilder {
 	public StringPartBuilder addAliases(String... aliases) {
 		return addAliases(false, aliases);
 	}
-	
+
 	public StringPartBuilder addAliases(boolean distinct, String... aliases) {
 		this.distinct = distinct;
-		for (String alias: aliases) {
-			this.params.add(QueryParam.create(alias, AliasType.Alias));
+		for (String alias : aliases) {
+			_doSetQueryParam(alias, QueryParam.create(alias, AliasType.Alias));
 		}
 		return this;
 	}
-	
+
 	public StringPartBuilder setCondition(boolean condition) {
 		this.condition = condition;
 		return this;
 	}
-	
+
 	public StringPartBuilder setDistinct(boolean distinct) {
 		this.distinct = distinct;
 		return this;
@@ -182,7 +184,7 @@ public class StringPartBuilder extends QueryParamBuilder {
 	public StringPartBuilder addCondition(boolean condition) {
 		return addCondition(condition, false);
 	}
-	
+
 	public StringPartBuilder addCondition(boolean condition, boolean distinct) {
 		this.condition = this.condition && condition;
 		this.distinct = distinct;
@@ -190,7 +192,7 @@ public class StringPartBuilder extends QueryParamBuilder {
 	}
 
 	public StringPartBuilder setParameter(String name, Object value) {
-		_doSetParameter(name, value);
+		_doSetParameterValue(name, value);
 		return this;
 	}
 
@@ -213,7 +215,7 @@ public class StringPartBuilder extends QueryParamBuilder {
 	private StringPartBuilder addParams(Collection<QueryParam> newParams) {
 		if (CollectionUtils.isNotEmpty(newParams)) {
 			for (QueryParam param : newParams) {
-				params.add(param);
+				_doSetQueryParam(param.getName(), param);
 			}
 		}
 		return this;
@@ -263,10 +265,10 @@ public class StringPartBuilder extends QueryParamBuilder {
 	public StringPartBuilder appendNullableValueOrElseFalse(String part, String paramName, Object value) {
 		return appendNullable(part, paramName, value, true);
 	}
-	
+
 	public StringPartBuilder appendNullable(String part, String... aliasNames) {
 		StringPartBuilder result = null;
-		for (String aliasName: aliasNames) {
+		for (String aliasName : aliasNames) {
 			result = appendNullable(part, aliasName, AliasType.Alias, false);
 		}
 		return result;
@@ -274,7 +276,7 @@ public class StringPartBuilder extends QueryParamBuilder {
 
 	public StringPartBuilder appendNullableOrElseFalse(String part, String... aliasNames) {
 		StringPartBuilder result = null;
-		for (String aliasName: aliasNames) {
+		for (String aliasName : aliasNames) {
 			result = appendNullable(part, aliasName, AliasType.Alias, true);
 		}
 		return result;
@@ -312,10 +314,10 @@ public class StringPartBuilder extends QueryParamBuilder {
 	public StringPartBuilder startNullableValue(String part, String paramName, Object value) {
 		return startNullablePart(part).setParameter(paramName, value);
 	}
-	
+
 	public StringPartBuilder startNullable(String part, String... aliasNames) {
 		StringPartBuilder result = null;
-		for (String aliasName: aliasNames) {
+		for (String aliasName : aliasNames) {
 			result = startNullablePart(part).setParameter(aliasName, AliasType.Alias);
 		}
 		return result;
@@ -384,7 +386,7 @@ public class StringPartBuilder extends QueryParamBuilder {
 	public StringPartBuilder startIf(boolean condition, String part) {
 		return startIf(condition, false, part);
 	}
-	
+
 	public StringPartBuilder startIf(boolean condition, boolean distinct, String part) {
 		return new StringPartBuilder(root, this).start(part).addCondition(condition, distinct);
 	}
@@ -392,7 +394,7 @@ public class StringPartBuilder extends QueryParamBuilder {
 	public StringPartBuilder startIf(String part, String... aliases) {
 		return startIf(false, part, aliases);
 	}
-	
+
 	public StringPartBuilder startIf(boolean distinct, String part, String... aliases) {
 		return new StringPartBuilder(root, this).start(part).addAliases(distinct, aliases);
 	}
@@ -408,11 +410,11 @@ public class StringPartBuilder extends QueryParamBuilder {
 	public StringPartBuilder appendIfTrue(boolean condition, String part) {
 		return startIf(condition, part).skipIfFalse();
 	}
-	
+
 	public StringPartBuilder appendIfAliases(String part, String... aliases) {
 		return appendIfAliases(false, part, aliases);
 	}
-	
+
 	public StringPartBuilder appendIfAliases(boolean distinct, String part, String... aliases) {
 		return startIf(distinct, part, aliases);
 	}
@@ -447,19 +449,19 @@ public class StringPartBuilder extends QueryParamBuilder {
 		restartComposer();
 		return this;
 	}
-	
+
 	public StringPartBuilder addSearch(String paramName, String paramValue, SearchType searchType, String... searchFields) {
 		root.addSearch(paramName, paramValue, searchType, searchFields);
 		restartComposer();
 		return this;
 	}
-	
+
 	public StringPartBuilder addTranslatableSearch(String... searchFields) {
 		root.addTranslatableSearch(searchFields);
 		restartComposer();
 		return this;
 	}
-	
+
 	public StringPartBuilder addTranslatableSearch(String paramName, String paramValue, SearchType searchType, String... searchFields) {
 		root.addTranslatableSearch(paramName, paramValue, searchType, searchFields);
 		restartComposer();
@@ -495,7 +497,7 @@ public class StringPartBuilder extends QueryParamBuilder {
 	}
 
 	private StringPartBuilder appendStringBuilder(StringBuilder sb, Collection<QueryParam> queryParams) {
-		if (isFalseCondition(params)) {
+		if (isFalseCondition(_getParams())) {
 			return this;
 		}
 		addParams(queryParams);
@@ -526,7 +528,7 @@ public class StringPartBuilder extends QueryParamBuilder {
 			sb.append(part);
 		}
 	}
-	
+
 	private boolean notBlank(StringBuilder part) {
 		if (part == null) {
 			return false;
@@ -551,7 +553,7 @@ public class StringPartBuilder extends QueryParamBuilder {
 		if (containsStart || containsEnd) {
 			return true;
 		}
-		return false; 
+		return false;
 	}
 
 	private boolean isTrueCondition(Collection<QueryParam> params) {
@@ -582,7 +584,7 @@ public class StringPartBuilder extends QueryParamBuilder {
 		}
 		return false;
 	}
-	
+
 	private Collection<QueryParam> combine(Collection<QueryParam> params, Collection<QueryParam> childParams) {
 		if (CollectionUtils.isEmpty(params) && CollectionUtils.isEmpty(childParams)) {
 			return null;
@@ -593,8 +595,7 @@ public class StringPartBuilder extends QueryParamBuilder {
 		if (CollectionUtils.isEmpty(params) && CollectionUtils.isNotEmpty(childParams)) {
 			return childParams;
 		}
-		params.addAll(childParams);
-		return params;
+		return Stream.concat(params.stream(), childParams.stream()).collect(Collectors.toList());
 	}
 
 	private StringBuilder stringBuilder(String part) {
@@ -610,16 +611,15 @@ public class StringPartBuilder extends QueryParamBuilder {
 		return this;
 	}
 
-
 	protected boolean isAlreadyBuilt() {
 		root.initComposer();
 		return alreadyBuilt;
 	}
-	
+
 	protected void setAlreadyBuilt(boolean alreadyBuilt) {
 		this.alreadyBuilt = alreadyBuilt;
 	}
-	
+
 	private void restartComposer() {
 		root.restart();
 	}

@@ -9,7 +9,7 @@ import skyglass.query.composer.FieldResolver;
  */
 public class SearchField {
 
-	private SearchOperator operator;
+	private SearchTerm searchTerm;
 
 	private FieldResolver fieldResolver;
 
@@ -21,9 +21,9 @@ public class SearchField {
 
 	private String lang;
 
-	public SearchField(SearchOperator operator, FieldResolver fieldResolver, String paramName,
+	public SearchField(SearchTerm searchTerm, FieldResolver fieldResolver, String paramName,
 			SearchType searchType, boolean translatable, String lang) {
-		this.operator = operator;
+		this.searchTerm = searchTerm;
 		this.fieldResolver = fieldResolver;
 		this.paramName = paramName;
 		this.searchType = searchType;
@@ -60,8 +60,7 @@ public class SearchField {
 	}
 
 	public boolean isIgnoreCase() {
-		return SearchType.isIgnoreCase(searchType)
-				&& operator.isText();
+		return !searchTerm.isNumeric() && SearchType.isIgnoreCase(searchType);
 	}
 
 	public String getLang() {
@@ -69,7 +68,7 @@ public class SearchField {
 	}
 
 	public String getOperator() {
-		return operator.getSqlOperator();
+		return searchTerm.getOperator().getSqlOperator();
 	}
 
 }

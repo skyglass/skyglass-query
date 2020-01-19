@@ -56,8 +56,9 @@ public enum SearchOperator {
 				|| this == SearchOperator.Equal;
 	}
 
-	public boolean isInteger() {
-		return this == SearchOperator.Less || this == SearchOperator.More;
+	public boolean isNumeric() {
+		return this == SearchOperator.Less
+				|| this == SearchOperator.More;
 	}
 
 }

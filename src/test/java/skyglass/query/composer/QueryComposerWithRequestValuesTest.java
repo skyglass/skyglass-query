@@ -7,10 +7,6 @@ import java.util.List;
 import org.junit.Assert;
 import org.junit.Test;
 
-import skyglass.query.composer.OrderType;
-import skyglass.query.composer.QueryComposer;
-import skyglass.query.composer.QueryParam;
-import skyglass.query.composer.QueryRequestDTO;
 import skyglass.query.composer.result.MockQuery;
 
 public class QueryComposerWithRequestValuesTest {
@@ -42,7 +38,7 @@ public class QueryComposerWithRequestValuesTest {
 		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test ORDER BY LOWER(sm.order) ASC", testBuilder.build());
 		checkParam("test", "not null", testBuilder);
 	}
-	
+
 	@Test
 	public void testNullableNotNullQuery1Distinct() {
 		String value = "not null";
@@ -60,7 +56,7 @@ public class QueryComposerWithRequestValuesTest {
 		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm WHERE sm.test = ?test GROUP BY sm.UUID ORDER BY LOWER(sm.order) ASC", testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
-	
+
 	@Test
 	public void testNullableNotNullQuery1DistinctPaged() {
 		String value = "not null";
@@ -75,13 +71,14 @@ public class QueryComposerWithRequestValuesTest {
 				.addDistinctConditionalWhere("sm.test = ?test", "order")
 				.bindOrder("order")
 				.setLimit(10);
-		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT sm.UUID, sm.order FROM SpaceMission sm WHERE sm.test = ?test GROUP BY sm.UUID, sm.order ) tab ORDER BY LOWER(tab.order) DESC", testBuilder.build());
+		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT sm.UUID, sm.order FROM SpaceMission sm WHERE sm.test = ?test GROUP BY sm.UUID, sm.order ) tab ORDER BY LOWER(tab.order) DESC",
+				testBuilder.build());
 		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm WHERE sm.test = ?test GROUP BY sm.UUID, sm.order", testBuilder.buildCountPart());
-		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT sm.UUID, sm.order FROM SpaceMission sm WHERE sm.test = ?test GROUP BY sm.UUID, sm.order ) tab ORDER BY LOWER(tab.order) DESC", testBuilder.buildUuidListPart());
+		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT sm.UUID, sm.order FROM SpaceMission sm WHERE sm.test = ?test GROUP BY sm.UUID, sm.order ) tab ORDER BY LOWER(tab.order) DESC",
+				testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
-	
-	
+
 	@Test
 	public void testNullableNotNullQuery1DistinctGroupByPaged() {
 		String value = "not null";
@@ -98,12 +95,17 @@ public class QueryComposerWithRequestValuesTest {
 				.addDistinctConditionalWhere("sm.test = ?test", "order")
 				.bindOrder("order")
 				.setLimit(10);
-		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT sm.UUID, sm.groupBy, sm.order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, sm.groupBy, sm.order ) tab ORDER BY LOWER(tab.order) DESC", testBuilder.build());
-		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, sm.groupBy, sm.order", testBuilder.buildCountPart());
-		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT sm.UUID, sm.groupBy, sm.order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, sm.groupBy, sm.order ) tab ORDER BY LOWER(tab.order) DESC", testBuilder.buildUuidListPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID FROM ( SELECT sm.UUID, sm.groupBy, sm.order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, sm.groupBy, sm.order ) tab ORDER BY LOWER(tab.order) DESC",
+				testBuilder.build());
+		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, sm.groupBy, sm.order",
+				testBuilder.buildCountPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID FROM ( SELECT sm.UUID, sm.groupBy, sm.order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, sm.groupBy, sm.order ) tab ORDER BY LOWER(tab.order) DESC",
+				testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
-	
+
 	@Test
 	public void testNullableNotNullQuery1GroupByPaged() {
 		String value = "not null";
@@ -120,12 +122,17 @@ public class QueryComposerWithRequestValuesTest {
 				.addConditionalWhere("sm.test = ?test", "order")
 				.bindOrder("order", "sm.order")
 				.setLimit(10);
-		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT sm.UUID, sm.groupBy, sm.order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, sm.groupBy, sm.order ) tab ORDER BY LOWER(tab.order) DESC", testBuilder.build());
-		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, sm.groupBy, sm.order", testBuilder.buildCountPart());
-		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT sm.UUID, sm.groupBy, sm.order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, sm.groupBy, sm.order ) tab ORDER BY LOWER(tab.order) DESC", testBuilder.buildUuidListPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID FROM ( SELECT sm.UUID, sm.groupBy, sm.order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, sm.groupBy, sm.order ) tab ORDER BY LOWER(tab.order) DESC",
+				testBuilder.build());
+		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, sm.groupBy, sm.order",
+				testBuilder.buildCountPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID FROM ( SELECT sm.UUID, sm.groupBy, sm.order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, sm.groupBy, sm.order ) tab ORDER BY LOWER(tab.order) DESC",
+				testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
-	
+
 	@Test
 	public void testNullableNotNullQuery1GroupBy() {
 		String value = "not null";
@@ -141,12 +148,17 @@ public class QueryComposerWithRequestValuesTest {
 				.addConditional("LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid", "groupBy")
 				.addConditionalWhere("sm.test = ?test", "order")
 				.bindOrder("order", "sm.order");
-		Assert.assertEquals("SELECT sm.UUID, sm.groupBy FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, sm.groupBy ORDER BY LOWER(sm.order) DESC", testBuilder.build());
-		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, sm.groupBy", testBuilder.buildCountPart());
-		Assert.assertEquals("SELECT sm.UUID, sm.groupBy FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, sm.groupBy ORDER BY LOWER(sm.order) DESC", testBuilder.buildUuidListPart());
+		Assert.assertEquals(
+				"SELECT sm.UUID, sm.groupBy FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, sm.groupBy ORDER BY LOWER(sm.order) DESC",
+				testBuilder.build());
+		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, sm.groupBy",
+				testBuilder.buildCountPart());
+		Assert.assertEquals(
+				"SELECT sm.UUID, sm.groupBy FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, sm.groupBy ORDER BY LOWER(sm.order) DESC",
+				testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
-	
+
 	@Test
 	public void testNullableNotNullQuery1GroupByAliasPaged() {
 		String value = "not null";
@@ -163,12 +175,17 @@ public class QueryComposerWithRequestValuesTest {
 				.addConditionalWhere("sm.test = ?test", "order")
 				.bindOrder("order", "sm.order")
 				.setLimit(10);
-		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT sm.UUID, g.field AS groupBy, sm.order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field, sm.order ) tab ORDER BY LOWER(tab.order) DESC", testBuilder.build());
-		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field, sm.order", testBuilder.buildCountPart());
-		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT sm.UUID, g.field AS groupBy, sm.order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field, sm.order ) tab ORDER BY LOWER(tab.order) DESC", testBuilder.buildUuidListPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID FROM ( SELECT sm.UUID, g.field AS groupBy, sm.order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field, sm.order ) tab ORDER BY LOWER(tab.order) DESC",
+				testBuilder.build());
+		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field, sm.order",
+				testBuilder.buildCountPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID FROM ( SELECT sm.UUID, g.field AS groupBy, sm.order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field, sm.order ) tab ORDER BY LOWER(tab.order) DESC",
+				testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
-	
+
 	@Test
 	public void testNullableNotNullQuery1GroupByAlias() {
 		String value = "not null";
@@ -184,12 +201,17 @@ public class QueryComposerWithRequestValuesTest {
 				.addConditional("LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid", "groupBy")
 				.addConditionalWhere("sm.test = ?test", "order")
 				.bindOrder("order", "sm.order");
-		Assert.assertEquals("SELECT sm.UUID, g.field AS groupBy FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field ORDER BY LOWER(sm.order) DESC", testBuilder.build());
-		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field", testBuilder.buildCountPart());
-		Assert.assertEquals("SELECT sm.UUID, g.field AS groupBy FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field ORDER BY LOWER(sm.order) DESC", testBuilder.buildUuidListPart());
+		Assert.assertEquals(
+				"SELECT sm.UUID, g.field AS groupBy FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field ORDER BY LOWER(sm.order) DESC",
+				testBuilder.build());
+		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field",
+				testBuilder.buildCountPart());
+		Assert.assertEquals(
+				"SELECT sm.UUID, g.field AS groupBy FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field ORDER BY LOWER(sm.order) DESC",
+				testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
-	
+
 	@Test
 	public void testNullableNotNullQuery1GroupByAliasOrderPaged() {
 		String value = "not null";
@@ -206,12 +228,17 @@ public class QueryComposerWithRequestValuesTest {
 				.addConditionalWhere("sm.test = ?test", "order")
 				.bindOrder("order", "g.field2")
 				.setLimit(10);
-		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT sm.UUID, g.field AS groupBy, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field, g.field2 ) tab ORDER BY LOWER(tab.order) DESC", testBuilder.build());
-		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field, g.field2", testBuilder.buildCountPart());
-		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT sm.UUID, g.field AS groupBy, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field, g.field2 ) tab ORDER BY LOWER(tab.order) DESC", testBuilder.buildUuidListPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID FROM ( SELECT sm.UUID, g.field AS groupBy, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field, g.field2 ) tab ORDER BY LOWER(tab.order) DESC",
+				testBuilder.build());
+		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field, g.field2",
+				testBuilder.buildCountPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID FROM ( SELECT sm.UUID, g.field AS groupBy, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field, g.field2 ) tab ORDER BY LOWER(tab.order) DESC",
+				testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
-	
+
 	@Test
 	public void testNullableNotNullQuery1GroupByAliasSelectOrderPaged() {
 		String value = "not null";
@@ -228,12 +255,17 @@ public class QueryComposerWithRequestValuesTest {
 				.addConditionalWhere("sm.test = ?test", "order")
 				.bindOrder("order", "g.field2")
 				.setLimit(10);
-		Assert.assertEquals("SELECT tab.UUID, tab.order FROM ( SELECT sm.UUID, g.field2 AS order, g.field AS groupBy FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2, g.field ) tab ORDER BY LOWER(tab.order) DESC", testBuilder.build());
-		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2, g.field", testBuilder.buildCountPart());
-		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT sm.UUID, g.field2 AS order, g.field AS groupBy FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2, g.field ) tab ORDER BY LOWER(tab.order) DESC", testBuilder.buildUuidListPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID, tab.order FROM ( SELECT sm.UUID, g.field2 AS order, g.field AS groupBy FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2, g.field ) tab ORDER BY LOWER(tab.order) DESC",
+				testBuilder.build());
+		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2, g.field",
+				testBuilder.buildCountPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID FROM ( SELECT sm.UUID, g.field2 AS order, g.field AS groupBy FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2, g.field ) tab ORDER BY LOWER(tab.order) DESC",
+				testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
-	
+
 	@Test
 	public void testNullableNotNullQuery1GroupByAliasSelectOrderSamePaged1() {
 		String value = "not null";
@@ -250,12 +282,17 @@ public class QueryComposerWithRequestValuesTest {
 				.addConditionalWhere("sm.test = ?test", "order")
 				.bindOrder("order", "g.field2")
 				.setLimit(10);
-		Assert.assertEquals("SELECT tab.UUID, tab.order FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab ORDER BY LOWER(tab.order) DESC", testBuilder.build());
-		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2", testBuilder.buildCountPart());
-		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab ORDER BY LOWER(tab.order) DESC", testBuilder.buildUuidListPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID, tab.order FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab ORDER BY LOWER(tab.order) DESC",
+				testBuilder.build());
+		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2",
+				testBuilder.buildCountPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab ORDER BY LOWER(tab.order) DESC",
+				testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
-	
+
 	@Test
 	public void testNullableNotNullQuery1GroupByAliasSelectOrderSamePaged2() {
 		String value = "not null";
@@ -272,12 +309,17 @@ public class QueryComposerWithRequestValuesTest {
 				.addConditionalWhere("sm.test = ?test", "order")
 				.bindOrder("order")
 				.setLimit(10);
-		Assert.assertEquals("SELECT tab.UUID, tab.order FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab ORDER BY LOWER(tab.order) DESC", testBuilder.build());
-		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2", testBuilder.buildCountPart());
-		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab ORDER BY LOWER(tab.order) DESC", testBuilder.buildUuidListPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID, tab.order FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab ORDER BY LOWER(tab.order) DESC",
+				testBuilder.build());
+		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2",
+				testBuilder.buildCountPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab ORDER BY LOWER(tab.order) DESC",
+				testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
-	
+
 	@Test
 	public void testNullableNotNullQuery1GroupByAliasSelectOrderSamePaged2SkipPart1() {
 		String value = "not null";
@@ -295,12 +337,17 @@ public class QueryComposerWithRequestValuesTest {
 				.addConditionalWhere("sm.test = ?test", "order")
 				.bindOrder("order")
 				.setLimit(10);
-		Assert.assertEquals("SELECT tab.UUID, tab.order FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab ORDER BY LOWER(tab.order) DESC", testBuilder.build());
-		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2", testBuilder.buildCountPart());
-		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab ORDER BY LOWER(tab.order) DESC", testBuilder.buildUuidListPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID, tab.order FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab ORDER BY LOWER(tab.order) DESC",
+				testBuilder.build());
+		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2",
+				testBuilder.buildCountPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab ORDER BY LOWER(tab.order) DESC",
+				testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
-	
+
 	@Test
 	public void testNullableNotNullQuery1GroupByAliasSelectOrderSamePaged2SkipPart2() {
 		String value = "not null";
@@ -318,12 +365,17 @@ public class QueryComposerWithRequestValuesTest {
 				.addConditionalWhere("sm.test = ?test", "order2")
 				.bindOrder("order2")
 				.setLimit(10);
-		Assert.assertEquals("SELECT tab.UUID, tab.order2 FROM ( SELECT sm.UUID, g.field2 AS order2 FROM SpaceMission sm LEFT JOIN GROUPBY2 g2 ON g2.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab ORDER BY LOWER(tab.order2) DESC", testBuilder.build());
-		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY2 g2 ON g2.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2", testBuilder.buildCountPart());
-		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT sm.UUID, g.field2 AS order2 FROM SpaceMission sm LEFT JOIN GROUPBY2 g2 ON g2.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab ORDER BY LOWER(tab.order2) DESC", testBuilder.buildUuidListPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID, tab.order2 FROM ( SELECT sm.UUID, g.field2 AS order2 FROM SpaceMission sm LEFT JOIN GROUPBY2 g2 ON g2.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab ORDER BY LOWER(tab.order2) DESC",
+				testBuilder.build());
+		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY2 g2 ON g2.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2",
+				testBuilder.buildCountPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID FROM ( SELECT sm.UUID, g.field2 AS order2 FROM SpaceMission sm LEFT JOIN GROUPBY2 g2 ON g2.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab ORDER BY LOWER(tab.order2) DESC",
+				testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
-	
+
 	@Test
 	public void testNullableNotNullQuery1GroupByAliasSelectOrderSamePaged3() {
 		String value = "not null";
@@ -340,12 +392,17 @@ public class QueryComposerWithRequestValuesTest {
 				.addConditionalWhere("sm.test = ?test", "order")
 				.bindOrder("order", "order")
 				.setLimit(10);
-		Assert.assertEquals("SELECT tab.UUID, tab.order FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab ORDER BY LOWER(tab.order) DESC", testBuilder.build());
-		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2", testBuilder.buildCountPart());
-		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab ORDER BY LOWER(tab.order) DESC", testBuilder.buildUuidListPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID, tab.order FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab ORDER BY LOWER(tab.order) DESC",
+				testBuilder.build());
+		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2",
+				testBuilder.buildCountPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab ORDER BY LOWER(tab.order) DESC",
+				testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
-	
+
 	@Test
 	public void testNullableNotNullQuery1GroupByAliasSelectSamePaged1() {
 		String value = "not null";
@@ -361,12 +418,17 @@ public class QueryComposerWithRequestValuesTest {
 				.addConditional("LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid", "order")
 				.addConditionalWhere("sm.test = ?test", "order")
 				.setLimit(10);
-		Assert.assertEquals("SELECT tab.UUID, tab.order FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab", testBuilder.build());
-		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2", testBuilder.buildCountPart());
-		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab", testBuilder.buildUuidListPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID, tab.order FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab",
+				testBuilder.build());
+		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2",
+				testBuilder.buildCountPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab",
+				testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
-	
+
 	@Test
 	public void testNullableNotNullQuery1GroupByAliasSelectSamePaged2() {
 		String value = "not null";
@@ -382,12 +444,17 @@ public class QueryComposerWithRequestValuesTest {
 				.addConditional("LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid", "order")
 				.addConditionalWhere("sm.test = ?test", "order")
 				.setLimit(10);
-		Assert.assertEquals("SELECT tab.UUID, tab.order FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab", testBuilder.build());
-		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2", testBuilder.buildCountPart());
-		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab", testBuilder.buildUuidListPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID, tab.order FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab",
+				testBuilder.build());
+		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2",
+				testBuilder.buildCountPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab",
+				testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
-	
+
 	@Test
 	public void testNullableNotNullQuery1GroupByAliasSelectSamePaged3() {
 		String value = "not null";
@@ -403,12 +470,17 @@ public class QueryComposerWithRequestValuesTest {
 				.addConditional("LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid", "order")
 				.addConditionalWhere("sm.test = ?test", "order")
 				.setLimit(10);
-		Assert.assertEquals("SELECT tab.UUID, tab.order FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab", testBuilder.build());
-		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2", testBuilder.buildCountPart());
-		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab", testBuilder.buildUuidListPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID, tab.order FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab",
+				testBuilder.build());
+		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2",
+				testBuilder.buildCountPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab",
+				testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
-	
+
 	@Test
 	public void testNullableNotNullQuery1GroupByAliasSelectSamePaged4() {
 		String value = "not null";
@@ -424,12 +496,17 @@ public class QueryComposerWithRequestValuesTest {
 				.addConditional("LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid", "order")
 				.addConditionalWhere("sm.test = ?test", "order")
 				.setLimit(10);
-		Assert.assertEquals("SELECT tab.UUID, tab.order FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab", testBuilder.build());
-		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2", testBuilder.buildCountPart());
-		Assert.assertEquals("SELECT tab.UUID FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab", testBuilder.buildUuidListPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID, tab.order FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab",
+				testBuilder.build());
+		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2",
+				testBuilder.buildCountPart());
+		Assert.assertEquals(
+				"SELECT tab.UUID FROM ( SELECT sm.UUID, g.field2 AS order FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field2 ) tab",
+				testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
-	
+
 	@Test
 	public void testNullableNotNullQuery1GroupByAliasOrder() {
 		String value = "not null";
@@ -445,12 +522,17 @@ public class QueryComposerWithRequestValuesTest {
 				.addConditional("LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid", "groupBy")
 				.addConditionalWhere("sm.test = ?test", "order")
 				.bindOrder("order", "g.field2");
-		Assert.assertEquals("SELECT sm.UUID, g.field AS groupBy FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field ORDER BY LOWER(g.field2) DESC", testBuilder.build());
-		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field", testBuilder.buildCountPart());
-		Assert.assertEquals("SELECT sm.UUID, g.field AS groupBy FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field ORDER BY LOWER(g.field2) DESC", testBuilder.buildUuidListPart());
+		Assert.assertEquals(
+				"SELECT sm.UUID, g.field AS groupBy FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field ORDER BY LOWER(g.field2) DESC",
+				testBuilder.build());
+		Assert.assertEquals("SELECT DISTINCT COUNT(1) OVER () FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field",
+				testBuilder.buildCountPart());
+		Assert.assertEquals(
+				"SELECT sm.UUID, g.field AS groupBy FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test GROUP BY sm.UUID, g.field ORDER BY LOWER(g.field2) DESC",
+				testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
-	
+
 	@Test
 	public void testNullableNotNullQuery1OrderByAliasSearch1() {
 		String value = "not null";
@@ -471,7 +553,7 @@ public class QueryComposerWithRequestValuesTest {
 		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test ORDER BY LOWER(g.field2) DESC", testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
-	
+
 	@Test
 	public void testNullableNotNullQuery1OrderByAliasSearch1Found() {
 		String value = "not null";
@@ -488,12 +570,17 @@ public class QueryComposerWithRequestValuesTest {
 				.addConditionalWhere("sm.test = ?test", "search")
 				.addSearch("search")
 				.bindOrder("search", "g.field2");
-		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( LOWER(g.field2) LIKE LOWER(?searchTerm0) ) ORDER BY LOWER(g.field2) DESC", testBuilder.build());
-		Assert.assertEquals("SELECT COUNT(1) FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( LOWER(g.field2) LIKE LOWER(?searchTerm0) )", testBuilder.buildCountPart());
-		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( LOWER(g.field2) LIKE LOWER(?searchTerm0) ) ORDER BY LOWER(g.field2) DESC", testBuilder.buildUuidListPart());
+		Assert.assertEquals(
+				"SELECT sm.UUID FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND LOWER(g.field2) LIKE LOWER(?searchTerm0) ORDER BY LOWER(g.field2) DESC",
+				testBuilder.build());
+		Assert.assertEquals("SELECT COUNT(1) FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND LOWER(g.field2) LIKE LOWER(?searchTerm0)",
+				testBuilder.buildCountPart());
+		Assert.assertEquals(
+				"SELECT sm.UUID FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND LOWER(g.field2) LIKE LOWER(?searchTerm0) ORDER BY LOWER(g.field2) DESC",
+				testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
-	
+
 	@Test
 	public void testNullableNotNullQuery1OrderByAliasSearch2() {
 		String value = "not null";
@@ -515,7 +602,7 @@ public class QueryComposerWithRequestValuesTest {
 		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test ORDER BY LOWER(g.field2) DESC", testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
-	
+
 	@Test
 	public void testNullableNotNullQuery1OrderByAliasSearch2Found() {
 		String value = "not null";
@@ -533,12 +620,17 @@ public class QueryComposerWithRequestValuesTest {
 				.addAliasResolver("search2", "sm.found")
 				.addSearch("search", "search2")
 				.bindOrder("search", "g.field2");
-		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( LOWER(g.field2) LIKE LOWER(?searchTerm0) OR LOWER(sm.found) LIKE LOWER(?searchTerm0) ) ORDER BY LOWER(g.field2) DESC", testBuilder.build());
-		Assert.assertEquals("SELECT COUNT(1) FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( LOWER(g.field2) LIKE LOWER(?searchTerm0) OR LOWER(sm.found) LIKE LOWER(?searchTerm0) )", testBuilder.buildCountPart());
-		Assert.assertEquals("SELECT sm.UUID FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( LOWER(g.field2) LIKE LOWER(?searchTerm0) OR LOWER(sm.found) LIKE LOWER(?searchTerm0) ) ORDER BY LOWER(g.field2) DESC", testBuilder.buildUuidListPart());
+		Assert.assertEquals(
+				"SELECT sm.UUID FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( LOWER(g.field2) LIKE LOWER(?searchTerm0) OR LOWER(sm.found) LIKE LOWER(?searchTerm0) ) ORDER BY LOWER(g.field2) DESC",
+				testBuilder.build());
+		Assert.assertEquals(
+				"SELECT COUNT(1) FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( LOWER(g.field2) LIKE LOWER(?searchTerm0) OR LOWER(sm.found) LIKE LOWER(?searchTerm0) )",
+				testBuilder.buildCountPart());
+		Assert.assertEquals(
+				"SELECT sm.UUID FROM SpaceMission sm LEFT JOIN GROUPBY g ON g.UUID = sm.groupBy_uuid WHERE sm.test = ?test AND ( LOWER(g.field2) LIKE LOWER(?searchTerm0) OR LOWER(sm.found) LIKE LOWER(?searchTerm0) ) ORDER BY LOWER(g.field2) DESC",
+				testBuilder.buildUuidListPart());
 		checkParam("test", "not null", testBuilder);
 	}
-
 
 	@Test
 	public void testNullableNullQuery2() {
@@ -571,7 +663,7 @@ public class QueryComposerWithRequestValuesTest {
 		checkParam("testList1", list.get(0), testBuilder);
 		checkParam("testList2", list.get(1), testBuilder);
 	}
-	
+
 	@Test
 	public void testNullableListNotNullQuery1DistinctSelectPaged() {
 		String value = "not null";
@@ -660,8 +752,6 @@ public class QueryComposerWithRequestValuesTest {
 		checkParam("testList1", list.get(0), testBuilder);
 		checkParam("testList2", list.get(1), testBuilder);
 	}
-
-
 
 	public static void checkParam(String name, Object value, QueryComposer builder) {
 		for (QueryParam param : builder.getParams()) {
