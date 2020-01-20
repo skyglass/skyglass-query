@@ -96,4 +96,8 @@ public class SearchBuilder {
 		return searchFields.toArray(new SearchField[0]);
 	}
 
+	public SearchTerm getSearchTerm() {
+		return searchTerm;
+	}
+
 }

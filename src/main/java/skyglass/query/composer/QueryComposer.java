@@ -281,6 +281,11 @@ public class QueryComposer {
 		return this;
 	}
 
+	public QueryComposer addSearchTerm(String searchTerm) {
+		getQueryRequest().addSearchTerm(searchTerm);
+		return this;
+	}
+
 	public QueryComposer setOrderField(String orderField) {
 		getQueryRequest().setOrderField(orderField);
 		return this;
@@ -506,7 +511,7 @@ public class QueryComposer {
 		return params.values();
 	}
 
-	protected boolean isNativeQuery() {
+	public boolean isNativeQuery() {
 		return queryType == QueryType.Native;
 	}
 

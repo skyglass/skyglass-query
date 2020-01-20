@@ -23,10 +23,8 @@ import skyglass.query.composer.search.SearchPath;
 import skyglass.query.composer.search.SearchProcessor;
 import skyglass.query.composer.search.SearchTerm;
 import skyglass.query.composer.search.SearchType;
-import skyglass.query.composer.util.QueryFunctions;
 import skyglass.query.composer.util.QueryOrderUtil;
 import skyglass.query.composer.util.QueryRequestUtil;
-import skyglass.query.composer.util.QuerySearchUtil;
 
 public class QueryComposerBuilder {
 
@@ -56,9 +54,9 @@ public class QueryComposerBuilder {
 
 	private Map<String, FieldItem> orderFieldMap;
 
-	private List<String> searchPartAndSuppliers;
+	private List<List<SearchBuilder>> searchPartAndSuppliers;
 
-	private List<String> searchPartOrSuppliers;
+	private List<List<SearchBuilder>> searchPartOrSuppliers;
 
 	private List<Runnable> searchPartInitRunners = new ArrayList<>();
 
@@ -525,37 +523,26 @@ public class QueryComposerBuilder {
 								: Collections.singletonList(queryRequest.getSearchTerm()))
 						: queryRequest.getSearchTerms();
 			}
-			List<SearchTerm> result = SearchProcessor.parseSearch(searchTerms);
-			List<SearchTerm> andResult = andSearch(result);
-			List<SearchTerm> orResult = orSearch(result);
 			int i = 0;
-			for (SearchTerm searchTerm : andResult) {
-				if (StringUtils.isNotBlank(searchTerm.getStringValue())) {
-					String p = searchTerm.hasField() ? searchTerm.getField() : (paramName + Integer.toString(i));
-					i++;
-					SearchBuilder searchBuilder = new SearchBuilder(root, queryRequest, searchTerm, searchType, p,
-							translatable, resolvedPathList.toArray(new SearchPath[0]));
-					searchPartAndSuppliers.add(QuerySearchUtil.applySearch(root.isNativeQuery(), searchBuilder));
+			for (String searchTermString : searchTerms) {
+				Pair<Combination, List<SearchTerm>> result = SearchProcessor.parseSearch(searchTermString);
+				List<SearchBuilder> searchBuilders = new ArrayList<>();
+				for (SearchTerm searchTerm : result.getRight()) {
+					if (StringUtils.isNotBlank(searchTerm.getStringValue())) {
+						String p = searchTerm.hasField() ? searchTerm.getField() : (paramName + Integer.toString(i));
+						i++;
+						SearchBuilder searchBuilder = new SearchBuilder(root, queryRequest, searchTerm, searchType, p,
+								translatable, resolvedPathList.toArray(new SearchPath[0]));
+						searchBuilders.add(searchBuilder);
+					}
 				}
-			}
-			for (SearchTerm searchTerm : orResult) {
-				if (StringUtils.isNotBlank(searchTerm.getStringValue())) {
-					String p = searchTerm.hasField() ? searchTerm.getField() : (paramName + Integer.toString(i));
-					i++;
-					SearchBuilder searchBuilder = new SearchBuilder(root, queryRequest, searchTerm, searchType, p,
-							translatable, resolvedPathList.toArray(new SearchPath[0]));
-					searchPartOrSuppliers.add(QuerySearchUtil.applySearch(root.isNativeQuery(), searchBuilder));
+				if (result.getLeft() == Combination.And) {
+					searchPartAndSuppliers.add(searchBuilders);
+				} else {
+					searchPartOrSuppliers.add(searchBuilders);
 				}
 			}
 		});
-	}
-
-	private List<SearchTerm> andSearch(List<SearchTerm> searchTerms) {
-		return searchTerms.stream().filter(s -> s.getCombination() == Combination.And).collect(Collectors.toList());
-	}
-
-	private List<SearchTerm> orSearch(List<SearchTerm> searchTerms) {
-		return searchTerms.stream().filter(s -> s.getCombination() == Combination.Or).collect(Collectors.toList());
 	}
 
 	private void addOrderFieldResolver(String path, String innerPath) {
@@ -789,10 +776,7 @@ public class QueryComposerBuilder {
 	}
 
 	String getAndSearchPart() {
-		String result = null;
-		for (String searchPartSupplier : searchPartAndSuppliers) {
-			result = QueryFunctions.and(result, searchPartSupplier);
-		}
+		String result = SearchProcessor.getSearchPart(root, searchPartAndSuppliers, true);
 		if (StringUtils.isBlank(result)) {
 			return "";
 		}
@@ -800,15 +784,9 @@ public class QueryComposerBuilder {
 	}
 
 	String getOrSearchPart() {
-		String result = null;
-		for (String searchPartSupplier : searchPartOrSuppliers) {
-			result = QueryFunctions.or(result, searchPartSupplier);
-		}
+		String result = SearchProcessor.getSearchPart(root, searchPartOrSuppliers, false);
 		if (StringUtils.isBlank(result)) {
 			return "";
-		}
-		if (searchPartOrSuppliers.size() > 1) {
-			result = "( " + result + " )";
 		}
 		return result;
 	}

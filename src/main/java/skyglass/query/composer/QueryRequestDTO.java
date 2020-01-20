@@ -31,7 +31,7 @@ public class QueryRequestDTO implements Serializable {
 	private OrderType orderType;
 
 	private String lang;
-	
+
 	private Map<String, Object> map = new HashMap<>();
 
 	public int getRowsPerPage() {
@@ -74,6 +74,10 @@ public class QueryRequestDTO implements Serializable {
 		this.searchTerm = searchTerm;
 	}
 
+	public void addSearchTerm(String searchTerm) {
+		this.searchTerms.add(searchTerm);
+	}
+
 	public String getLang() {
 		return lang;
 	}
@@ -105,14 +109,14 @@ public class QueryRequestDTO implements Serializable {
 	public void setSearchTerms(List<String> searchTerms) {
 		this.searchTerms = searchTerms;
 	}
-	
+
 	public <T> void set(String name, T value) {
 		this.map.put(name, value);
 	}
-	
+
 	@SuppressWarnings("unchecked")
 	public <T> T get(String name) {
-		return (T)this.map.get(name);
+		return (T) this.map.get(name);
 	}
 
 }

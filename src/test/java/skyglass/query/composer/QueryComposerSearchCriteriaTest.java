@@ -160,6 +160,43 @@ public class QueryComposerSearchCriteriaTest {
 	}
 
 	@Test
+	public void testJpaSearchAliasStartConditionalWhereWithAddSearchTerm() {
+		String value = "not null";
+
+		QueryComposer testBuilder = QueryComposer
+				.jpa(MockQueryRequestDto.create(value), "u")
+				.addSearchTerm("test:doe|age>20,age<25")
+				.select("*")
+				.from("User u")
+				.addAliasResolver("test", "u.lastName")
+				.addSearch("test", "age")
+				.addConditionalWhere("test = u.test", "test");
+		Assert.assertEquals("SELECT u FROM User u WHERE LOWER(u.lastName) LIKE LOWER(:test) OR u.age >= :age AND u.age <= :age2 AND test = u.test", testBuilder.build());
+		checkParam("age", 20, testBuilder);
+		checkParam("age2", 25, testBuilder);
+		checkParam("test", "%doe%", testBuilder);
+	}
+
+	@Test
+	public void testJpaSearchAliasStartConditionalWhereWithMultipleSearchTerms() {
+		String value = "not null";
+
+		QueryComposer testBuilder = QueryComposer
+				.jpa(MockQueryRequestDto.create(value), "u")
+				.addSearchTerm("test:doe|age>20,age<25")
+				.addSearchTerm("test:doe|age>20|age<25")
+				.select("*")
+				.from("User u")
+				.addAliasResolver("test", "u.lastName")
+				.addSearch("test", "age")
+				.addConditionalWhere("test = u.test", "test");
+		Assert.assertEquals("SELECT u FROM User u WHERE LOWER(u.lastName) LIKE LOWER(:test) OR u.age >= :age AND u.age <= :age2 AND test = u.test", testBuilder.build());
+		checkParam("age", 20, testBuilder);
+		checkParam("age2", 25, testBuilder);
+		checkParam("test", "%doe%", testBuilder);
+	}
+
+	@Test
 	public void testJpaSearchAliasStartWhereWithNullRequestValue() {
 		String value = null;
 
