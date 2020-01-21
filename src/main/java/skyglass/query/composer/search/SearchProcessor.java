@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.tuple.Pair;
 
 import skyglass.query.composer.QueryComposer;
+import skyglass.query.composer.QueryComposerBuilder;
 import skyglass.query.composer.SearchBuilder;
 import skyglass.query.composer.util.QuerySearchUtil;
 
@@ -18,7 +19,7 @@ public class SearchProcessor {
 
 	private static final Pattern SEARCH_TERM_PATTERN = Pattern.compile("(\\w+?)(:|<|>|=|!)(\\**\\w+?\\**)(,|\\|)", Pattern.UNICODE_CHARACTER_CLASS);
 
-	public static Pair<Combination, List<SearchTerm>> parseSearch(String searchTerm) {
+	public static Pair<Combination, List<SearchTerm>> parseSearch(QueryComposerBuilder builder, String searchTerm) {
 		List<SearchTerm> result = new ArrayList<>();
 		Map<String, Integer> fieldIndexMap = new HashMap<>();
 		Combination combination = searchTerm.endsWith("|") ? Combination.Or : Combination.And;
@@ -32,14 +33,7 @@ public class SearchProcessor {
 			previousSearchTerm = lastSearchTerm;
 			String field = matcher.group(1);
 			String alias = field;
-			Integer index = fieldIndexMap.get(field);
-			if (index == null) {
-				fieldIndexMap.put(field, 1);
-			} else {
-				index = index + 1;
-				field = field + Integer.toString(index);
-				fieldIndexMap.put(field, index);
-			}
+			field = builder.resolveSearchFieldName(field);
 			lastSearchTerm = new SearchTerm(field, alias, matcher.group(2), matcher.group(3), matcher.group(4));
 			result.add(lastSearchTerm);
 		}
@@ -78,16 +72,27 @@ public class SearchProcessor {
 
 	public static String getSearchPart(QueryComposer root, List<List<SearchBuilder>> searchBuilders, boolean and) {
 		StringBuilder builder = new StringBuilder();
-		boolean appendPars = !and && searchBuilders.size() > 1;
-		if (appendPars) {
-			builder.append("( ");
-		}
-		boolean first = true;
+		boolean appendOuterPars = !and && searchBuilders.size() > 1;
+		boolean outerFirst = true;
 		for (List<SearchBuilder> list : searchBuilders) {
+			boolean first = true;
 			List<SearchBuilder> andResult = andSearch(list);
 			List<SearchBuilder> orResult = orSearch(list);
+			boolean appendPars = orResult.size() > 0;
+			if (outerFirst) {
+				outerFirst = false;
+				appendOuterPars = appendOuterPars && !appendPars;
+				if (appendOuterPars) {
+					builder.append("( ");
+				}
+			} else {
+				builder.append(and ? " AND " : " OR ");
+			}
 			if (orResult.size() > 0 || andResult.size() > 0) {
 				if (first) {
+					if (appendPars) {
+						builder.append("( ");
+					}
 					first = false;
 				} else {
 					builder.append(and ? " AND " : " OR ");
@@ -108,7 +113,7 @@ public class SearchProcessor {
 					builder.append(QuerySearchUtil.applySearch(root.isNativeQuery(), searchBuilder));
 				}
 				if (appendInnerPars) {
-					builder.append(") ");
+					builder.append(" )");
 				}
 			}
 
@@ -129,8 +134,12 @@ public class SearchProcessor {
 					builder.append(QuerySearchUtil.applySearch(root.isNativeQuery(), searchBuilder));
 				}
 			}
+
+			if (appendPars) {
+				builder.append(" )");
+			}
 		}
-		if (appendPars) {
+		if (appendOuterPars) {
 			builder.append(")");
 		}
 

@@ -80,6 +80,8 @@ public class QueryComposerBuilder {
 
 	private boolean forceDistinct;
 
+	Map<String, Integer> fieldIndexMap = new HashMap<>();
+
 	QueryComposerBuilder(QueryComposer root, QueryRequestDTO queryRequest, String rootAlias) {
 		this.root = root;
 		this.queryRequest = queryRequest;
@@ -319,7 +321,7 @@ public class QueryComposerBuilder {
 		orderFieldMap = new LinkedHashMap<>();
 		searchPartAndSuppliers = new ArrayList<>();
 		searchPartOrSuppliers = new ArrayList<>();
-
+		fieldIndexMap = new HashMap<>();
 	}
 
 	private void doAdd(String queryPart, boolean distinct) {
@@ -525,7 +527,7 @@ public class QueryComposerBuilder {
 			}
 			int i = 0;
 			for (String searchTermString : searchTerms) {
-				Pair<Combination, List<SearchTerm>> result = SearchProcessor.parseSearch(searchTermString);
+				Pair<Combination, List<SearchTerm>> result = SearchProcessor.parseSearch(this, searchTermString);
 				List<SearchBuilder> searchBuilders = new ArrayList<>();
 				for (SearchTerm searchTerm : result.getRight()) {
 					if (StringUtils.isNotBlank(searchTerm.getStringValue())) {
@@ -975,6 +977,18 @@ public class QueryComposerBuilder {
 
 	private String getRootPath(String alias) {
 		return rootAlias + "." + alias;
+	}
+
+	public String resolveSearchFieldName(String fieldName) {
+		Integer index = fieldIndexMap.get(fieldName);
+		if (index == null) {
+			fieldIndexMap.put(fieldName, 1);
+		} else {
+			index = index + 1;
+			fieldName = fieldName + Integer.toString(index);
+			fieldIndexMap.put(fieldName, index);
+		}
+		return fieldName;
 	}
 
 }
