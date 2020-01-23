@@ -135,7 +135,7 @@ public class QueryComposerSearchCriteriaTest {
 				.addAliases("test")
 				.append("test = u.test")
 				.end();
-		Assert.assertEquals("SELECT u FROM User u WHERE LOWER(u.lastName) LIKE LOWER(:test) OR u.age >= :age AND u.age <= :age2 AND test = u.test", testBuilder.build());
+		Assert.assertEquals("SELECT u FROM User u WHERE ( LOWER(u.lastName) LIKE LOWER(:test) OR u.age >= :age AND u.age <= :age2 ) AND test = u.test", testBuilder.build());
 		checkParam("age", 20, testBuilder);
 		checkParam("age2", 25, testBuilder);
 		checkParam("test", "%doe%", testBuilder);
@@ -153,7 +153,7 @@ public class QueryComposerSearchCriteriaTest {
 				.addAliasResolver("test", "u.lastName")
 				.addSearch("test", "age")
 				.addConditionalWhere("test = u.test", "test");
-		Assert.assertEquals("SELECT u FROM User u WHERE LOWER(u.lastName) LIKE LOWER(:test) OR u.age >= :age AND u.age <= :age2 AND test = u.test", testBuilder.build());
+		Assert.assertEquals("SELECT u FROM User u WHERE ( LOWER(u.lastName) LIKE LOWER(:test) OR u.age >= :age AND u.age <= :age2 ) AND test = u.test", testBuilder.build());
 		checkParam("age", 20, testBuilder);
 		checkParam("age2", 25, testBuilder);
 		checkParam("test", "%doe%", testBuilder);
@@ -171,10 +171,85 @@ public class QueryComposerSearchCriteriaTest {
 				.addAliasResolver("test", "u.lastName")
 				.addSearch("test", "age")
 				.addConditionalWhere("test = u.test", "test");
-		Assert.assertEquals("SELECT u FROM User u WHERE LOWER(u.lastName) LIKE LOWER(:test) OR u.age >= :age AND u.age <= :age2 AND test = u.test", testBuilder.build());
+		Assert.assertEquals("SELECT u FROM User u WHERE ( LOWER(u.lastName) LIKE LOWER(:test) OR u.age >= :age AND u.age <= :age2 ) AND test = u.test", testBuilder.build());
 		checkParam("age", 20, testBuilder);
 		checkParam("age2", 25, testBuilder);
 		checkParam("test", "%doe%", testBuilder);
+	}
+
+	@Test
+	public void testJpaSearchAliasStartConditionalWhereWithAndSearchTerms() {
+		String value = "not null";
+
+		QueryComposer testBuilder = QueryComposer
+				.jpa(MockQueryRequestDto.create(value), "u")
+				.addSearchTerm("test:doe|age>20,age<25,")
+				.addSearchTerm("test2:doe2|age>23,age<24")
+				.select("*")
+				.from("User u")
+				.addAliasResolver("test", "u.lastName")
+				.addSearch("test", "age")
+				.addConditionalWhere("test = u.test", "test");
+		Assert.assertEquals("SELECT u FROM User u WHERE ( LOWER(u.lastName) "
+				+ "LIKE LOWER(:test) OR u.age >= :age AND u.age <= :age2 ) "
+				+ "AND u.age >= :age3 AND u.age <= :age4 "
+				+ "AND test = u.test", testBuilder.build());
+		checkParam("age", 20, testBuilder);
+		checkParam("age2", 25, testBuilder);
+		checkParam("age3", 23, testBuilder);
+		checkParam("age4", 24, testBuilder);
+		checkParam("test", "%doe%", testBuilder);
+		checkNoParam("test2", testBuilder);
+	}
+
+	@Test
+	public void testJpaSearchAliasStartConditionalWhereWithOrSearchTerms() {
+		String value = "not null";
+
+		QueryComposer testBuilder = QueryComposer
+				.jpa(MockQueryRequestDto.create(value), "u")
+				.addSearchTerm("test:doe|age>20,age<25|")
+				.addSearchTerm("test2:doe2|age>23,age<24")
+				.select("*")
+				.from("User u")
+				.addAliasResolver("test", "u.lastName")
+				.addSearch("test", "age")
+				.addConditionalWhere("test = u.test", "test");
+		Assert.assertEquals("SELECT u FROM User u WHERE ( ( LOWER(u.lastName) "
+				+ "LIKE LOWER(:test) OR u.age >= :age AND u.age <= :age2 ) "
+				+ "OR u.age >= :age3 AND u.age <= :age4 ) "
+				+ "AND test = u.test", testBuilder.build());
+		checkParam("age", 20, testBuilder);
+		checkParam("age2", 25, testBuilder);
+		checkParam("age3", 23, testBuilder);
+		checkParam("age4", 24, testBuilder);
+		checkParam("test", "%doe%", testBuilder);
+		checkNoParam("test2", testBuilder);
+	}
+
+	@Test
+	public void testJpaSearchAliasStartConditionalWhereWithOrSearchTerms2() {
+		String value = "not null";
+
+		QueryComposer testBuilder = QueryComposer
+				.jpa(MockQueryRequestDto.create(value), "u")
+				.addSearchTerm("test:doe|age>20,age<25|")
+				.addSearchTerm("test2:doe2|age>23|age<24")
+				.select("*")
+				.from("User u")
+				.addAliasResolver("test", "u.lastName")
+				.addSearch("test", "age")
+				.addConditionalWhere("test = u.test", "test");
+		Assert.assertEquals("SELECT u FROM User u WHERE ( ( LOWER(u.lastName) "
+				+ "LIKE LOWER(:test) OR u.age >= :age AND u.age <= :age2 ) "
+				+ "OR ( u.age >= :age3 OR u.age <= :age4 ) ) "
+				+ "AND test = u.test", testBuilder.build());
+		checkParam("age", 20, testBuilder);
+		checkParam("age2", 25, testBuilder);
+		checkParam("age3", 23, testBuilder);
+		checkParam("age4", 24, testBuilder);
+		checkParam("test", "%doe%", testBuilder);
+		checkNoParam("test2", testBuilder);
 	}
 
 	@Test
@@ -184,7 +259,7 @@ public class QueryComposerSearchCriteriaTest {
 		QueryComposer testBuilder = QueryComposer
 				.jpa(MockQueryRequestDto.create(value), "u")
 				.addSearchTerm("test:doe|age>20,age<25")
-				.addSearchTerm("test:doe|age>20|age<25,age=22")
+				.addSearchTerm("test:doe|age>21|age<24,age=22")
 				.select("*")
 				.from("User u")
 				.addAliasResolver("test", "u.lastName")
@@ -193,11 +268,43 @@ public class QueryComposerSearchCriteriaTest {
 		Assert.assertEquals(
 				"SELECT u FROM User u WHERE ( LOWER(u.lastName) LIKE LOWER(:test) "
 						+ "OR u.age >= :age AND u.age <= :age2 ) "
-						+ "AND ( ( LOWER(u.lastName) LIKE LOWER(:test) OR u.age >= :age ) "
-						+ "AND u.age <= :age2 AND u.age = :age2 ) AND test = u.test",
+						+ "AND ( ( LOWER(u.lastName) LIKE LOWER(:test2) OR u.age >= :age3 ) "
+						+ "AND u.age <= :age4 AND u.age = :age5 ) AND test = u.test",
 				testBuilder.build());
 		checkParam("age", 20, testBuilder);
 		checkParam("age2", 25, testBuilder);
+		checkParam("age3", 21, testBuilder);
+		checkParam("age4", 24, testBuilder);
+		checkParam("age5", 22, testBuilder);
+		checkParam("test", "%doe%", testBuilder);
+	}
+
+	@Test
+	public void testJpaSearchAliasStartConditionalWhereWithThreeCombinedSearchTerms() {
+		String value = "not null";
+
+		QueryComposer testBuilder = QueryComposer
+				.jpa(MockQueryRequestDto.create(value), "u")
+				.addSearchTerm("test:doe|age>20,age<25|")
+				.addSearchTerm("test:doe|age>21|age<24,age=22|")
+				.addSearchTerm("age>2")
+				.select("*")
+				.from("User u")
+				.addAliasResolver("test", "u.lastName")
+				.addSearch("test", "age")
+				.addConditionalWhere("test = u.test", "test");
+		Assert.assertEquals(
+				"SELECT u FROM User u WHERE ( ( LOWER(u.lastName) LIKE LOWER(:test) "
+						+ "OR u.age >= :age AND u.age <= :age2 ) "
+						+ "OR ( ( LOWER(u.lastName) LIKE LOWER(:test2) OR u.age >= :age3 ) "
+						+ "AND u.age <= :age4 AND u.age = :age5 ) AND u.age >= :age6 ) AND test = u.test",
+				testBuilder.build());
+		checkParam("age", 20, testBuilder);
+		checkParam("age2", 25, testBuilder);
+		checkParam("age3", 21, testBuilder);
+		checkParam("age4", 24, testBuilder);
+		checkParam("age5", 22, testBuilder);
+		checkParam("age6", 2, testBuilder);
 		checkParam("test", "%doe%", testBuilder);
 	}
 

@@ -22,8 +22,8 @@ public class QueryPartString {
 		return new QueryPartString(WHERE, OR, part, true);
 	}
 
-	public static QueryPartString getWhereAndQueryPart(String part) {
-		return new QueryPartString(WHERE, AND, part, true);
+	public static QueryPartString getWhereAndQueryPart(String pars, String part) {
+		return new QueryPartString(WHERE + pars, AND, part, true);
 	}
 
 	public QueryPartString(String firstDelimiter, String delimiter, String part, boolean wherePart) {

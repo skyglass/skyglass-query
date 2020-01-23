@@ -1,9 +1,7 @@
 package skyglass.query.composer.search;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -21,7 +19,6 @@ public class SearchProcessor {
 
 	public static Pair<Combination, List<SearchTerm>> parseSearch(QueryComposerBuilder builder, String searchTerm) {
 		List<SearchTerm> result = new ArrayList<>();
-		Map<String, Integer> fieldIndexMap = new HashMap<>();
 		Combination combination = searchTerm.endsWith("|") ? Combination.Or : Combination.And;
 		String search = searchTerm.endsWith(",") ? searchTerm : (searchTerm.endsWith("|") ? searchTerm : (searchTerm + ","));
 		Matcher matcher = SEARCH_TERM_PATTERN.matcher(search);
@@ -74,32 +71,25 @@ public class SearchProcessor {
 		StringBuilder builder = new StringBuilder();
 		boolean appendOuterPars = !and && searchBuilders.size() > 1;
 		boolean outerFirst = true;
+		if (appendOuterPars) {
+			builder.append("( ");
+		}
 		for (List<SearchBuilder> list : searchBuilders) {
-			boolean first = true;
 			List<SearchBuilder> andResult = andSearch(list);
 			List<SearchBuilder> orResult = orSearch(list);
 			boolean appendPars = orResult.size() > 0;
 			if (outerFirst) {
 				outerFirst = false;
-				appendOuterPars = appendOuterPars && !appendPars;
-				if (appendOuterPars) {
-					builder.append("( ");
-				}
 			} else {
 				builder.append(and ? " AND " : " OR ");
 			}
 			if (orResult.size() > 0 || andResult.size() > 0) {
-				if (first) {
-					if (appendPars) {
-						builder.append("( ");
-					}
-					first = false;
-				} else {
-					builder.append(and ? " AND " : " OR ");
+				if (appendPars) {
+					builder.append("( ");
 				}
 			}
 			if (orResult.size() > 0) {
-				boolean appendInnerPars = orResult.size() > 1;
+				boolean appendInnerPars = orResult.size() > 1 && andResult.size() > 0;
 				if (appendInnerPars) {
 					builder.append("( ");
 				}

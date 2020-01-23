@@ -535,7 +535,9 @@ public class QueryComposerBuilder {
 						i++;
 						SearchBuilder searchBuilder = new SearchBuilder(root, queryRequest, searchTerm, searchType, p,
 								translatable, resolvedPathList.toArray(new SearchPath[0]));
-						searchBuilders.add(searchBuilder);
+						if (searchBuilder.isNotEmpty()) {
+							searchBuilders.add(searchBuilder);
+						}
 					}
 				}
 				if (result.getLeft() == Combination.And) {
@@ -980,15 +982,16 @@ public class QueryComposerBuilder {
 	}
 
 	public String resolveSearchFieldName(String fieldName) {
+		String resolvedFieldName = fieldName;
 		Integer index = fieldIndexMap.get(fieldName);
 		if (index == null) {
 			fieldIndexMap.put(fieldName, 1);
 		} else {
 			index = index + 1;
-			fieldName = fieldName + Integer.toString(index);
+			resolvedFieldName = fieldName + Integer.toString(index);
 			fieldIndexMap.put(fieldName, index);
 		}
-		return fieldName;
+		return resolvedFieldName;
 	}
 
 }

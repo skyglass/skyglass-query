@@ -431,8 +431,9 @@ public class QueryComposer {
 	}
 
 	private boolean appendSearchWhereParts(boolean first, StringBuilder queryParts, String orPart, String andPart) {
-		if (StringUtils.isNotBlank(orPart)) {
-			QueryPartString orQueryPart = QueryPartString.getWhereAndQueryPart(orPart);
+		boolean appendPars = StringUtils.isNotBlank(orPart);
+		if (appendPars) {
+			QueryPartString orQueryPart = QueryPartString.getWhereAndQueryPart("( ", orPart);
 			first = appendQueryPart(first, orQueryPart, queryParts);
 		}
 		if (StringUtils.isNotBlank(andPart)) {
@@ -440,9 +441,12 @@ public class QueryComposer {
 			if (StringUtils.isNotBlank(orPart)) {
 				andQueryPart = QueryPartString.getWhereOrQueryPart(andPart);
 			} else {
-				andQueryPart = QueryPartString.getWhereAndQueryPart(andPart);
+				andQueryPart = QueryPartString.getWhereAndQueryPart("", andPart);
 			}
 			first = appendQueryPart(first, andQueryPart, queryParts);
+		}
+		if (appendPars) {
+			queryParts.append(" )");
 		}
 		return first;
 	}

@@ -100,4 +100,8 @@ public class SearchBuilder {
 		return searchTerm;
 	}
 
+	public boolean isNotEmpty() {
+		return searchFields.size() > 0;
+	}
+
 }
