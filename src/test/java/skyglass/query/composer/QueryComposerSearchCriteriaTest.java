@@ -294,10 +294,9 @@ public class QueryComposerSearchCriteriaTest {
 				.addSearch("test", "age")
 				.addConditionalWhere("test = u.test", "test");
 		Assert.assertEquals(
-				"SELECT u FROM User u WHERE ( ( LOWER(u.lastName) LIKE LOWER(:test) "
-						+ "OR u.age >= :age AND u.age <= :age2 ) "
-						+ "OR ( ( LOWER(u.lastName) LIKE LOWER(:test2) OR u.age >= :age3 ) "
-						+ "AND u.age <= :age4 AND u.age = :age5 ) AND u.age >= :age6 ) AND test = u.test",
+				"SELECT u FROM User u WHERE ( ( ( LOWER(u.lastName) LIKE LOWER(:test) OR u.age >= :age AND u.age <= :age2 ) "
+						+ "OR ( ( LOWER(u.lastName) LIKE LOWER(:test2) OR u.age >= :age3 ) AND u.age <= :age4 AND u.age = :age5 ) ) "
+						+ "OR u.age >= :age6 ) AND test = u.test",
 				testBuilder.build());
 		checkParam("age", 20, testBuilder);
 		checkParam("age2", 25, testBuilder);
@@ -306,6 +305,41 @@ public class QueryComposerSearchCriteriaTest {
 		checkParam("age5", 22, testBuilder);
 		checkParam("age6", 2, testBuilder);
 		checkParam("test", "%doe%", testBuilder);
+	}
+
+	@Test
+	public void testJpaSearchAliasStartConditionalWhereWithThreeCombinedAndSearchTerms() {
+		String value = "not null";
+
+		QueryComposer testBuilder = QueryComposer
+				.jpa(MockQueryRequestDto.create(value), "u")
+				.addSearchTerm("test:doe|age>20,age<25|")
+				.addSearchTerm("test:doe|age>21|age<24,age=22,")
+				.addSearchTerm("test:doe|age>2")
+				.select("*")
+				.from("User u")
+				.addAliasResolver("test", "u.lastName")
+				.addSearch("test", "age")
+				.addConditionalWhere("test = u.test", "test");
+		Assert.assertEquals(
+				"SELECT u FROM User u WHERE ( "
+						+ "( LOWER(u.lastName) LIKE LOWER(:test) OR u.age >= :age AND u.age <= :age2 ) "
+						+ "OR ( "
+						+ "( LOWER(u.lastName) LIKE LOWER(:test2) OR u.age >= :age3 ) "
+						+ "AND u.age <= :age4 AND u.age = :age5 "
+						+ ") "
+						+ "AND ( LOWER(u.lastName) LIKE LOWER(:test3) OR u.age >= :age6 ) "
+						+ ") AND test = u.test",
+				testBuilder.build());
+		checkParam("age", 20, testBuilder);
+		checkParam("age2", 25, testBuilder);
+		checkParam("age3", 21, testBuilder);
+		checkParam("age4", 24, testBuilder);
+		checkParam("age5", 22, testBuilder);
+		checkParam("age6", 2, testBuilder);
+		checkParam("test", "%doe%", testBuilder);
+		checkParam("test2", "%doe%", testBuilder);
+		checkParam("test3", "%doe%", testBuilder);
 	}
 
 	@Test

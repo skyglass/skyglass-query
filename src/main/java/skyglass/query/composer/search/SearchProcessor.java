@@ -130,7 +130,7 @@ public class SearchProcessor {
 			}
 		}
 		if (appendOuterPars) {
-			builder.append(")");
+			builder.append(" )");
 		}
 
 		return builder.toString();
